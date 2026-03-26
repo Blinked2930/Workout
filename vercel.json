@@ -1,0 +1,17 @@
+{
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "installCommand": "npm install",
+  "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ],
+  "env": {
+    "CONVEX_DEPLOYMENT": "@convex-dev-your-project-name",
+    "AUTH0_DOMAIN": "@auth0-domain",
+    "AUTH0_CLIENT_ID": "@auth0-client-id"
+  }
+}

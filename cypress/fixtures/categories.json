@@ -1,0 +1,36 @@
+{
+  "mainCategories": [
+    {
+      "id": "cat1",
+      "name": "Weight Training",
+      "order": 1,
+      "createdAt": "2023-01-01T00:00:00.000Z",
+      "updatedAt": "2023-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "cat2",
+      "name": "Cardio",
+      "order": 2,
+      "createdAt": "2023-01-01T00:00:00.000Z",
+      "updatedAt": "2023-01-01T00:00:00.000Z"
+    }
+  ],
+  "subCategories": [
+    {
+      "id": "sub1",
+      "name": "Chest",
+      "mainCategoryId": "cat1",
+      "order": 1,
+      "createdAt": "2023-01-01T00:00:00.000Z",
+      "updatedAt": "2023-01-01T00:00:00.000Z"
+    },
+    {
+      "id": "sub2",
+      "name": "Legs",
+      "mainCategoryId": "cat1",
+      "order": 2,
+      "createdAt": "2023-01-01T00:00:00.000Z",
+      "updatedAt": "2023-01-01T00:00:00.000Z"
+    }
+  ]
+}

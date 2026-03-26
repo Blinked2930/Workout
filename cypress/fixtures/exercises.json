@@ -1,0 +1,26 @@
+[
+  {
+    "id": "ex1",
+    "name": "Bench Press",
+    "categoryId": "cat1",
+    "subCategoryId": "sub1",
+    "createdAt": "2023-01-01T00:00:00.000Z",
+    "updatedAt": "2023-01-01T00:00:00.000Z"
+  },
+  {
+    "id": "ex2",
+    "name": "Squat",
+    "categoryId": "cat1",
+    "subCategoryId": "sub2",
+    "createdAt": "2023-01-01T00:00:00.000Z",
+    "updatedAt": "2023-01-01T00:00:00.000Z"
+  },
+  {
+    "id": "ex3",
+    "name": "Deadlift",
+    "categoryId": "cat1",
+    "subCategoryId": "sub2",
+    "createdAt": "2023-01-01T00:00:00.000Z",
+    "updatedAt": "2023-01-01T00:00:00.000Z"
+  }
+]
