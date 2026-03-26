@@ -37,8 +37,8 @@ vercel --prod
 In Vercel Dashboard → Settings → Environment Variables:
 - `CONVEX_DEPLOYMENT`: `dev:precious-bullfrog-835`
 - `VITE_CONVEX_URL`: `https://precious-bullfrog-835.eu-west-1.convex.cloud`
-- `VITE_AUTH0_DOMAIN`: Your Auth0 domain
-- `VITE_AUTH0_CLIENT_ID`: Your Auth0 client ID
+- `VITE_APP_USERNAME`: `emmett`
+- `VITE_APP_PASSWORD`: `workout`
 
 ### 4. Test Everything
 - Visit your Vercel URL
