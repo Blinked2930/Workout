@@ -1,277 +1,212 @@
 // src/App.tsx
-import React, { useEffect, type JSX } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, Navigate } from 'react-router-dom';
-import { 
-  ThemeProvider, 
-  createTheme, 
-  CssBaseline, 
-  AppBar, 
-  Toolbar, 
-  Typography, 
-  Box, 
-  Container,
-  Button,
-  // Avatar,
-  Menu,
-  MenuItem,
-  IconButton,
-  Divider,
-  ListItemIcon,
-  ListItemText
-} from '@mui/material';
-import { 
-  Settings as SettingsIcon, 
-  Logout as LogoutIcon,
-  Home as HomeIcon,
-  FitnessCenter as FitnessCenterIcon,
-  DirectionsRun as CardioIcon,
-  Menu as MenuIcon,
-  AccountCircle as AccountCircleIcon,
-  CloudUpload as CloudUploadIcon,
-  CloudDownload as CloudDownloadIcon
-} from '@mui/icons-material';
-import { InstallButton } from './components/InstallButton';
+import React, { useEffect, useState } from 'react';
+import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { ThemeProvider, createTheme, CssBaseline, Box, BottomNavigation, BottomNavigationAction, Paper } from '@mui/material';
 import Home from './pages/Home';
-import Settings from './pages/Settings';
-import CategoryManager from './pages/CategoryManager';
-import ExerciseDetail from './pages/ExerciseDetail';
-import ExerciseSelection from './pages/ExerciseSelection';
-import CardioLog from './pages/CardioLog';
-import Login from './pages/Login';
-import DataManagement from './pages/DataManagement';
-import { AppProviders, useAuth } from './contexts/AuthContext';
-import ProtectedRoute from './components/ProtectedRoute';
+import Volume from './pages/Volume';
+import Progress from './pages/Progress';
+import Cardio from './pages/Cardio';
+import { ConvexProvider, ConvexReactClient } from 'convex/react';
 
-// Create a theme instance
-const theme = createTheme({
+const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
+
+export const theme = createTheme({
   palette: {
-    primary: {
-      main: '#1976d2',
-    },
-    secondary: {
-      main: '#dc004e',
-    },
+    mode: 'dark',
+    primary: { main: '#00d4ff' },
+    secondary: { main: '#ff6b35' },
     background: {
-      default: '#f5f5f5',
+      default: '#0d0d0f',
+      paper: '#16171a',
     },
+    text: {
+      primary: '#f0f0f0',
+      secondary: '#8a8a9a',
+    },
+    success: { main: '#00e096' },
+    warning: { main: '#ffb800' },
+    error: { main: '#ff4d6d' },
   },
+  typography: {
+    fontFamily: '"Barlow", "Barlow Condensed", sans-serif',
+    h1: { fontWeight: 800, letterSpacing: '-0.02em' },
+    h2: { fontWeight: 800, letterSpacing: '-0.02em' },
+    h3: { fontWeight: 700 },
+    h4: { fontWeight: 700 },
+    h5: { fontWeight: 600 },
+    h6: { fontWeight: 600 },
+  },
+  shape: { borderRadius: 16 },
   components: {
     MuiButton: {
       styleOverrides: {
         root: {
           textTransform: 'none',
+          fontWeight: 700,
+          borderRadius: 14,
+          fontSize: '1rem',
         },
+        containedPrimary: {
+          background: 'linear-gradient(135deg, #00d4ff 0%, #0099cc 100%)',
+          color: '#0d0d0f',
+          boxShadow: '0 4px 20px rgba(0, 212, 255, 0.3)',
+          '&:hover': {
+            boxShadow: '0 6px 28px rgba(0, 212, 255, 0.5)',
+          },
+        },
+      },
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          backgroundImage: 'none',
+          backgroundColor: '#16171a',
+          border: '1px solid rgba(255,255,255,0.06)',
+        },
+      },
+    },
+    MuiBottomNavigation: {
+      styleOverrides: {
+        root: {
+          backgroundColor: '#16171a',
+          borderTop: '1px solid rgba(255,255,255,0.08)',
+          height: 64,
+        },
+      },
+    },
+    MuiBottomNavigationAction: {
+      styleOverrides: {
+        root: {
+          color: '#555566',
+          '&.Mui-selected': { color: '#00d4ff' },
+          fontSize: '0.7rem',
+          minWidth: 'unset',
+        },
+        label: {
+          fontFamily: '"Barlow", sans-serif',
+          fontWeight: 600,
+          fontSize: '0.68rem !important',
+        },
+      },
+    },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          borderRadius: 10,
+          fontWeight: 600,
+          fontFamily: '"Barlow", sans-serif',
+        },
+      },
+    },
+    MuiTextField: {
+      styleOverrides: {
+        root: {
+          '& .MuiOutlinedInput-root': {
+            borderRadius: 12,
+            backgroundColor: 'rgba(255,255,255,0.04)',
+            '& fieldset': { borderColor: 'rgba(255,255,255,0.1)' },
+            '&:hover fieldset': { borderColor: 'rgba(0,212,255,0.4)' },
+            '&.Mui-focused fieldset': { borderColor: '#00d4ff' },
+          },
+        },
+      },
+    },
+    MuiDialog: {
+      styleOverrides: {
+        paper: {
+          borderRadius: 24,
+          background: '#1a1b1f',
+          border: '1px solid rgba(255,255,255,0.08)',
+        },
+      },
+    },
+    MuiSelect: {
+      styleOverrides: {
+        root: { borderRadius: 12 },
       },
     },
   },
 });
 
-// Navigation component
-function Navigation() {
-  const { currentUser, signOut } = useAuth();
-  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
-  const open = Boolean(anchorEl);
+const NAV_ITEMS = [
+  { label: 'Log', emoji: '💪', path: '/' },
+  { label: 'Volume', emoji: '📊', path: '/volume' },
+  { label: 'Progress', emoji: '📈', path: '/progress' },
+  { label: 'Cardio', emoji: '🏃', path: '/cardio' },
+];
 
-  const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
+function AppShell() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const currentTab = NAV_ITEMS.findIndex(item => item.path === location.pathname);
 
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
-
-  const handleSignOut = async () => {
-    await signOut();
-    handleClose();
-  };
-  
   return (
-    <AppBar position="static" color="default" elevation={1}>
-      <Container maxWidth="lg">
-        <Toolbar disableGutters>
-          <Typography
-            variant="h6"
-            component={Link}
-            to="/"
-            sx={{
-              flexGrow: 1,
-              textDecoration: 'none', 
-              color: 'inherit',
-              fontWeight: 700,
-            }}
-          >
-            LiftLog
-          </Typography>
-          {currentUser ? (
-            <>
-              <InstallButton />
-              <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center', gap: 1 }}>
-                <Button 
-                  color="inherit" 
-                  component={Link} 
-                  to="/" 
-                  startIcon={<HomeIcon />}
-                  sx={{ mr: 1 }}
-                >
-                  Home
-                </Button>
-                <Button 
-                  color="inherit" 
-                  component={Link} 
-                  to="/cardio"
-                  startIcon={<CardioIcon />}
-                  sx={{ mr: 1 }}
-                >
-                  Cardio
-                </Button>
-                <Button 
-                  color="inherit" 
-                  component={Link} 
-                  to="/categories"
-                  startIcon={<FitnessCenterIcon />}
-                  sx={{ mr: 1 }}
-                >
-                  Categories
-                </Button>
-                <IconButton
-                  size="large"
-                  edge="end"
-                  aria-label="account of current user"
-                  aria-controls="menu-appbar"
-                  aria-haspopup="true"
-                  onClick={handleMenu}
-                  color="inherit"
-                >
-                  <AccountCircleIcon />
-                </IconButton>
-              </Box>
-              <Box sx={{ display: { xs: 'flex', sm: 'none' } }}>
-                <IconButton
-                  size="large"
-                  edge="end"
-                  color="inherit"
-                  aria-label="menu"
-                  onClick={handleMenu}
-                >
-                  <MenuIcon />
-                </IconButton>
-              </Box>
-              
-              <Menu
-                id="menu-appbar"
-                anchorEl={anchorEl}
-                anchorOrigin={{
-                  vertical: 'bottom',
-                  horizontal: 'right',
-                }}
-                keepMounted
-                transformOrigin={{
-                  vertical: 'top',
-                  horizontal: 'right',
-                }}
-                open={open}
-                onClose={handleClose}
-              >
-                <MenuItem component={Link} to="/" onClick={handleClose}>
-                  <ListItemIcon>
-                    <HomeIcon fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText>Home</ListItemText>
-                </MenuItem>
-                <MenuItem component={Link} to="/cardio" onClick={handleClose}>
-                  <ListItemIcon>
-                    <CardioIcon fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText>Cardio</ListItemText>
-                </MenuItem>
-                <MenuItem component={Link} to="/categories" onClick={handleClose}>
-                  <ListItemIcon>
-                    <FitnessCenterIcon fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText>Categories</ListItemText>
-                </MenuItem>
-                <Divider />
-                <MenuItem component={Link} to="/settings" onClick={handleClose}>
-                  <ListItemIcon>
-                    <SettingsIcon fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText>Settings</ListItemText>
-                </MenuItem>
-                <Divider />
-                <MenuItem component={Link} to="/data-management" onClick={handleClose}>
-                  <ListItemIcon>
-                    <CloudUploadIcon fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText>Data Management</ListItemText>
-                </MenuItem>
-                <MenuItem onClick={handleSignOut}>
-                  <ListItemIcon>
-                    <LogoutIcon fontSize="small" />
-                  </ListItemIcon>
-                  <ListItemText>Sign Out</ListItemText>
-                </MenuItem>
-              </Menu>
-            </>
-          ) : (
-            <Button color="inherit" component={Link} to="/login">
-              Sign In
-            </Button>
-          )}
-        </Toolbar>
-      </Container>
-    </AppBar>
-  );
-}
+    <Box sx={{
+      display: 'flex',
+      flexDirection: 'column',
+      minHeight: '100vh',
+      background: 'radial-gradient(ellipse at top, #12141a 0%, #0d0d0f 60%)',
+    }}>
+      {/* Google Fonts */}
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@700;800;900&display=swap');`}</style>
 
-// Main App component
-function AppContent(): JSX.Element {
-  return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <AppBar position="static">
-        <Toolbar>
-          <Navigation />
-        </Toolbar>
-      </AppBar>
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 4, flex: 1 }}>
+      {/* Page content */}
+      <Box sx={{ flex: 1, overflowY: 'auto', pb: '80px' }}>
         <Routes>
-          <Route path="/login" element={<Login />} />
-          
-          {/* Protected Routes */}
-          <Route element={<ProtectedRoute />}>
-            <Route path="/" element={<Home />} />
-            <Route path="/log-lift" element={<ExerciseSelection />} />
-            <Route path="/cardio" element={<CardioLog />} />
-            <Route path="/categories" element={<CategoryManager />} />
-            <Route path="/exercise/:id" element={<ExerciseDetail />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/data-management" element={<DataManagement />} />
-          </Route>
-          
-          {/* Redirect any unknown paths to home */}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="/" element={<Home />} />
+          <Route path="/volume" element={<Volume />} />
+          <Route path="/progress" element={<Progress />} />
+          <Route path="/cardio" element={<Cardio />} />
         </Routes>
-      </Container>
+      </Box>
+
+      {/* Bottom Nav */}
+      <Paper
+        elevation={0}
+        sx={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          zIndex: 100,
+          borderRadius: 0,
+        }}
+      >
+        <BottomNavigation
+          value={currentTab === -1 ? 0 : currentTab}
+          onChange={(_, newValue) => navigate(NAV_ITEMS[newValue].path)}
+        >
+          {NAV_ITEMS.map((item) => (
+            <BottomNavigationAction
+              key={item.path}
+              label={item.label}
+              icon={
+                <Box sx={{ fontSize: '1.4rem', lineHeight: 1 }}>{item.emoji}</Box>
+              }
+            />
+          ))}
+        </BottomNavigation>
+      </Paper>
     </Box>
   );
 }
 
-function App(): JSX.Element {
+function App() {
   useEffect(() => {
-    // Check if the app is running in standalone mode (installed)
     if (window.matchMedia('(display-mode: standalone)').matches) {
-      console.log('Running in standalone mode');
+      console.log('Running as PWA');
     }
   }, []);
 
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <AppProviders>
+    <ConvexProvider client={convex}>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
         <Router>
-          <AppContent />
+          <AppShell />
         </Router>
-      </AppProviders>
-    </ThemeProvider>
+      </ThemeProvider>
+    </ConvexProvider>
   );
 }
 

@@ -1,222 +1,63 @@
-import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { mutation, query } from "./_generated/server";
 
-// Main Categories
-export const getMainCategories = query({
-  args: {},
-  handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return [];
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
-      .first();
-
-    if (!user) {
-      return [];
-    }
-
-    return await ctx.db
-      .query("mainCategories")
-      .withIndex("by_creator", (q) => q.eq("createdBy", user._id))
-      .collect();
-  },
-});
-
-export const createMainCategory = mutation({
-  args: {
-    name: v.string(),
-  },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthorized");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
-
-    return await ctx.db.insert("mainCategories", {
-      ...args,
-      createdBy: user._id,
-      createdAt: Date.now(),
-    });
-  },
-});
-
-// Sub Categories
-export const getSubCategories = query({
-  args: {
-    mainCategoryId: v.optional(v.id("mainCategories")),
-  },
-  handler: async (ctx, { mainCategoryId }) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return [];
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
-      .first();
-
-    if (!user) {
-      return [];
-    }
-
-    if (mainCategoryId) {
-      return await ctx.db
-        .query("subCategories")
-        .withIndex("by_main_category", (q) => q.eq("mainCategoryId", mainCategoryId))
-        .filter((q) => q.eq(q.field("createdBy"), user._id))
-        .collect();
-    }
-
-    return await ctx.db
-      .query("subCategories")
-      .withIndex("by_creator", (q) => q.eq("createdBy", user._id))
-      .collect();
-  },
-});
-
-export const createSubCategory = mutation({
-  args: {
-    name: v.string(),
-    mainCategoryId: v.id("mainCategories"),
-  },
-  handler: async (ctx, { name, mainCategoryId }) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthorized");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
-
-    return await ctx.db.insert("subCategories", {
-      name,
-      mainCategoryId,
-      createdBy: user._id,
-      createdAt: Date.now(),
-    });
-  },
-});
-
-// Exercises
 export const getExercises = query({
   args: {
-    subCategoryId: v.optional(v.id("subCategories")),
-    search: v.optional(v.string()),
+    category: v.optional(v.string()),
+    subcategory: v.optional(v.string()),
   },
-  handler: async (ctx, { subCategoryId, search }) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return [];
+  handler: async (ctx, args) => {
+    let exercises = await ctx.db.query("exercises").collect();
+    if (args.category) {
+      exercises = exercises.filter(e => e.category === args.category);
     }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
-      .first();
-
-    if (!user) {
-      return [];
+    if (args.subcategory) {
+      exercises = exercises.filter(e => e.subcategory === args.subcategory);
     }
-
-    let exercises;
-
-    if (subCategoryId) {
-      exercises = await ctx.db
-        .query("exercises")
-        .withIndex("by_sub_category", (q) => q.eq("subCategoryId", subCategoryId))
-        .filter((q) => q.eq(q.field("createdBy"), user._id))
-        .collect();
-    } else {
-      exercises = await ctx.db
-        .query("exercises")
-        .withIndex("by_creator", (q) => q.eq("createdBy", user._id))
-        .collect();
-    }
-
-    if (search) {
-      const searchLower = search.toLowerCase();
-      exercises = exercises.filter(exercise => 
-        exercise.name.toLowerCase().includes(searchLower)
-      );
-    }
-
-    return exercises;
+    return exercises.sort((a, b) => a.name.localeCompare(b.name));
   },
 });
 
-export const createExercise = mutation({
+export const searchExercises = query({
+  args: { search: v.string() },
+  handler: async (ctx, args) => {
+    const all = await ctx.db.query("exercises").collect();
+    const lower = args.search.toLowerCase();
+    return all
+      .filter(e => e.name.toLowerCase().includes(lower))
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .slice(0, 20);
+  },
+});
+
+export const addExercise = mutation({
   args: {
     name: v.string(),
-    subCategoryId: v.id("subCategories"),
+    category: v.string(),
+    subcategory: v.optional(v.string()),
+    isBodyweight: v.boolean(),
+    muscleWeights: v.object({
+      chest: v.optional(v.number()),
+      shoulders: v.optional(v.number()),
+      triceps: v.optional(v.number()),
+      back: v.optional(v.number()),
+      upperTraps: v.optional(v.number()),
+      biceps: v.optional(v.number()),
+      glutes: v.optional(v.number()),
+      quads: v.optional(v.number()),
+      hamstrings: v.optional(v.number()),
+      calves: v.optional(v.number()),
+      forearms: v.optional(v.number()),
+      neck: v.optional(v.number()),
+      core: v.optional(v.number()),
+    }),
   },
-  handler: async (ctx, { name, subCategoryId }) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthorized");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query("exercises")
+      .filter(q => q.eq(q.field("name"), args.name))
       .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
-
-    return await ctx.db.insert("exercises", {
-      name,
-      subCategoryId,
-      createdBy: user._id,
-      createdAt: Date.now(),
-    });
-  },
-});
-
-export const getExercise = query({
-  args: {
-    exerciseId: v.id("exercises"),
-  },
-  handler: async (ctx, { exerciseId }) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return null;
-    }
-
-    const exercise = await ctx.db.get(exerciseId);
-    if (!exercise) {
-      return null;
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
-      .first();
-
-    if (!user || exercise.createdBy !== user._id) {
-      return null;
-    }
-
-    return exercise;
+    if (existing) return existing._id;
+    return await ctx.db.insert("exercises", args);
   },
 });

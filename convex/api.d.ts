@@ -8,14 +8,11 @@
  * @module
  */
 
-import type * as api_ from "../api.js";
-import type * as cardio from "../cardio.js";
-import type * as exercises from "../exercises.js";
-import type * as files from "../files.js";
-import type * as lifts from "../lifts.js";
-import type * as seed from "../seed.js";
-import type * as users from "../users.js";
-import type * as weeklyGoals from "../weeklyGoals.js";
+import type * as cardio from "./cardio.js";
+import type * as exercises from "./exercises.js";
+import type * as files from "./files.js";
+import type * as lifts from "./lifts.js";
+import type * as users from "./users.js";
 
 import type {
   ApiFromModules,
@@ -24,14 +21,11 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  api: typeof api_;
   cardio: typeof cardio;
   exercises: typeof exercises;
   files: typeof files;
   lifts: typeof lifts;
-  seed: typeof seed;
   users: typeof users;
-  weeklyGoals: typeof weeklyGoals;
 }>;
 
 /**
