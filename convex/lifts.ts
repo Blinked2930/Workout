@@ -1,149 +1,87 @@
-import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { mutation, query } from "./_generated/server";
 
-// Lifts
-export const getLifts = query({
+export const logSet = mutation({
   args: {
-    exerciseId: v.optional(v.id("exercises")),
-    startDate: v.optional(v.number()),
-    endDate: v.optional(v.number()),
-  },
-  handler: async (ctx, { exerciseId, startDate, endDate }) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      return [];
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
-      .first();
-
-    if (!user) {
-      return [];
-    }
-
-    let lifts;
-
-    if (exerciseId) {
-      lifts = await ctx.db
-        .query("lifts")
-        .withIndex("by_exercise", (q) => q.eq("exerciseId", exerciseId))
-        .filter((q) => q.eq(q.field("createdBy"), user._id))
-        .collect();
-    } else {
-      lifts = await ctx.db
-        .query("lifts")
-        .withIndex("by_creator", (q) => q.eq("createdBy", user._id))
-        .collect();
-    }
-
-    // Filter by date range if provided
-    if (startDate && endDate) {
-      lifts = lifts.filter(lift => 
-        lift.date >= startDate && lift.date <= endDate
-      );
-    }
-
-    return lifts.sort((a, b) => b.date - a.date);
-  },
-});
-
-export const createLift = mutation({
-  args: {
-    exerciseId: v.id("exercises"),
+    exerciseName: v.string(),
+    category: v.string(),
+    subcategory: v.optional(v.string()),
     weight: v.number(),
+    addedWeight: v.optional(v.number()),
     reps: v.number(),
-    isEachSide: v.boolean(),
-    date: v.number(),
+    sets: v.number(),
+    rir: v.optional(v.number()),
     notes: v.optional(v.string()),
   },
-  handler: async (ctx, { exerciseId, weight, reps, isEachSide, date, notes }) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthorized");
-    }
+  handler: async (ctx, args) => {
+    const effectiveWeight = args.weight + (args.addedWeight ?? 0);
+    const volume = effectiveWeight * args.reps * args.sets;
+    const e1rm = effectiveWeight > 0
+      ? effectiveWeight * (1 + args.reps / 30)
+      : undefined;
 
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
-
-    return await ctx.db.insert("lifts", {
-      exerciseId,
-      weight,
-      reps,
-      isEachSide,
-      date,
-      notes,
-      createdBy: user._id,
-      createdAt: Date.now(),
+    return await ctx.db.insert("liftSets", {
+      timestamp: Date.now(),
+      exerciseName: args.exerciseName,
+      category: args.category,
+      subcategory: args.subcategory,
+      weight: args.weight,
+      addedWeight: args.addedWeight,
+      reps: args.reps,
+      sets: args.sets,
+      rir: args.rir,
+      notes: args.notes,
+      volume,
+      e1rm,
     });
   },
 });
 
-export const updateLift = mutation({
+export const getLifts = query({
   args: {
-    liftId: v.id("lifts"),
-    weight: v.optional(v.number()),
-    reps: v.optional(v.number()),
-    isEachSide: v.optional(v.boolean()),
-    date: v.optional(v.number()),
-    notes: v.optional(v.string()),
+    exerciseName: v.optional(v.string()),
+    startDate: v.optional(v.number()),
+    endDate: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthorized");
+    let lifts = await ctx.db
+      .query("liftSets")
+      .withIndex("by_timestamp")
+      .order("desc")
+      .collect();
+
+    if (args.exerciseName) {
+      lifts = lifts.filter(l => l.exerciseName === args.exerciseName);
     }
-
-    const lift = await ctx.db.get(args.liftId);
-    if (!lift) {
-      throw new Error("Lift not found");
+    if (args.startDate) {
+      lifts = lifts.filter(l => l.timestamp >= args.startDate!);
     }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
-      .first();
-
-    if (!user || lift.createdBy !== user._id) {
-      throw new Error("Unauthorized");
+    if (args.endDate) {
+      lifts = lifts.filter(l => l.timestamp <= args.endDate!);
     }
-
-    const { liftId, ...updates } = args;
-    await ctx.db.patch(args.liftId, updates);
+    return lifts;
   },
 });
 
-export const deleteLift = mutation({
-  args: {
-    liftId: v.id("lifts"),
+export const getThisWeeksLifts = query({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    const startOfWeek = now - (new Date().getDay() * 86400000);
+    const monday = new Date(startOfWeek);
+    monday.setHours(0, 0, 0, 0);
+
+    return await ctx.db
+      .query("liftSets")
+      .withIndex("by_timestamp")
+      .filter(q => q.gte(q.field("timestamp"), monday.getTime()))
+      .collect();
   },
+});
+
+export const deleteSet = mutation({
+  args: { id: v.id("liftSets") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Unauthorized");
-    }
-
-    const lift = await ctx.db.get(args.liftId);
-    if (!lift) {
-      throw new Error("Lift not found");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_email", (q) => q.eq("email", identity.email!))
-      .first();
-
-    if (!user || lift.createdBy !== user._id) {
-      throw new Error("Unauthorized");
-    }
-
-    await ctx.db.delete(args.liftId);
+    await ctx.db.delete(args.id);
   },
 });
