@@ -1,11 +1,12 @@
 // src/App.tsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { ThemeProvider, createTheme, CssBaseline, Box, BottomNavigation, BottomNavigationAction, Paper } from '@mui/material';
 import Home from './pages/Home';
 import Volume from './pages/Volume';
 import Progress from './pages/Progress';
 import Cardio from './pages/Cardio';
+import ExerciseManager from './pages/ExerciseManager';
 import { ConvexProvider, ConvexReactClient } from 'convex/react';
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
@@ -15,14 +16,8 @@ export const theme = createTheme({
     mode: 'dark',
     primary: { main: '#00d4ff' },
     secondary: { main: '#ff6b35' },
-    background: {
-      default: '#0d0d0f',
-      paper: '#16171a',
-    },
-    text: {
-      primary: '#f0f0f0',
-      secondary: '#8a8a9a',
-    },
+    background: { default: '#0d0d0f', paper: '#16171a' },
+    text: { primary: '#f0f0f0', secondary: '#8a8a9a' },
     success: { main: '#00e096' },
     warning: { main: '#ffb800' },
     error: { main: '#ff4d6d' },
@@ -40,19 +35,12 @@ export const theme = createTheme({
   components: {
     MuiButton: {
       styleOverrides: {
-        root: {
-          textTransform: 'none',
-          fontWeight: 700,
-          borderRadius: 14,
-          fontSize: '1rem',
-        },
+        root: { textTransform: 'none', fontWeight: 700, borderRadius: 14, fontSize: '1rem' },
         containedPrimary: {
           background: 'linear-gradient(135deg, #00d4ff 0%, #0099cc 100%)',
           color: '#0d0d0f',
           boxShadow: '0 4px 20px rgba(0, 212, 255, 0.3)',
-          '&:hover': {
-            boxShadow: '0 6px 28px rgba(0, 212, 255, 0.5)',
-          },
+          '&:hover': { boxShadow: '0 6px 28px rgba(0, 212, 255, 0.5)' },
         },
       },
     },
@@ -79,23 +67,19 @@ export const theme = createTheme({
         root: {
           color: '#555566',
           '&.Mui-selected': { color: '#00d4ff' },
-          fontSize: '0.7rem',
           minWidth: 'unset',
+          padding: '6px 4px',
         },
         label: {
           fontFamily: '"Barlow", sans-serif',
           fontWeight: 600,
-          fontSize: '0.68rem !important',
+          fontSize: '0.62rem !important',
         },
       },
     },
     MuiChip: {
       styleOverrides: {
-        root: {
-          borderRadius: 10,
-          fontWeight: 600,
-          fontFamily: '"Barlow", sans-serif',
-        },
+        root: { borderRadius: 10, fontWeight: 600, fontFamily: '"Barlow", sans-serif' },
       },
     },
     MuiTextField: {
@@ -121,8 +105,11 @@ export const theme = createTheme({
       },
     },
     MuiSelect: {
+      styleOverrides: { root: { borderRadius: 12 } },
+    },
+    MuiSlider: {
       styleOverrides: {
-        root: { borderRadius: 12 },
+        root: { padding: '10px 0' },
       },
     },
   },
@@ -133,6 +120,7 @@ const NAV_ITEMS = [
   { label: 'Volume', emoji: '📊', path: '/volume' },
   { label: 'Progress', emoji: '📈', path: '/progress' },
   { label: 'Cardio', emoji: '🏃', path: '/cardio' },
+  { label: 'Exercises', emoji: '🗂️', path: '/exercises' },
 ];
 
 function AppShell() {
@@ -142,47 +130,31 @@ function AppShell() {
 
   return (
     <Box sx={{
-      display: 'flex',
-      flexDirection: 'column',
-      minHeight: '100vh',
+      display: 'flex', flexDirection: 'column', minHeight: '100vh',
       background: 'radial-gradient(ellipse at top, #12141a 0%, #0d0d0f 60%)',
     }}>
-      {/* Google Fonts */}
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@700;800;900&display=swap');`}</style>
 
-      {/* Page content */}
       <Box sx={{ flex: 1, overflowY: 'auto', pb: '80px' }}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/volume" element={<Volume />} />
           <Route path="/progress" element={<Progress />} />
           <Route path="/cardio" element={<Cardio />} />
+          <Route path="/exercises" element={<ExerciseManager />} />
         </Routes>
       </Box>
 
-      {/* Bottom Nav */}
-      <Paper
-        elevation={0}
-        sx={{
-          position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          zIndex: 100,
-          borderRadius: 0,
-        }}
-      >
+      <Paper elevation={0} sx={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100, borderRadius: 0 }}>
         <BottomNavigation
           value={currentTab === -1 ? 0 : currentTab}
-          onChange={(_, newValue) => navigate(NAV_ITEMS[newValue].path)}
+          onChange={(_, v) => navigate(NAV_ITEMS[v].path)}
         >
-          {NAV_ITEMS.map((item) => (
+          {NAV_ITEMS.map(item => (
             <BottomNavigationAction
               key={item.path}
               label={item.label}
-              icon={
-                <Box sx={{ fontSize: '1.4rem', lineHeight: 1 }}>{item.emoji}</Box>
-              }
+              icon={<Box sx={{ fontSize: '1.3rem', lineHeight: 1 }}>{item.emoji}</Box>}
             />
           ))}
         </BottomNavigation>
