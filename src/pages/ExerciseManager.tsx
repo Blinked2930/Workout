@@ -9,10 +9,10 @@ import {
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import AddIcon from '@mui/icons-material/Add';
-import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
+import { format } from 'date-fns';
 
 const CATEGORIES = ['Push', 'Pull', 'Legs', 'Core'];
 const SUBCATEGORIES: Record<string, string[]> = {
@@ -292,16 +292,66 @@ export default function ExerciseManager() {
     }
   };
 
+  const exportToCSV = () => {
+    if (!exercises || exercises.length === 0) return;
+    
+    // Create headers including all muscle group names
+    const muscleKeys = MUSCLE_GROUPS.map(m => m.key);
+    const muscleLabels = MUSCLE_GROUPS.map(m => m.label);
+    const headers = ["Exercise Name", "Category", "Subcategory", "Is Bodyweight", ...muscleLabels];
+    
+    const rows = [...exercises].sort((a,b) => a.name.localeCompare(b.name)).map(ex => {
+      const rowData = [
+        `"${ex.name}"`,
+        ex.category,
+        ex.subcategory || '',
+        ex.isBodyweight ? 'TRUE' : 'FALSE'
+      ];
+      
+      // Add muscle weights dynamically
+      muscleKeys.forEach(k => {
+        rowData.push(ex.muscleWeights?.[k] || 0);
+      });
+      
+      return rowData.join(',');
+    });
+
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `LiftLog_Exercises_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <Box sx={{ px: 2, pt: 3, pb: 2, maxWidth: 480, mx: 'auto' }}>
-      <Box sx={{ mb: 3 }}>
-        <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#00d4ff', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 0.5 }}>
-          Database
-        </Typography>
-        <Typography variant="h4" sx={{ fontWeight: 800, lineHeight: 1.1 }}>
-          Exercise<br />
-          <Box component="span" sx={{ color: '#00d4ff' }}>Manager 🗂️</Box>
-        </Typography>
+      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <Box>
+          <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#00d4ff', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 0.5 }}>
+            Database
+          </Typography>
+          <Typography variant="h4" sx={{ fontWeight: 800, lineHeight: 1.1 }}>
+            Exercise<br />
+            <Box component="span" sx={{ color: '#00d4ff' }}>Manager 🗂️</Box>
+          </Typography>
+        </Box>
+        <Button 
+          variant="outlined" 
+          size="small"
+          onClick={exportToCSV}
+          sx={{ 
+            borderColor: 'rgba(255,255,255,0.1)', 
+            color: 'text.secondary',
+            fontSize: '0.75rem',
+            py: 0.5,
+            '&:hover': { borderColor: '#00d4ff', color: '#00d4ff', bgcolor: 'rgba(0,212,255,0.05)' }
+          }}
+        >
+          Export CSV 📥
+        </Button>
       </Box>
 
       <Button
@@ -364,6 +414,7 @@ export default function ExerciseManager() {
             <React.Fragment key={ex._id}>
               {i > 0 && <Divider sx={{ borderColor: 'rgba(255,255,255,0.05)' }} />}
               <ListItemButton
+                onClick={() => setEditExercise(ex)}
                 sx={{ py: 1.5, '&:hover': { bgcolor: 'rgba(255,255,255,0.03)' } }}
               >
                 <ListItemText
@@ -386,10 +437,14 @@ export default function ExerciseManager() {
                   primaryTypographyProps={{ fontSize: '0.9rem', fontWeight: 600 }}
                 />
                 <Box sx={{ display: 'flex', gap: 0.5 }}>
-                  <IconButton size="small" onClick={() => setEditExercise(ex)} sx={{ opacity: 0.4, '&:hover': { opacity: 1, color: '#00d4ff' } }}>
-                    <EditIcon sx={{ fontSize: '1.1rem' }} />
-                  </IconButton>
-                  <IconButton size="small" onClick={() => setDeleteConfirmId(ex._id)} sx={{ opacity: 0.4, '&:hover': { opacity: 1, color: '#ff4d6d' } }}>
+                  <IconButton 
+                    size="small" 
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevents the edit dialog from opening when clicking delete
+                      setDeleteConfirmId(ex._id);
+                    }} 
+                    sx={{ opacity: 0.4, '&:hover': { opacity: 1, color: '#ff4d6d' } }}
+                  >
                     <DeleteIcon sx={{ fontSize: '1.1rem' }} />
                   </IconButton>
                 </Box>

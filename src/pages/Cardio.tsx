@@ -288,16 +288,60 @@ export default function Cardio() {
     }
   };
 
+  const exportToCSV = () => {
+    if (!sessions || sessions.length === 0) return;
+    
+    const headers = ["Date", "Time", "Movement Type", "Duration (min)", "Distance (mi)", "RPE", "Zone", "Notes"];
+    const rows = [...sessions].sort((a,b) => a.timestamp - b.timestamp).map(s => {
+      const d = new Date(s.timestamp);
+      return [
+        format(d, 'yyyy-MM-dd'),
+        format(d, 'HH:mm:ss'),
+        s.movementType,
+        s.duration,
+        s.distance || '',
+        s.rpe || '',
+        s.zone || '',
+        `"${s.notes || ''}"`
+      ].join(',');
+    });
+
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `LiftLog_Cardio_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <Box sx={{ px: 2, pt: 3, pb: 2, maxWidth: 480, mx: 'auto' }}>
-      <Box sx={{ mb: 3 }}>
-        <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#00d4ff', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 0.5 }}>
-          Cardio
-        </Typography>
-        <Typography variant="h4" sx={{ fontWeight: 800, lineHeight: 1.1 }}>
-          Keep it<br />
-          <Box component="span" sx={{ color: '#00d4ff' }}>moving 🏃</Box>
-        </Typography>
+      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+        <Box>
+          <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#00d4ff', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 0.5 }}>
+            Cardio
+          </Typography>
+          <Typography variant="h4" sx={{ fontWeight: 800, lineHeight: 1.1 }}>
+            Keep it<br />
+            <Box component="span" sx={{ color: '#00d4ff' }}>moving 🏃</Box>
+          </Typography>
+        </Box>
+        <Button 
+          variant="outlined" 
+          size="small"
+          onClick={exportToCSV}
+          sx={{ 
+            borderColor: 'rgba(255,255,255,0.1)', 
+            color: 'text.secondary',
+            fontSize: '0.75rem',
+            py: 0.5,
+            '&:hover': { borderColor: '#00d4ff', color: '#00d4ff', bgcolor: 'rgba(0,212,255,0.05)' }
+          }}
+        >
+          Export CSV 📥
+        </Button>
       </Box>
 
       <Button
