@@ -1,0 +1,2235 @@
+[
+  {
+    "name": "Cable cross over",
+    "category": "Push",
+    "subcategory": "Chest",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "chest": 1
+    }
+  },
+  {
+    "name": "Bench press",
+    "category": "Push",
+    "subcategory": "Chest",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "chest": 1,
+      "shoulders": 0.5
+    }
+  },
+  {
+    "name": "Incline bench",
+    "category": "Push",
+    "subcategory": "Chest",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "chest": 1,
+      "shoulders": 1
+    }
+  },
+  {
+    "name": "Chest press machine one arm",
+    "category": "Push",
+    "subcategory": "Chest",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "chest": 1,
+      "shoulders": 0.5
+    }
+  },
+  {
+    "name": "DB bench",
+    "category": "Push",
+    "subcategory": "Chest",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "chest": 1,
+      "shoulders": 0.5
+    }
+  },
+  {
+    "name": "Smith machine incline press",
+    "category": "Push",
+    "subcategory": "Chest",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "chest": 1,
+      "shoulders": 0.5
+    }
+  },
+  {
+    "name": "Push-Ups",
+    "category": "Push",
+    "subcategory": "Chest",
+    "isBodyweight": true,
+    "muscleWeights": {
+      "chest": 1,
+      "shoulders": 0.5,
+      "core": 0.5
+    }
+  },
+  {
+    "name": "Incline Push-Ups",
+    "category": "Push",
+    "subcategory": "Chest",
+    "isBodyweight": true,
+    "muscleWeights": {
+      "chest": 1,
+      "shoulders": 0.5,
+      "core": 0.5
+    }
+  },
+  {
+    "name": "Decline Push-Ups",
+    "category": "Push",
+    "subcategory": "Chest",
+    "isBodyweight": true,
+    "muscleWeights": {
+      "chest": 1,
+      "shoulders": 1,
+      "core": 0.5
+    }
+  },
+  {
+    "name": "Incline DB bench",
+    "category": "Push",
+    "subcategory": "Chest",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "chest": 1,
+      "shoulders": 0.5
+    }
+  },
+  {
+    "name": "Chest press machine",
+    "category": "Push",
+    "subcategory": "Chest",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "chest": 1,
+      "shoulders": 0.5
+    }
+  },
+  {
+    "name": "Dips - Chest Focused",
+    "category": "Push",
+    "subcategory": "Chest",
+    "isBodyweight": true,
+    "muscleWeights": {
+      "chest": 1,
+      "shoulders": 0.5
+    }
+  },
+  {
+    "name": "Barbell Incline Press",
+    "category": "Push",
+    "subcategory": "Chest",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "chest": 1,
+      "shoulders": 1
+    }
+  },
+  {
+    "name": "Barbell Flys - Flat",
+    "category": "Push",
+    "subcategory": "Chest",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "chest": 1
+    }
+  },
+  {
+    "name": "Barbell Flys - Incline",
+    "category": "Push",
+    "subcategory": "Chest",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "chest": 1
+    }
+  },
+  {
+    "name": "Pec Deck Machine",
+    "category": "Push",
+    "subcategory": "Chest",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "chest": 1
+    }
+  },
+  {
+    "name": "Close-Grip Bench Press",
+    "category": "Push",
+    "subcategory": "Chest",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "chest": 1,
+      "shoulders": 0.5
+    }
+  },
+  {
+    "name": "Seated DB shoulder press",
+    "category": "Push",
+    "subcategory": "Shoulders",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "shoulders": 1
+    }
+  },
+  {
+    "name": "Shoulder press machine",
+    "category": "Push",
+    "subcategory": "Shoulders",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "shoulders": 1
+    }
+  },
+  {
+    "name": "Cable Lateral raise",
+    "category": "Push",
+    "subcategory": "Shoulders",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "shoulders": 1
+    }
+  },
+  {
+    "name": "Barbell Overhead Press",
+    "category": "Push",
+    "subcategory": "Shoulders",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "shoulders": 1
+    }
+  },
+  {
+    "name": "DB standing overhead press",
+    "category": "Push",
+    "subcategory": "Shoulders",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "shoulders": 1
+    }
+  },
+  {
+    "name": "Handstand Push-ups",
+    "category": "Push",
+    "subcategory": "Shoulders",
+    "isBodyweight": true,
+    "muscleWeights": {
+      "shoulders": 1,
+      "core": 0.5
+    }
+  },
+  {
+    "name": "Pike Push-ups",
+    "category": "Push",
+    "subcategory": "Shoulders",
+    "isBodyweight": true,
+    "muscleWeights": {
+      "shoulders": 1,
+      "core": 0.5
+    }
+  },
+  {
+    "name": "Arnold Press",
+    "category": "Push",
+    "subcategory": "Shoulders",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "shoulders": 1
+    }
+  },
+  {
+    "name": "Leaning DB lateral raise",
+    "category": "Push",
+    "subcategory": "Shoulders",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "shoulders": 1
+    }
+  },
+  {
+    "name": "Cable lateral raises",
+    "category": "Push",
+    "subcategory": "Shoulders",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "shoulders": 1
+    }
+  },
+  {
+    "name": "Front Raises - DB",
+    "category": "Push",
+    "subcategory": "Shoulders",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "shoulders": 1
+    }
+  },
+  {
+    "name": "Front Raises - Plate",
+    "category": "Push",
+    "subcategory": "Shoulders",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "shoulders": 1
+    }
+  },
+  {
+    "name": "Front Raises - Cable",
+    "category": "Push",
+    "subcategory": "Shoulders",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "shoulders": 1
+    }
+  },
+  {
+    "name": "Rear Delt Fly - DB",
+    "category": "Push",
+    "subcategory": "Shoulders",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "shoulders": 1,
+      "back": 0.5
+    }
+  },
+  {
+    "name": "Rear Delt Fly - Cable",
+    "category": "Push",
+    "subcategory": "Shoulders",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "shoulders": 1,
+      "back": 0.5
+    }
+  },
+  {
+    "name": "Rear Delt Fly - Reverse Pec deck",
+    "category": "Push",
+    "subcategory": "Shoulders",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "shoulders": 1,
+      "back": 0.5
+    }
+  },
+  {
+    "name": "Upright Row",
+    "category": "Push",
+    "subcategory": "Shoulders",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "shoulders": 1,
+      "back": 0.5
+    }
+  },
+  {
+    "name": "Tricep pushdowns",
+    "category": "Push",
+    "subcategory": "Triceps",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "triceps": 1
+    }
+  },
+  {
+    "name": "Overhead cable tricep extensions",
+    "category": "Push",
+    "subcategory": "Triceps",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "triceps": 1
+    }
+  },
+  {
+    "name": "Cable tricep extensions straight bar",
+    "category": "Push",
+    "subcategory": "Triceps",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "triceps": 1
+    }
+  },
+  {
+    "name": "Dips - Tricep Focused",
+    "category": "Push",
+    "subcategory": "Triceps",
+    "isBodyweight": true,
+    "muscleWeights": {
+      "chest": 0.5,
+      "shoulders": 1,
+      "triceps": 1
+    }
+  },
+  {
+    "name": "Skull Crushers",
+    "category": "Push",
+    "subcategory": "Triceps",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "triceps": 1
+    }
+  },
+  {
+    "name": "Dumbbell Kickbacks",
+    "category": "Push",
+    "subcategory": "Triceps",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "triceps": 1
+    }
+  },
+  {
+    "name": "Rope Pushdowns",
+    "category": "Push",
+    "subcategory": "Triceps",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "triceps": 1
+    }
+  },
+  {
+    "name": "Lat pullover",
+    "category": "Pull",
+    "subcategory": "Back",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 1
+    }
+  },
+  {
+    "name": "Reverse close grip lat pull-down",
+    "category": "Pull",
+    "subcategory": "Back",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 1
+    }
+  },
+  {
+    "name": "Wide grip pull down",
+    "category": "Pull",
+    "subcategory": "Back",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 1
+    }
+  },
+  {
+    "name": "Lat pull down",
+    "category": "Pull",
+    "subcategory": "Back",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 1
+    }
+  },
+  {
+    "name": "Pullups",
+    "category": "Pull",
+    "subcategory": "Back",
+    "isBodyweight": true,
+    "muscleWeights": {
+      "back": 1
+    }
+  },
+  {
+    "name": "Dead Hang",
+    "category": "Pull",
+    "subcategory": "Back",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 1,
+      "forearms": 1
+    }
+  },
+  {
+    "name": "Chin ups",
+    "category": "Pull",
+    "subcategory": "Back",
+    "isBodyweight": true,
+    "muscleWeights": {
+      "back": 1
+    }
+  },
+  {
+    "name": "T-Bar Row",
+    "category": "Pull",
+    "subcategory": "Back",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 1,
+      "upperTraps": 1
+    }
+  },
+  {
+    "name": "Back Extensions",
+    "category": "Pull",
+    "subcategory": "Back",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 1,
+      "glutes": 1,
+      "hamstrings": 1
+    }
+  },
+  {
+    "name": "Good Mornings",
+    "category": "Other",
+    "subcategory": "",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 1,
+      "glutes": 1,
+      "hamstrings": 1
+    }
+  },
+  {
+    "name": "Seated machine row",
+    "category": "Pull",
+    "subcategory": "Back",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 1,
+      "upperTraps": 1
+    }
+  },
+  {
+    "name": "DB row",
+    "category": "Pull",
+    "subcategory": "Back",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 1,
+      "upperTraps": 1
+    }
+  },
+  {
+    "name": "Face pulls",
+    "category": "Push",
+    "subcategory": "Shoulders",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "shoulders": 0.5,
+      "back": 0.5,
+      "upperTraps": 1
+    }
+  },
+  {
+    "name": "Barbell Bent-Over Row",
+    "category": "Pull",
+    "subcategory": "Back",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 1,
+      "upperTraps": 1,
+      "hamstrings": 1
+    }
+  },
+  {
+    "name": "Bodyweight Rows",
+    "category": "Pull",
+    "subcategory": "Back",
+    "isBodyweight": true,
+    "muscleWeights": {
+      "back": 1,
+      "upperTraps": 1,
+      "core": 0.5
+    }
+  },
+  {
+    "name": "Shrugs - Barbell",
+    "category": "Pull",
+    "subcategory": "Upper Traps",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "upperTraps": 1
+    }
+  },
+  {
+    "name": "Shrugs - DB",
+    "category": "Pull",
+    "subcategory": "Upper Traps",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "upperTraps": 1
+    }
+  },
+  {
+    "name": "Inclined curls",
+    "category": "Pull",
+    "subcategory": "Biceps",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "biceps": 1
+    }
+  },
+  {
+    "name": "Z bar curl",
+    "category": "Pull",
+    "subcategory": "Biceps",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "biceps": 1
+    }
+  },
+  {
+    "name": "bayesian curl",
+    "category": "Pull",
+    "subcategory": "Biceps",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "biceps": 1
+    }
+  },
+  {
+    "name": "Barbell Curl",
+    "category": "Pull",
+    "subcategory": "Biceps",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "biceps": 1
+    }
+  },
+  {
+    "name": "Dumbbell Hammer Curl",
+    "category": "Pull",
+    "subcategory": "Biceps",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "biceps": 1,
+      "forearms": 1
+    }
+  },
+  {
+    "name": "Preacher Curl - Machine",
+    "category": "Pull",
+    "subcategory": "Biceps",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "biceps": 1
+    }
+  },
+  {
+    "name": "Preacher Curl - DB",
+    "category": "Pull",
+    "subcategory": "Biceps",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "biceps": 1
+    }
+  },
+  {
+    "name": "Preacher Curl - zbar",
+    "category": "Pull",
+    "subcategory": "Biceps",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "biceps": 1
+    }
+  },
+  {
+    "name": "Concentration Curl",
+    "category": "Pull",
+    "subcategory": "Biceps",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "biceps": 1
+    }
+  },
+  {
+    "name": "Barbell Glute bridges",
+    "category": "Legs",
+    "subcategory": "Glutes",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 1,
+      "hamstrings": 1
+    }
+  },
+  {
+    "name": "DB glute bridges",
+    "category": "Legs",
+    "subcategory": "Glutes",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 1,
+      "hamstrings": 1
+    }
+  },
+  {
+    "name": "Barbell Glute bridges on bench",
+    "category": "Legs",
+    "subcategory": "Glutes",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 1,
+      "hamstrings": 1
+    }
+  },
+  {
+    "name": "DB Glute bridges on bench",
+    "category": "Legs",
+    "subcategory": "Glutes",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 1,
+      "hamstrings": 1
+    }
+  },
+  {
+    "name": "Barbell Hip Thrust",
+    "category": "Legs",
+    "subcategory": "Glutes",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 1,
+      "hamstrings": 1
+    }
+  },
+  {
+    "name": "Hip Adduction Machine",
+    "category": "Legs",
+    "subcategory": "Other",
+    "isBodyweight": false,
+    "muscleWeights": {}
+  },
+  {
+    "name": "Hip Abduction Machine",
+    "category": "Legs",
+    "subcategory": "Other",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 1
+    }
+  },
+  {
+    "name": "Leg extensions",
+    "category": "Legs",
+    "subcategory": "Quads",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "quads": 1
+    }
+  },
+  {
+    "name": "Leg press",
+    "category": "Legs",
+    "subcategory": "Quads",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 1,
+      "quads": 1,
+      "hamstrings": 1
+    }
+  },
+  {
+    "name": "Back squat",
+    "category": "Legs",
+    "subcategory": "Quads",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 1,
+      "quads": 1,
+      "hamstrings": 1,
+      "core": 0.5
+    }
+  },
+  {
+    "name": "Goblet squat",
+    "category": "Legs",
+    "subcategory": "Quads",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 1,
+      "quads": 1,
+      "hamstrings": 1,
+      "core": 0.5
+    }
+  },
+  {
+    "name": "DB side lunges",
+    "category": "Other",
+    "subcategory": "",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 1,
+      "quads": 1,
+      "hamstrings": 1
+    }
+  },
+  {
+    "name": "Barbell Reverse Lunges",
+    "category": "Legs",
+    "subcategory": "Other",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 1,
+      "quads": 1,
+      "hamstrings": 1
+    }
+  },
+  {
+    "name": "Curtsy Lunges",
+    "category": "Extra",
+    "subcategory": "Forearms",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 1,
+      "quads": 1
+    }
+  },
+  {
+    "name": "Bodyweight side lunges",
+    "category": "Legs",
+    "subcategory": "Other",
+    "isBodyweight": true,
+    "muscleWeights": {
+      "glutes": 1,
+      "quads": 1,
+      "hamstrings": 1
+    }
+  },
+  {
+    "name": "Bodyweight Reverse Lunges",
+    "category": "Legs",
+    "subcategory": "Other",
+    "isBodyweight": true,
+    "muscleWeights": {
+      "glutes": 1,
+      "quads": 1,
+      "hamstrings": 1
+    }
+  },
+  {
+    "name": "Bodyweight Squats",
+    "category": "Other",
+    "subcategory": "",
+    "isBodyweight": true,
+    "muscleWeights": {
+      "glutes": 1,
+      "quads": 1,
+      "hamstrings": 1
+    }
+  },
+  {
+    "name": "DB Curtsy Lunges",
+    "category": "Legs",
+    "subcategory": "Other",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 1,
+      "quads": 1
+    }
+  },
+  {
+    "name": "DB Reverse Lunges",
+    "category": "Legs",
+    "subcategory": "Other",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 1,
+      "quads": 1,
+      "hamstrings": 1
+    }
+  },
+  {
+    "name": "Pistol Squats",
+    "category": "Legs",
+    "subcategory": "Quads",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 1,
+      "quads": 1,
+      "hamstrings": 1
+    }
+  },
+  {
+    "name": "Front Squat",
+    "category": "Legs",
+    "subcategory": "Quads",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 1,
+      "quads": 1,
+      "core": 0.5
+    }
+  },
+  {
+    "name": "Bulgarian Split Squat",
+    "category": "Legs",
+    "subcategory": "Quads",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 1,
+      "quads": 1,
+      "hamstrings": 1
+    }
+  },
+  {
+    "name": "Walking Lunges",
+    "category": "Legs",
+    "subcategory": "Quads",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 1,
+      "quads": 1,
+      "hamstrings": 1
+    }
+  },
+  {
+    "name": "Hack Squat Machine",
+    "category": "Legs",
+    "subcategory": "Quads",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 1,
+      "quads": 1
+    }
+  },
+  {
+    "name": "Step-Ups - Barbell",
+    "category": "Legs",
+    "subcategory": "Quads",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 1,
+      "quads": 1
+    }
+  },
+  {
+    "name": "Step-Ups - DB",
+    "category": "Legs",
+    "subcategory": "Quads",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 1,
+      "quads": 1
+    }
+  },
+  {
+    "name": "Seated leg curls",
+    "category": "Legs",
+    "subcategory": "Hamstrings",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "hamstrings": 1
+    }
+  },
+  {
+    "name": "Glute-ham raise",
+    "category": "Legs",
+    "subcategory": "Hamstrings",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 1,
+      "hamstrings": 1
+    }
+  },
+  {
+    "name": "Laying Leg curls",
+    "category": "Legs",
+    "subcategory": "Hamstrings",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "hamstrings": 1
+    }
+  },
+  {
+    "name": "Barbell RDL",
+    "category": "Legs",
+    "subcategory": "Hamstrings",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 0.5,
+      "upperTraps": 0.5,
+      "glutes": 1,
+      "quads": 0.5,
+      "hamstrings": 1
+    }
+  },
+  {
+    "name": "DB RDL",
+    "category": "Legs",
+    "subcategory": "Hamstrings",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 1,
+      "glutes": 1,
+      "hamstrings": 1
+    }
+  },
+  {
+    "name": "Barbell Deadlift - Sumo",
+    "category": "Legs",
+    "subcategory": "Hamstrings",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 1,
+      "upperTraps": 1,
+      "glutes": 1,
+      "quads": 1,
+      "hamstrings": 1
+    }
+  },
+  {
+    "name": "Barbell Deadlift - Conventional",
+    "category": "Legs",
+    "subcategory": "Hamstrings",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 1,
+      "upperTraps": 1,
+      "glutes": 1,
+      "quads": 1,
+      "hamstrings": 1
+    }
+  },
+  {
+    "name": "Single-Leg Bodyweight RDL",
+    "category": "Legs",
+    "subcategory": "Hamstrings",
+    "isBodyweight": true,
+    "muscleWeights": {
+      "back": 1,
+      "glutes": 1,
+      "hamstrings": 1
+    }
+  },
+  {
+    "name": "Smith machine deadlift",
+    "category": "Legs",
+    "subcategory": "Hamstrings",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 1,
+      "upperTraps": 1,
+      "glutes": 1,
+      "quads": 1,
+      "hamstrings": 1
+    }
+  },
+  {
+    "name": "Nordic Hamstring Curl",
+    "category": "Legs",
+    "subcategory": "Hamstrings",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "hamstrings": 1
+    }
+  },
+  {
+    "name": "Single leg Standing (leg press machine) toe raises",
+    "category": "Legs",
+    "subcategory": "Calves",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "calves": 1
+    }
+  },
+  {
+    "name": "Seated toe raises",
+    "category": "Legs",
+    "subcategory": "Calves",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "calves": 1
+    }
+  },
+  {
+    "name": "Standing (leg press machine) toe raises",
+    "category": "Legs",
+    "subcategory": "Calves",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "calves": 1
+    }
+  },
+  {
+    "name": "Single leg Seated toe raises",
+    "category": "Legs",
+    "subcategory": "Calves",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "calves": 1
+    }
+  },
+  {
+    "name": "One leg standing toe raise",
+    "category": "Legs",
+    "subcategory": "Calves",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "calves": 1
+    }
+  },
+  {
+    "name": "Donkey Calf Raise",
+    "category": "Legs",
+    "subcategory": "Calves",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "calves": 1
+    }
+  },
+  {
+    "name": "Wrist Curls",
+    "category": "Extra",
+    "subcategory": "Forearms",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "forearms": 1
+    }
+  },
+  {
+    "name": "Reverse Wrist Curls",
+    "category": "Extra",
+    "subcategory": "Forearms",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "forearms": 1
+    }
+  },
+  {
+    "name": "Neck Curls",
+    "category": "Extra",
+    "subcategory": "Neck",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "neck": 1
+    }
+  },
+  {
+    "name": "Neck Extensions",
+    "category": "Extra",
+    "subcategory": "Neck",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "neck": 1
+    }
+  },
+  {
+    "name": "Cable crunch",
+    "category": "Extra",
+    "subcategory": "Core",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "core": 1
+    }
+  },
+  {
+    "name": "Deadbugs",
+    "category": "Extra",
+    "subcategory": "Core",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "core": 1
+    }
+  },
+  {
+    "name": "Cable wood chops",
+    "category": "Extra",
+    "subcategory": "Core",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "core": 1
+    }
+  },
+  {
+    "name": "Ab Rollout",
+    "category": "Extra",
+    "subcategory": "Core",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "core": 1
+    }
+  },
+  {
+    "name": "Body Saw",
+    "category": "Extra",
+    "subcategory": "Core",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "core": 1
+    }
+  },
+  {
+    "name": "Cable Pallof Press",
+    "category": "Extra",
+    "subcategory": "Core",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "core": 1
+    }
+  },
+  {
+    "name": "Farmer's Walk",
+    "category": "Extra",
+    "subcategory": "Forearms",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 1,
+      "calves": 1,
+      "neck": 1,
+      "core": 0.5
+    }
+  },
+  {
+    "name": "Kettlebell Swings",
+    "category": "Legs",
+    "subcategory": "Other",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 1,
+      "upperTraps": 1,
+      "glutes": 1,
+      "hamstrings": 1,
+      "forearms": 1,
+      "core": 0.5
+    }
+  },
+  {
+    "name": "Suitcase Carry",
+    "category": "Extra",
+    "subcategory": "Forearms",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "upperTraps": 1,
+      "forearms": 1,
+      "core": 0.5
+    }
+  },
+  {
+    "name": "Plank",
+    "category": "Extra",
+    "subcategory": "Core",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "core": 1
+    }
+  },
+  {
+    "name": "Side Plank",
+    "category": "Extra",
+    "subcategory": "Core",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "core": 1
+    }
+  },
+  {
+    "name": "Hanging Leg Raises",
+    "category": "Extra",
+    "subcategory": "Core",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "core": 1
+    }
+  },
+  {
+    "name": "Hanging Knee Raise",
+    "category": "Extra",
+    "subcategory": "Core",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "core": 1
+    }
+  },
+  {
+    "name": "Russian Twists",
+    "category": "Extra",
+    "subcategory": "Core",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "core": 1
+    }
+  },
+  {
+    "name": "Reverse Crunch",
+    "category": "Extra",
+    "subcategory": "Core",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "core": 1
+    }
+  },
+  {
+    "name": "Cable Pull-Through",
+    "category": "Legs",
+    "subcategory": "Glutes",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 0.5,
+      "glutes": 1,
+      "quads": 0.5,
+      "hamstrings": 1
+    }
+  },
+  {
+    "name": "Archer Push-Ups",
+    "category": "Push",
+    "subcategory": "Chest",
+    "isBodyweight": true,
+    "muscleWeights": {
+      "chest": 1,
+      "shoulders": 0.5,
+      "core": 0.5
+    }
+  },
+  {
+    "name": "Ring Dips (Bulgarian)",
+    "category": "Push",
+    "subcategory": "Chest",
+    "isBodyweight": true,
+    "muscleWeights": {
+      "chest": 1,
+      "shoulders": 0.5
+    }
+  },
+  {
+    "name": "Ring Flys",
+    "category": "Push",
+    "subcategory": "Chest",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "chest": 1,
+      "shoulders": 0.5
+    }
+  },
+  {
+    "name": "RTO Push-Ups",
+    "category": "Push",
+    "subcategory": "Chest",
+    "isBodyweight": true,
+    "muscleWeights": {
+      "chest": 1,
+      "shoulders": 0.5,
+      "core": 0.5
+    }
+  },
+  {
+    "name": "Pseudo Planche Push-Ups",
+    "category": "Push",
+    "subcategory": "Chest",
+    "isBodyweight": true,
+    "muscleWeights": {
+      "chest": 0.5,
+      "shoulders": 1,
+      "core": 0.5
+    }
+  },
+  {
+    "name": "Typewriter Push-Ups",
+    "category": "Push",
+    "subcategory": "Chest",
+    "isBodyweight": true,
+    "muscleWeights": {
+      "chest": 1,
+      "shoulders": 0.5
+    }
+  },
+  {
+    "name": "One-Arm Push-Up Progressions",
+    "category": "Push",
+    "subcategory": "Chest",
+    "isBodyweight": true,
+    "muscleWeights": {
+      "chest": 1,
+      "shoulders": 0.5,
+      "core": 0.5
+    }
+  },
+  {
+    "name": "Explosive/Clapping Push-Ups",
+    "category": "Push",
+    "subcategory": "Chest",
+    "isBodyweight": true,
+    "muscleWeights": {
+      "chest": 1,
+      "shoulders": 0.5
+    }
+  },
+  {
+    "name": "Deep Deficit Push-Ups",
+    "category": "Push",
+    "subcategory": "Chest",
+    "isBodyweight": true,
+    "muscleWeights": {
+      "chest": 1,
+      "shoulders": 0.5
+    }
+  },
+  {
+    "name": "Freestanding Handstand Push-Ups",
+    "category": "Push",
+    "subcategory": "Shoulders",
+    "isBodyweight": true,
+    "muscleWeights": {
+      "shoulders": 1,
+      "core": 0.5
+    }
+  },
+  {
+    "name": "Deficit Pike Push-Ups",
+    "category": "Push",
+    "subcategory": "Shoulders",
+    "isBodyweight": true,
+    "muscleWeights": {
+      "shoulders": 1
+    }
+  },
+  {
+    "name": "Wall Walks",
+    "category": "Push",
+    "subcategory": "Shoulders",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "shoulders": 1,
+      "core": 0.5
+    }
+  },
+  {
+    "name": "Planche Leans",
+    "category": "Push",
+    "subcategory": "Shoulders",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "shoulders": 1,
+      "forearms": 0.5,
+      "core": 0.5
+    }
+  },
+  {
+    "name": "Ring Face Pulls",
+    "category": "Push",
+    "subcategory": "Shoulders",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "shoulders": 1,
+      "back": 0.5,
+      "upperTraps": 0.5
+    }
+  },
+  {
+    "name": "Ring Rear Delt Flys",
+    "category": "Push",
+    "subcategory": "Shoulders",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "shoulders": 1,
+      "back": 0.5
+    }
+  },
+  {
+    "name": "Rear Delt \"\"Y\"\" Raises",
+    "category": "Push",
+    "subcategory": "Shoulders",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "shoulders": 1
+    }
+  },
+  {
+    "name": "Hindu / Dive Bomber Push-Ups",
+    "category": "Push",
+    "subcategory": "Shoulders",
+    "isBodyweight": true,
+    "muscleWeights": {
+      "chest": 0.5,
+      "shoulders": 1
+    }
+  },
+  {
+    "name": "Bodyweight Skull Crushers",
+    "category": "Push",
+    "subcategory": "Triceps",
+    "isBodyweight": true,
+    "muscleWeights": {
+      "triceps": 1,
+      "core": 0.5
+    }
+  },
+  {
+    "name": "Ring Tricep Extensions",
+    "category": "Push",
+    "subcategory": "Triceps",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "triceps": 1,
+      "core": 0.5
+    }
+  },
+  {
+    "name": "Sphinx Push-Ups",
+    "category": "Push",
+    "subcategory": "Triceps",
+    "isBodyweight": true,
+    "muscleWeights": {
+      "shoulders": 0.5,
+      "triceps": 1
+    }
+  },
+  {
+    "name": "Tiger Bend Push-Ups",
+    "category": "Push",
+    "subcategory": "Triceps",
+    "isBodyweight": true,
+    "muscleWeights": {
+      "shoulders": 0.5,
+      "triceps": 1
+    }
+  },
+  {
+    "name": "Impossible Dips",
+    "category": "Push",
+    "subcategory": "Triceps",
+    "isBodyweight": true,
+    "muscleWeights": {
+      "shoulders": 0.5,
+      "triceps": 1
+    }
+  },
+  {
+    "name": "Diamond Push-Ups",
+    "category": "Push",
+    "subcategory": "Triceps",
+    "isBodyweight": true,
+    "muscleWeights": {
+      "chest": 0.5,
+      "shoulders": 0.5,
+      "triceps": 1
+    }
+  },
+  {
+    "name": "Bench Dips (Elevated Feet)",
+    "category": "Push",
+    "subcategory": "Triceps",
+    "isBodyweight": true,
+    "muscleWeights": {
+      "shoulders": 0.5,
+      "triceps": 1
+    }
+  },
+  {
+    "name": "Korean Dips (Bar Behind)",
+    "category": "Push",
+    "subcategory": "Triceps",
+    "isBodyweight": true,
+    "muscleWeights": {
+      "chest": 0.5,
+      "shoulders": 1,
+      "triceps": 1
+    }
+  },
+  {
+    "name": "Muscle-Ups",
+    "category": "Pull",
+    "subcategory": "Back",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "chest": 0.5,
+      "shoulders": 0.5,
+      "back": 1
+    }
+  },
+  {
+    "name": "Front Lever Rows",
+    "category": "Pull",
+    "subcategory": "Back",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "shoulders": 0.5,
+      "back": 1,
+      "core": 1
+    }
+  },
+  {
+    "name": "Front Lever Holds",
+    "category": "Pull",
+    "subcategory": "Back",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 1,
+      "core": 1
+    }
+  },
+  {
+    "name": "Archer Pull-Ups",
+    "category": "Pull",
+    "subcategory": "Back",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 1
+    }
+  },
+  {
+    "name": "Typewriter Pull-Ups",
+    "category": "Pull",
+    "subcategory": "Back",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 1
+    }
+  },
+  {
+    "name": "L-Sit Pull-Ups",
+    "category": "Pull",
+    "subcategory": "Back",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 1,
+      "core": 1
+    }
+  },
+  {
+    "name": "Commando Pull-Ups",
+    "category": "Pull",
+    "subcategory": "Back",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 1
+    }
+  },
+  {
+    "name": "Ring Rows (Feet Elevated)",
+    "category": "Pull",
+    "subcategory": "Back",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 1,
+      "core": 0.5
+    }
+  },
+  {
+    "name": "One-Arm Ring Rows",
+    "category": "Pull",
+    "subcategory": "Back",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 1,
+      "core": 0.5
+    }
+  },
+  {
+    "name": "Skin the Cat",
+    "category": "Pull",
+    "subcategory": "Back",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "shoulders": 1,
+      "back": 1,
+      "core": 0.5
+    }
+  },
+  {
+    "name": "Mantle Chin-Ups",
+    "category": "Pull",
+    "subcategory": "Back",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 1
+    }
+  },
+  {
+    "name": "Iron Cross Hold (Support)",
+    "category": "Pull",
+    "subcategory": "Back",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "chest": 0.5,
+      "shoulders": 1,
+      "back": 0.5,
+      "core": 0.5
+    }
+  },
+  {
+    "name": "Handstand Shrugs",
+    "category": "Pull",
+    "subcategory": "Upper Traps",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "shoulders": 0.5,
+      "upperTraps": 1
+    }
+  },
+  {
+    "name": "Inverted Shrugs",
+    "category": "Pull",
+    "subcategory": "Upper Traps",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 0.5,
+      "upperTraps": 1
+    }
+  },
+  {
+    "name": "Parallel Bar Shrugs",
+    "category": "Pull",
+    "subcategory": "Upper Traps",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "shoulders": 0.5,
+      "upperTraps": 1
+    }
+  },
+  {
+    "name": "Pelican Curls (Rings)",
+    "category": "Pull",
+    "subcategory": "Biceps",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "chest": 0.5,
+      "biceps": 1
+    }
+  },
+  {
+    "name": "Ring Bicep Curls",
+    "category": "Pull",
+    "subcategory": "Biceps",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "biceps": 1
+    }
+  },
+  {
+    "name": "Headbangers",
+    "category": "Pull",
+    "subcategory": "Biceps",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 0.5,
+      "biceps": 1
+    }
+  },
+  {
+    "name": "Chin-Up Iso Holds",
+    "category": "Pull",
+    "subcategory": "Biceps",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 0.5
+    }
+  },
+  {
+    "name": "Inverted Row (Underhand)",
+    "category": "Pull",
+    "subcategory": "Biceps",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 0.5
+    }
+  },
+  {
+    "name": "Single-Leg Hip Thrust",
+    "category": "Legs",
+    "subcategory": "Glutes",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 1,
+      "hamstrings": 0.5
+    }
+  },
+  {
+    "name": "Elevated Single-Leg Glute Bridge",
+    "category": "Legs",
+    "subcategory": "Glutes",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 1,
+      "hamstrings": 0.5
+    }
+  },
+  {
+    "name": "Reverse Hyper",
+    "category": "Legs",
+    "subcategory": "Glutes",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 1,
+      "glutes": 1
+    }
+  },
+  {
+    "name": "Ring Fallout",
+    "category": "Legs",
+    "subcategory": "Glutes",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "core": 1
+    }
+  },
+  {
+    "name": "Shrimp Squats",
+    "category": "Legs",
+    "subcategory": "Quads",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 0.5,
+      "quads": 1
+    }
+  },
+  {
+    "name": "Sissy Squats",
+    "category": "Legs",
+    "subcategory": "Quads",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "quads": 1
+    }
+  },
+  {
+    "name": "Airborne Lunges",
+    "category": "Legs",
+    "subcategory": "Quads",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 0.5,
+      "quads": 1
+    }
+  },
+  {
+    "name": "Matrix Lunges",
+    "category": "Legs",
+    "subcategory": "Quads",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "quads": 1,
+      "core": 0.5
+    }
+  },
+  {
+    "name": "Assisted Pistol Squats (Rings)",
+    "category": "Legs",
+    "subcategory": "Quads",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 0.5,
+      "quads": 1
+    }
+  },
+  {
+    "name": "Jump Squats",
+    "category": "Legs",
+    "subcategory": "Quads",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 0.5,
+      "quads": 1,
+      "calves": 0.5
+    }
+  },
+  {
+    "name": "Box Jumps",
+    "category": "Legs",
+    "subcategory": "Quads",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 0.5,
+      "quads": 1,
+      "calves": 0.5
+    }
+  },
+  {
+    "name": "Cossack Squats",
+    "category": "Legs",
+    "subcategory": "Quads",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 0.5,
+      "quads": 1
+    }
+  },
+  {
+    "name": "Reverse Nordic Curls",
+    "category": "Legs",
+    "subcategory": "Quads",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "quads": 1,
+      "core": 0.5
+    }
+  },
+  {
+    "name": "Slider Leg Curls",
+    "category": "Legs",
+    "subcategory": "Hamstrings",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 0.5,
+      "hamstrings": 1
+    }
+  },
+  {
+    "name": "Ring Leg Curls",
+    "category": "Legs",
+    "subcategory": "Hamstrings",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 0.5,
+      "hamstrings": 1
+    }
+  },
+  {
+    "name": "Single-Leg Glute Bridge Sliders",
+    "category": "Legs",
+    "subcategory": "Glutes",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 0.5,
+      "hamstrings": 1
+    }
+  },
+  {
+    "name": "Harop Curl",
+    "category": "Legs",
+    "subcategory": "Hamstrings",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "hamstrings": 1
+    }
+  },
+  {
+    "name": "Jefferson Curl",
+    "category": "Legs",
+    "subcategory": "Hamstrings",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 0.5,
+      "hamstrings": 1
+    }
+  },
+  {
+    "name": "Explosive Pogo Hops",
+    "category": "Legs",
+    "subcategory": "Calves",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "quads": 0.5,
+      "calves": 1
+    }
+  },
+  {
+    "name": "Single Leg Calf Raise (Deficit)",
+    "category": "Legs",
+    "subcategory": "Calves",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "calves": 1
+    }
+  },
+  {
+    "name": "Jump Rope (Double Unders)",
+    "category": "Legs",
+    "subcategory": "Calves",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "calves": 1,
+      "forearms": 0.5
+    }
+  },
+  {
+    "name": "Tibialis Raises (Wall/Weight)",
+    "category": "Legs",
+    "subcategory": "Calves",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "calves": 1
+    }
+  },
+  {
+    "name": "Copenhagen Plank (Adductor)",
+    "category": "Legs",
+    "subcategory": "Other",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "core": 1
+    }
+  },
+  {
+    "name": "Lateral Step-Ups",
+    "category": "Legs",
+    "subcategory": "Other",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 1,
+      "quads": 1
+    }
+  },
+  {
+    "name": "Duck Walk",
+    "category": "Legs",
+    "subcategory": "Other",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "quads": 1,
+      "calves": 0.5
+    }
+  },
+  {
+    "name": "Horse Stance",
+    "category": "Legs",
+    "subcategory": "Other",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 0.5,
+      "quads": 1
+    }
+  },
+  {
+    "name": "Seated Good Morning",
+    "category": "Legs",
+    "subcategory": "Other",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 1,
+      "hamstrings": 0.5
+    }
+  },
+  {
+    "name": "Broad Jumps (Plyo)",
+    "category": "Legs",
+    "subcategory": "Quads",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "glutes": 0.5,
+      "quads": 1
+    }
+  },
+  {
+    "name": "Towel Hangs",
+    "category": "Extra",
+    "subcategory": "Forearms",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 0.5,
+      "forearms": 1
+    }
+  },
+  {
+    "name": "False Grip Hangs (Rings)",
+    "category": "Other",
+    "subcategory": "",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "forearms": 1
+    }
+  },
+  {
+    "name": "Fingertip Push-Ups",
+    "category": "Extra",
+    "subcategory": "Forearms",
+    "isBodyweight": true,
+    "muscleWeights": {
+      "chest": 0.5,
+      "forearms": 1
+    }
+  },
+  {
+    "name": "Wrist Roller",
+    "category": "Extra",
+    "subcategory": "Forearms",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "forearms": 1
+    }
+  },
+  {
+    "name": "Dead Hang (One Arm)",
+    "category": "Extra",
+    "subcategory": "Forearms",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 0.5,
+      "forearms": 1
+    }
+  },
+  {
+    "name": "Neck Bridges (Wrestler)",
+    "category": "Extra",
+    "subcategory": "Neck",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "neck": 1
+    }
+  },
+  {
+    "name": "Isometric Neck Holds",
+    "category": "Extra",
+    "subcategory": "Neck",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "neck": 1
+    }
+  },
+  {
+    "name": "Neck Plank (Front/Back)",
+    "category": "Extra",
+    "subcategory": "Neck",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "neck": 1
+    }
+  },
+  {
+    "name": "Dragon Flags",
+    "category": "Extra",
+    "subcategory": "Core",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "core": 1
+    }
+  },
+  {
+    "name": "Toes-to-Bar",
+    "category": "Extra",
+    "subcategory": "Core",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 0.5,
+      "core": 1
+    }
+  },
+  {
+    "name": "Windshield Wipers",
+    "category": "Extra",
+    "subcategory": "Core",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "core": 1
+    }
+  },
+  {
+    "name": "L-Sit",
+    "category": "Extra",
+    "subcategory": "Core",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "shoulders": 0.5,
+      "core": 1
+    }
+  },
+  {
+    "name": "V-Sit",
+    "category": "Extra",
+    "subcategory": "Core",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "core": 1
+    }
+  },
+  {
+    "name": "Human Flag Progressions",
+    "category": "Extra",
+    "subcategory": "Core",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "shoulders": 1,
+      "back": 0.5,
+      "core": 1
+    }
+  },
+  {
+    "name": "Ring Rollouts",
+    "category": "Extra",
+    "subcategory": "Core",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 0.5,
+      "core": 1
+    }
+  },
+  {
+    "name": "Hollow Body Rocks",
+    "category": "Extra",
+    "subcategory": "Core",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "core": 1
+    }
+  },
+  {
+    "name": "Compression Leg Lifts",
+    "category": "Extra",
+    "subcategory": "Core",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "quads": 0.5,
+      "core": 1
+    }
+  },
+  {
+    "name": "Manna",
+    "category": "Extra",
+    "subcategory": "Core",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "core": 1
+    }
+  },
+  {
+    "name": "Vacuum",
+    "category": "Extra",
+    "subcategory": "Core",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "core": 1
+    }
+  },
+  {
+    "name": "QDR (Rotational Push-Ups)",
+    "category": "Push",
+    "subcategory": "Chest",
+    "isBodyweight": true,
+    "muscleWeights": {
+      "chest": 1,
+      "shoulders": 0.5,
+      "core": 0.5
+    }
+  },
+  {
+    "name": "Press to Handstand",
+    "category": "Extra",
+    "subcategory": "Core",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "shoulders": 1,
+      "core": 0.5
+    }
+  },
+  {
+    "name": "Back Lever Progressions",
+    "category": "Extra",
+    "subcategory": "Core",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 1,
+      "core": 0.5
+    }
+  },
+  {
+    "name": "Ice Cream Makers",
+    "category": "Extra",
+    "subcategory": "Core",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "back": 1,
+      "core": 1
+    }
+  },
+  {
+    "name": "Straddle Planche",
+    "category": "Push",
+    "subcategory": "Shoulders",
+    "isBodyweight": false,
+    "muscleWeights": {
+      "chest": 0.5,
+      "shoulders": 1,
+      "back": 0.5,
+      "core": 0.5
+    }
+  }
+]

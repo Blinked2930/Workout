@@ -1,0 +1,227 @@
+ExerciseName,Chest,Shoulders,Triceps - Isolation,Back,Upper Traps,Biceps - Isolation,Glute,Quads,Hamstrings,Calves,Forearms,Neck,Core
+Cable cross over,1,0,0,0,0,0,0,0,0,0,0,0,0
+Bench press,1,0.5,0,0,0,0,0,0,0,0,0,0,0
+Incline bench,1,1,0,0,0,0,0,0,0,0,0,0,0
+Chest press machine one arm,1,0.5,0,0,0,0,0,0,0,0,0,0,0
+DB bench,1,0.5,0,0,0,0,0,0,0,0,0,0,0
+Smith machine incline press,1,0.5,0,0,0,0,0,0,0,0,0,0,0
+Push-Ups,1,0.5,0,0,0,0,0,0,0,0,0,0,0.5
+Incline Push-Ups,1,0.5,0,0,0,0,0,0,0,0,0,0,0.5
+Decline Push-Ups,1,1,0,0,0,0,0,0,0,0,0,0,0.5
+Incline DB bench,1,0.5,0,0,0,0,0,0,0,0,0,0,0
+Chest press machine,1,0.5,0,0,0,0,0,0,0,0,0,0,0
+Dips - Chest Focused,1,0.5,0,0,0,0,0,0,0,0,0,0,0
+Barbell Incline Press,1,1,0,0,0,0,0,0,0,0,0,0,0
+Barbell Flys - Flat,1,0,0,0,0,0,0,0,0,0,0,0,0
+Barbell Flys - Incline,1,0,0,0,0,0,0,0,0,0,0,0,0
+Pec Deck Machine,1,0,0,0,0,0,0,0,0,0,0,0,0
+Close-Grip Bench Press,1,0.5,0,0,0,0,0,0,0,0,0,0,0
+Seated DB shoulder press,0,1,0,0,0,0,0,0,0,0,0,0,0
+Shoulder press machine,0,1,0,0,0,0,0,0,0,0,0,0,0
+Cable Lateral raise,0,1,0,0,0,0,0,0,0,0,0,0,0
+Barbell Overhead Press,0,1,0,0,0,0,0,0,0,0,0,0,0
+DB standing overhead press,0,1,0,0,0,0,0,0,0,0,0,0,0
+Handstand Push-ups,0,1,0,0,0,0,0,0,0,0,0,0,0.5
+Pike Push-ups,0,1,0,0,0,0,0,0,0,0,0,0,0.5
+Arnold Press,0,1,0,0,0,0,0,0,0,0,0,0,0
+Leaning DB lateral raise,0,1,0,0,0,0,0,0,0,0,0,0,0
+Cable lateral raises,0,1,0,0,0,0,0,0,0,0,0,0,0
+Front Raises - DB,0,1,0,0,0,0,0,0,0,0,0,0,0
+Front Raises - Plate,0,1,0,0,0,0,0,0,0,0,0,0,0
+Front Raises - Cable,0,1,0,0,0,0,0,0,0,0,0,0,0
+Rear Delt Fly - DB,0,1,0,0.5,0,0,0,0,0,0,0,0,0
+Rear Delt Fly - Cable,0,1,0,0.5,0,0,0,0,0,0,0,0,0
+Rear Delt Fly - Reverse Pec deck,0,1,0,0.5,0,0,0,0,0,0,0,0,0
+Upright Row,0,1,0,0.5,0,0,0,0,0,0,0,0,0
+Tricep pushdowns,0,0,1,0,0,0,0,0,0,0,0,0,0
+Overhead cable tricep extensions,0,0,1,0,0,0,0,0,0,0,0,0,0
+Cable tricep extensions straight bar,0,0,1,0,0,0,0,0,0,0,0,0,0
+Dips - Tricep Focused,0.5,1,1,0,0,0,0,0,0,0,0,0,0
+Skull Crushers,0,0,1,0,0,0,0,0,0,0,0,0,0
+Dumbbell Kickbacks,0,0,1,0,0,0,0,0,0,0,0,0,0
+Rope Pushdowns,0,0,1,0,0,0,0,0,0,0,0,0,0
+Lat pullover,0,0,0,1,0,0,0,0,0,0,0,0,0
+Reverse close grip lat pull-down,0,0,0,1,0,0,0,0,0,0,0,0,0
+Wide grip pull down,0,0,0,1,0,0,0,0,0,0,0,0,0
+Lat pull down,0,0,0,1,0,0,0,0,0,0,0,0,0
+Pullups,0,0,0,1,0,0,0,0,0,0,0,0,0
+Dead Hang,0,0,0,1,0,0,0,0,0,0,1,0,0
+Chin ups,0,0,0,1,0,0,0,0,0,0,0,0,0
+T-Bar Row,0,0,0,1,1,0,0,0,0,0,0,0,0
+Back Extensions,0,0,0,1,0,0,1,0,1,0,0,0,0
+Good Mornings,0,0,0,1,0,0,1,0,1,0,0,0,0
+Seated machine row,0,0,0,1,1,0,0,0,0,0,0,0,0
+DB row,0,0,0,1,1,0,0,0,0,0,0,0,0
+Face pulls,0,0.5,0,0.5,1,0,0,0,0,0,0,0,0
+Barbell Bent-Over Row,0,0,0,1,1,0,0,0,1,0,0,0,0
+Bodyweight Rows,0,0,0,1,1,0,0,0,0,0,0,0,0.5
+Shrugs - Barbell,0,0,0,0,1,0,0,0,0,0,0,0,0
+Shrugs - DB,0,0,0,0,1,0,0,0,0,0,0,0,0
+Inclined curls,0,0,0,0,0,1,0,0,0,0,0,0,0
+Z bar curl,0,0,0,0,0,1,0,0,0,0,0,0,0
+bayesian curl,0,0,0,0,0,1,0,0,0,0,0,0,0
+Barbell Curl,0,0,0,0,0,1,0,0,0,0,0,0,0
+Dumbbell Hammer Curl,0,0,0,0,0,1,0,0,0,0,1,0,0
+Preacher Curl - Machine,0,0,0,0,0,1,0,0,0,0,0,0,0
+Preacher Curl - DB,0,0,0,0,0,1,0,0,0,0,0,0,0
+Preacher Curl - zbar,0,0,0,0,0,1,0,0,0,0,0,0,0
+Concentration Curl,0,0,0,0,0,1,0,0,0,0,0,0,0
+Barbell Glute bridges,0,0,0,0,0,0,1,0,1,0,0,0,0
+DB glute bridges,0,0,0,0,0,0,1,0,1,0,0,0,0
+Barbell Glute bridges on bench,0,0,0,0,0,0,1,0,1,0,0,0,0
+DB Glute bridges on bench,0,0,0,0,0,0,1,0,1,0,0,0,0
+Barbell Hip Thrust,0,0,0,0,0,0,1,0,1,0,0,0,0
+Hip Adduction Machine,0,0,0,0,0,0,0,0,0,0,0,0,0
+Hip Abduction Machine,0,0,0,0,0,0,1,0,0,0,0,0,0
+Leg extensions,0,0,0,0,0,0,0,1,0,0,0,0,0
+Leg press,0,0,0,0,0,0,1,1,1,0,0,0,0
+Back squat,0,0,0,0,0,0,1,1,1,0,0,0,0.5
+Goblet squat,0,0,0,0,0,0,1,1,1,0,0,0,0.5
+DB side lunges,0,0,0,0,0,0,1,1,1,0,0,0,0
+Barbell Reverse Lunges,0,0,0,0,0,0,1,1,1,0,0,0,0
+Curtsy Lunges,0,0,0,0,0,0,1,1,0,0,0,0,0
+Bodyweight side lunges,0,0,0,0,0,0,1,1,1,0,0,0,0
+Bodyweight Reverse Lunges,0,0,0,0,0,0,1,1,1,0,0,0,0
+Bodyweight Squats,0,0,0,0,0,0,1,1,1,0,0,0,0
+DB Curtsy Lunges,0,0,0,0,0,0,1,1,0,0,0,0,0
+DB Reverse Lunges,0,0,0,0,0,0,1,1,1,0,0,0,0
+Pistol Squats,0,0,0,0,0,0,1,1,1,0,0,0,0
+Front Squat,0,0,0,0,0,0,1,1,0,0,0,0,0.5
+Bulgarian Split Squat,0,0,0,0,0,0,1,1,1,0,0,0,0
+Walking Lunges,0,0,0,0,0,0,1,1,1,0,0,0,0
+Hack Squat Machine,0,0,0,0,0,0,1,1,0,0,0,0,0
+Step-Ups - Barbell,0,0,0,0,0,0,1,1,0,0,0,0,0
+Step-Ups - DB,0,0,0,0,0,0,1,1,0,0,0,0,0
+Seated leg curls,0,0,0,0,0,0,0,0,1,0,0,0,0
+Glute-ham raise,0,0,0,0,0,0,1,0,1,0,0,0,0
+Laying Leg curls,0,0,0,0,0,0,0,0,1,0,0,0,0
+Barbell RDL,0,0,0,0.5,0.5,0,1,0.5,1,0,0,0,0
+DB RDL,0,0,0,1,0,0,1,0,1,0,0,0,0
+Barbell Deadlift - Sumo,0,0,0,1,1,0,1,1,1,0,0,0,0
+Barbell Deadlift - Conventional,0,0,0,1,1,0,1,1,1,0,0,0,0
+Single-Leg Bodyweight RDL,0,0,0,1,0,0,1,0,1,0,0,0,0
+Smith machine deadlift,0,0,0,1,1,0,1,1,1,0,0,0,0
+Nordic Hamstring Curl,0,0,0,0,0,0,0,0,1,0,0,0,0
+Single leg Standing (leg press machine) toe raises,0,0,0,0,0,0,0,0,0,1,0,0,0
+Seated toe raises,0,0,0,0,0,0,0,0,0,1,0,0,0
+Standing (leg press machine) toe raises,0,0,0,0,0,0,0,0,0,1,0,0,0
+Single leg Seated toe raises,0,0,0,0,0,0,0,0,0,1,0,0,0
+One leg standing toe raise,0,0,0,0,0,0,0,0,0,1,0,0,0
+Donkey Calf Raise,0,0,0,0,0,0,0,0,0,1,0,0,0
+Wrist Curls,0,0,0,0,0,0,0,0,0,0,1,0,0
+Reverse Wrist Curls,0,0,0,0,0,0,0,0,0,0,1,0,0
+Neck Curls,0,0,0,0,0,0,0,0,0,0,0,1,0
+Neck Extensions,0,0,0,0,0,0,0,0,0,0,0,1,0
+Cable crunch,0,0,0,0,0,0,0,0,0,0,0,0,1
+Deadbugs,0,0,0,0,0,0,0,0,0,0,0,0,1
+Cable wood chops,0,0,0,0,0,0,0,0,0,0,0,0,1
+Ab Rollout,0,0,0,0,0,0,0,0,0,0,0,0,1
+Body Saw,0,0,0,0,0,0,0,0,0,0,0,0,1
+Cable Pallof Press,0,0,0,0,0,0,0,0,0,0,0,0,1
+Farmer's Walk,0,0,0,1,0,0,0,0,0,1,0,1,0.5
+Kettlebell Swings,0,0,0,1,1,0,1,0,1,0,1,0,0.5
+Suitcase Carry,0,0,0,0,1,0,0,0,0,0,1,0,0.5
+Plank,0,0,0,0,0,0,0,0,0,0,0,0,1
+Side Plank,0,0,0,0,0,0,0,0,0,0,0,0,1
+Hanging Leg Raises,0,0,0,0,0,0,0,0,0,0,0,0,1
+Hanging Knee Raise,0,0,0,0,0,0,0,0,0,0,0,0,1
+Russian Twists,0,0,0,0,0,0,0,0,0,0,0,0,1
+Reverse Crunch,0,0,0,0,0,0,0,0,0,0,0,0,1
+Cable Pull-Through,0,0,0,0.5,0,0,1,0.5,1,0,0,0,0
+Archer Push-Ups,1,0.5,0,0,0,0,0,0,0,0,0,0,0.5
+Ring Dips (Bulgarian),1,0.5,0,0,0,0,0,0,0,0,0,0,0
+Ring Flys,1,0.5,0,0,0,0,0,0,0,0,0,0,0
+RTO Push-Ups,1,0.5,0,0,0,0,0,0,0,0,0,0,0.5
+Pseudo Planche Push-Ups,0.5,1,0,0,0,0,0,0,0,0,0,0,0.5
+Typewriter Push-Ups,1,0.5,0,0,0,0,0,0,0,0,0,0,0
+One-Arm Push-Up Progressions,1,0.5,0,0,0,0,0,0,0,0,0,0,0.5
+Explosive/Clapping Push-Ups,1,0.5,0,0,0,0,0,0,0,0,0,0,0
+Deep Deficit Push-Ups,1,0.5,0,0,0,0,0,0,0,0,0,0,0
+Freestanding Handstand Push-Ups,0,1,0,0,0,0,0,0,0,0,0,0,0.5
+Deficit Pike Push-Ups,0,1,0,0,0,0,0,0,0,0,0,0,0
+Wall Walks,0,1,0,0,0,0,0,0,0,0,0,0,0.5
+Planche Leans,0,1,0,0,0,0,0,0,0,0,0.5,0,0.5
+Ring Face Pulls,0,1,0,0.5,0.5,0,0,0,0,0,0,0,0
+Ring Rear Delt Flys,0,1,0,0.5,0,0,0,0,0,0,0,0,0
+"Rear Delt ""Y"" Raises",0,1,0,0,0,0,0,0,0,0,0,0,0
+Hindu / Dive Bomber Push-Ups,0.5,1,0,0,0,0,0,0,0,0,0,0,0
+Bodyweight Skull Crushers,0,0,1,0,0,0,0,0,0,0,0,0,0.5
+Ring Tricep Extensions,0,0,1,0,0,0,0,0,0,0,0,0,0.5
+Sphinx Push-Ups,0,0.5,1,0,0,0,0,0,0,0,0,0,0
+Tiger Bend Push-Ups,0,0.5,1,0,0,0,0,0,0,0,0,0,0
+Impossible Dips,0,0.5,1,0,0,0,0,0,0,0,0,0,0
+Diamond Push-Ups,0.5,0.5,1,0,0,0,0,0,0,0,0,0,0
+Bench Dips (Elevated Feet),0,0.5,1,0,0,0,0,0,0,0,0,0,0
+Korean Dips (Bar Behind),0.5,1,1,0,0,0,0,0,0,0,0,0,0
+Muscle-Ups,0.5,0.5,0,1,0,0,0,0,0,0,0,0,0
+Front Lever Rows,0,0.5,0,1,0,0,0,0,0,0,0,0,1
+Front Lever Holds,0,0,0,1,0,0,0,0,0,0,0,0,1
+Archer Pull-Ups,0,0,0,1,0,0,0,0,0,0,0,0,0
+Typewriter Pull-Ups,0,0,0,1,0,0,0,0,0,0,0,0,0
+L-Sit Pull-Ups,0,0,0,1,0,0,0,0,0,0,0,0,1
+Commando Pull-Ups,0,0,0,1,0,0,0,0,0,0,0,0,0
+Ring Rows (Feet Elevated),0,0,0,1,0,0,0,0,0,0,0,0,0.5
+One-Arm Ring Rows,0,0,0,1,0,0,0,0,0,0,0,0,0.5
+Skin the Cat,0,1,0,1,0,0,0,0,0,0,0,0,0.5
+Mantle Chin-Ups,0,0,0,1,0,0,0,0,0,0,0,0,0
+Iron Cross Hold (Support),0.5,1,0,0.5,0,0,0,0,0,0,0,0,0.5
+Handstand Shrugs,0,0.5,0,0,1,0,0,0,0,0,0,0,0
+Inverted Shrugs,0,0,0,0.5,1,0,0,0,0,0,0,0,0
+Parallel Bar Shrugs,0,0.5,0,0,1,0,0,0,0,0,0,0,0
+Pelican Curls (Rings),0.5,0,0,0,0,1,0,0,0,0,0,0,0
+Ring Bicep Curls,0,0,0,0,0,1,0,0,0,0,0,0,0
+Headbangers,0,0,0,0.5,0,1,0,0,0,0,0,0,0
+Chin-Up Iso Holds,0,0,0,0.5,0,0,0,0,0,0,0,0,0
+Inverted Row (Underhand),0,0,0,0.5,0,0,0,0,0,0,0,0,0
+Single-Leg Hip Thrust,0,0,0,0,0,0,1,0,0.5,0,0,0,0
+Elevated Single-Leg Glute Bridge,0,0,0,0,0,0,1,0,0.5,0,0,0,0
+Reverse Hyper,0,0,0,1,0,0,1,0,0,0,0,0,0
+Ring Fallout,0,0,0,0,0,0,0,0,0,0,0,0,1
+Shrimp Squats,0,0,0,0,0,0,0.5,1,0,0,0,0,0
+Sissy Squats,0,0,0,0,0,0,0,1,0,0,0,0,0
+Airborne Lunges,0,0,0,0,0,0,0.5,1,0,0,0,0,0
+Matrix Lunges,0,0,0,0,0,0,0,1,0,0,0,0,0.5
+Assisted Pistol Squats (Rings),0,0,0,0,0,0,0.5,1,0,0,0,0,0
+Jump Squats,0,0,0,0,0,0,0.5,1,0,0.5,0,0,0
+Box Jumps,0,0,0,0,0,0,0.5,1,0,0.5,0,0,0
+Cossack Squats,0,0,0,0,0,0,0.5,1,0,0,0,0,0
+Reverse Nordic Curls,0,0,0,0,0,0,0,1,0,0,0,0,0.5
+Slider Leg Curls,0,0,0,0,0,0,0.5,0,1,0,0,0,0
+Ring Leg Curls,0,0,0,0,0,0,0.5,0,1,0,0,0,0
+Single-Leg Glute Bridge Sliders,0,0,0,0,0,0,0.5,0,1,0,0,0,0
+Harop Curl,0,0,0,0,0,0,0,0,1,0,0,0,0
+Jefferson Curl,0,0,0,0.5,0,0,0,0,1,0,0,0,0
+Explosive Pogo Hops,0,0,0,0,0,0,0,0.5,0,1,0,0,0
+Single Leg Calf Raise (Deficit),0,0,0,0,0,0,0,0,0,1,0,0,0
+Jump Rope (Double Unders),0,0,0,0,0,0,0,0,0,1,0.5,0,0
+Tibialis Raises (Wall/Weight),0,0,0,0,0,0,0,0,0,1,0,0,0
+Copenhagen Plank (Adductor),0,0,0,0,0,0,0,0,0,0,0,0,1
+Lateral Step-Ups,0,0,0,0,0,0,1,1,0,0,0,0,0
+Duck Walk,0,0,0,0,0,0,0,1,0,0.5,0,0,0
+Horse Stance,0,0,0,0,0,0,0.5,1,0,0,0,0,0
+Seated Good Morning,0,0,0,0,0,0,1,0,0.5,0,0,0,0
+Broad Jumps (Plyo),0,0,0,0,0,0,0.5,1,0,0,0,0,0
+Towel Hangs,0,0,0,0.5,0,0,0,0,0,0,1,0,0
+False Grip Hangs (Rings),0,0,0,0,0,0,0,0,0,0,1,0,0
+Fingertip Push-Ups,0.5,0,0,0,0,0,0,0,0,0,1,0,0
+Wrist Roller,0,0,0,0,0,0,0,0,0,0,1,0,0
+Dead Hang (One Arm),0,0,0,0.5,0,0,0,0,0,0,1,0,0
+Neck Bridges (Wrestler),0,0,0,0,0,0,0,0,0,0,0,1,0
+Isometric Neck Holds,0,0,0,0,0,0,0,0,0,0,0,1,0
+Neck Plank (Front/Back),0,0,0,0,0,0,0,0,0,0,0,1,0
+Dragon Flags,0,0,0,0,0,0,0,0,0,0,0,0,1
+Toes-to-Bar,0,0,0,0.5,0,0,0,0,0,0,0,0,1
+Windshield Wipers,0,0,0,0,0,0,0,0,0,0,0,0,1
+L-Sit,0,0.5,0,0,0,0,0,0,0,0,0,0,1
+V-Sit,0,0,0,0,0,0,0,0,0,0,0,0,1
+Human Flag Progressions,0,1,0,0.5,0,0,0,0,0,0,0,0,1
+Ring Rollouts,0,0,0,0.5,0,0,0,0,0,0,0,0,1
+Hollow Body Rocks,0,0,0,0,0,0,0,0,0,0,0,0,1
+Compression Leg Lifts,0,0,0,0,0,0,0,0.5,0,0,0,0,1
+Manna,0,0,0,0,0,0,0,0,0,0,0,0,1
+Vacuum,0,0,0,0,0,0,0,0,0,0,0,0,1
+QDR (Rotational Push-Ups),1,0.5,0,0,0,0,0,0,0,0,0,0,0.5
+Press to Handstand,0,1,0,0,0,0,0,0,0,0,0,0,0.5
+Back Lever Progressions,0,0,0,1,0,0,0,0,0,0,0,0,0.5
+Ice Cream Makers,0,0,0,1,0,0,0,0,0,0,0,0,1
+Straddle Planche,0.5,1,0,0.5,0,0,0,0,0,0,0,0,0.5
