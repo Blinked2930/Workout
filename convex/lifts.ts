@@ -12,6 +12,7 @@ export const logSet = mutation({
     sets: v.number(),
     rir: v.optional(v.number()),
     notes: v.optional(v.string()),
+    timestamp: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const effectiveWeight = args.weight + (args.addedWeight ?? 0);
@@ -21,7 +22,7 @@ export const logSet = mutation({
       : undefined;
 
     return await ctx.db.insert("liftSets", {
-      timestamp: Date.now(),
+      timestamp: args.timestamp ?? Date.now(),
       exerciseName: args.exerciseName,
       category: args.category,
       subcategory: args.subcategory,
@@ -33,6 +34,32 @@ export const logSet = mutation({
       notes: args.notes,
       volume,
       e1rm,
+    });
+  },
+});
+
+export const updateSet = mutation({
+  args: {
+    id: v.id("liftSets"),
+    weight: v.number(),
+    reps: v.number(),
+    sets: v.number(),
+    rir: v.optional(v.number()),
+    notes: v.optional(v.string()),
+    timestamp: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const { id, ...updates } = args;
+    const volume = updates.weight * updates.reps * updates.sets;
+    const e1rm = updates.weight > 0
+      ? updates.weight * (1 + updates.reps / 30)
+      : undefined;
+
+    await ctx.db.patch(id, {
+      ...updates,
+      volume,
+      e1rm,
+      timestamp: updates.timestamp ?? Date.now(),
     });
   },
 });

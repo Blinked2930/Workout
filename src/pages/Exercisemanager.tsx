@@ -1,0 +1,463 @@
+// src/pages/ExerciseManager.tsx
+import React, { useState, useMemo } from 'react';
+import {
+  Box, Typography, Paper, Button, Dialog, DialogTitle,
+  DialogContent, DialogActions, TextField, Chip, IconButton,
+  Snackbar, Alert, InputAdornment, List, ListItemButton,
+  ListItemText, Divider, Slider,
+} from '@mui/material';
+import { useQuery, useMutation } from 'convex/react';
+import { api } from '../../convex/_generated/api';
+import AddIcon from '@mui/icons-material/Add';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import SearchIcon from '@mui/icons-material/Search';
+import CloseIcon from '@mui/icons-material/Close';
+
+const CATEGORIES = ['Push', 'Pull', 'Legs', 'Core'];
+const SUBCATEGORIES: Record<string, string[]> = {
+  Push: ['Chest', 'Shoulders', 'Triceps'],
+  Pull: ['Back', 'Upper Traps', 'Biceps', 'Lats'],
+  Legs: ['Quads', 'Hamstrings', 'Glutes', 'Calves'],
+  Core: ['Core'],
+};
+const CATEGORY_EMOJI: Record<string, string> = {
+  Push: '🫸', Pull: '🫷', Legs: '🦵', Core: '🎯',
+};
+
+const MUSCLE_GROUPS = [
+  { key: 'chest', label: 'Chest', emoji: '🫁' },
+  { key: 'shoulders', label: 'Shoulders', emoji: '🏔️' },
+  { key: 'triceps', label: 'Triceps', emoji: '💪' },
+  { key: 'back', label: 'Back', emoji: '🔙' },
+  { key: 'upperTraps', label: 'Upper Traps', emoji: '🦬' },
+  { key: 'biceps', label: 'Biceps', emoji: '🦾' },
+  { key: 'glutes', label: 'Glutes', emoji: '🍑' },
+  { key: 'quads', label: 'Quads', emoji: '🦵' },
+  { key: 'hamstrings', label: 'Hamstrings', emoji: '🦿' },
+  { key: 'calves', label: 'Calves', emoji: '⬇️' },
+  { key: 'forearms', label: 'Forearms', emoji: '🤜' },
+  { key: 'neck', label: 'Neck', emoji: '🦒' },
+  { key: 'core', label: 'Core', emoji: '🎯' },
+];
+
+const WEIGHT_LABELS: Record<number, string> = {
+  0: 'None',
+  0.25: '¼ set',
+  0.5: '½ set',
+  0.75: '¾ set',
+  1: 'Full set',
+};
+
+type MuscleWeights = Record<string, number>;
+
+const emptyWeights = (): MuscleWeights =>
+  Object.fromEntries(MUSCLE_GROUPS.map(m => [m.key, 0]));
+
+function MuscleWeightRow({ muscle, value, onChange }: {
+  muscle: typeof MUSCLE_GROUPS[0];
+  value: number;
+  onChange: (v: number) => void;
+}) {
+  const color = value === 0 ? '#444' : value < 0.5 ? '#ffb800' : value < 1 ? '#00d4ff' : '#00e096';
+  return (
+    <Box sx={{ mb: 1.5 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+        <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>
+          {muscle.emoji} {muscle.label}
+        </Typography>
+        <Chip
+          label={WEIGHT_LABELS[value] ?? `${value}×`}
+          size="small"
+          sx={{
+            fontSize: '0.68rem', height: 20, fontWeight: 700,
+            bgcolor: `${color}22`, color,
+          }}
+        />
+      </Box>
+      <Slider
+        value={value}
+        onChange={(_, v) => onChange(v as number)}
+        min={0} max={1} step={0.25}
+        marks={[
+          { value: 0 }, { value: 0.25 }, { value: 0.5 }, { value: 0.75 }, { value: 1 },
+        ]}
+        sx={{
+          color,
+          height: 4,
+          '& .MuiSlider-thumb': { width: 14, height: 14 },
+          '& .MuiSlider-mark': { bgcolor: 'rgba(255,255,255,0.2)', width: 2, height: 2 },
+        }}
+      />
+    </Box>
+  );
+}
+
+function ExerciseDialog({ exercise, open, onClose, onSave }: {
+  exercise?: any;
+  open: boolean;
+  onClose: () => void;
+  onSave: (data: any) => void;
+}) {
+  const [name, setName] = useState(exercise?.name ?? '');
+  const [category, setCategory] = useState(exercise?.category ?? '');
+  const [subcategory, setSubcategory] = useState(exercise?.subcategory ?? '');
+  const [isBodyweight, setIsBodyweight] = useState(exercise?.isBodyweight ?? true);
+  const [weights, setWeights] = useState<MuscleWeights>(
+    exercise?.muscleWeights
+      ? { ...emptyWeights(), ...exercise.muscleWeights }
+      : emptyWeights()
+  );
+
+  React.useEffect(() => {
+    if (exercise) {
+      setName(exercise.name);
+      setCategory(exercise.category);
+      setSubcategory(exercise.subcategory ?? '');
+      setIsBodyweight(exercise.isBodyweight);
+      setWeights({ ...emptyWeights(), ...exercise.muscleWeights });
+    } else {
+      setName(''); setCategory(''); setSubcategory('');
+      setIsBodyweight(true); setWeights(emptyWeights());
+    }
+  }, [exercise, open]);
+
+  const isValid = name.trim() && category;
+
+  return (
+    <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
+      <DialogTitle sx={{ pb: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Typography variant="h6" sx={{ fontWeight: 800 }}>
+          {exercise ? 'Edit Exercise ✏️' : 'Add Exercise ➕'}
+        </Typography>
+        <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
+      </DialogTitle>
+
+      <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
+        {/* Name */}
+        <TextField
+          label="Exercise name" size="small" fullWidth
+          value={name} onChange={e => setName(e.target.value)}
+          placeholder="e.g. Archer Push-Ups"
+        />
+
+        {/* Category */}
+        <Box>
+          <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: 'text.secondary', mb: 1, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            Category <Box component="span" sx={{ color: '#00d4ff' }}>*</Box>
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            {CATEGORIES.map(cat => (
+              <Chip
+                key={cat} label={`${CATEGORY_EMOJI[cat]} ${cat}`}
+                onClick={() => { setCategory(cat); setSubcategory(''); }}
+                sx={{
+                  cursor: 'pointer', fontWeight: 700,
+                  bgcolor: category === cat ? 'rgba(0,212,255,0.15)' : 'rgba(255,255,255,0.05)',
+                  color: category === cat ? '#00d4ff' : 'text.secondary',
+                  border: category === cat ? '1px solid rgba(0,212,255,0.4)' : '1px solid transparent',
+                }}
+              />
+            ))}
+          </Box>
+        </Box>
+
+        {/* Subcategory */}
+        {category && (
+          <Box>
+            <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: 'text.secondary', mb: 1, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              Muscle Group (optional)
+            </Typography>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              {SUBCATEGORIES[category]?.map(sub => (
+                <Chip
+                  key={sub} label={sub} size="small"
+                  onClick={() => setSubcategory(sub === subcategory ? '' : sub)}
+                  sx={{
+                    cursor: 'pointer', fontWeight: 600,
+                    bgcolor: subcategory === sub ? 'rgba(0,224,150,0.15)' : 'rgba(255,255,255,0.05)',
+                    color: subcategory === sub ? '#00e096' : 'text.secondary',
+                    border: subcategory === sub ? '1px solid rgba(0,224,150,0.4)' : '1px solid transparent',
+                  }}
+                />
+              ))}
+            </Box>
+          </Box>
+        )}
+
+        {/* Bodyweight toggle */}
+        <Box>
+          <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: 'text.secondary', mb: 1, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            Exercise Type
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            {[
+              { val: true, label: '🤸 Bodyweight', color: '#00e096' },
+              { val: false, label: '🏋️ Weighted', color: '#ff6b35' },
+            ].map(opt => (
+              <Chip
+                key={String(opt.val)} label={opt.label}
+                onClick={() => setIsBodyweight(opt.val)}
+                sx={{
+                  cursor: 'pointer', fontWeight: 700,
+                  bgcolor: isBodyweight === opt.val ? `${opt.color}22` : 'rgba(255,255,255,0.05)',
+                  color: isBodyweight === opt.val ? opt.color : 'text.secondary',
+                  border: isBodyweight === opt.val ? `1px solid ${opt.color}55` : '1px solid transparent',
+                }}
+              />
+            ))}
+          </Box>
+        </Box>
+
+        {/* Muscle weights */}
+        <Box>
+          <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: 'text.secondary', mb: 0.5, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            Muscle Group Contributions
+          </Typography>
+          <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', mb: 1.5 }}>
+            How much does each muscle group count per set? Full = 1 set, Half = 0.5 sets, etc.
+          </Typography>
+          {MUSCLE_GROUPS.map(muscle => (
+            <MuscleWeightRow
+              key={muscle.key}
+              muscle={muscle}
+              value={weights[muscle.key] ?? 0}
+              onChange={v => setWeights(prev => ({ ...prev, [muscle.key]: v }))}
+            />
+          ))}
+        </Box>
+      </DialogContent>
+
+      <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
+        <Button onClick={onClose} sx={{ color: 'text.secondary' }}>Cancel</Button>
+        <Button
+          variant="contained" onClick={() => onSave({ name: name.trim(), category, subcategory: subcategory || undefined, isBodyweight, muscleWeights: weights })}
+          disabled={!isValid}
+          sx={{ flex: 1, py: 1.5 }}
+        >
+          {exercise ? 'Save Changes ✅' : 'Add Exercise ✅'}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+export default function ExerciseManager() {
+  const [search, setSearch] = useState('');
+  const [filterCat, setFilterCat] = useState('');
+  const [addOpen, setAddOpen] = useState(false);
+  const [editExercise, setEditExercise] = useState<any | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState('');
+
+  const exercises = useQuery(api.exercises.getExercises, { category: '' });
+  
+  // All Database Mutations
+  const addExercise = useMutation(api.exercises.addExercise);
+  const updateExercise = useMutation(api.exercises.updateExercise);
+  const deleteExercise = useMutation(api.exercises.deleteExercise); 
+
+  const filtered = useMemo(() => {
+    if (!exercises) return [];
+    return exercises.filter(ex => {
+      const matchesCat = !filterCat || ex.category === filterCat;
+      const matchesSearch = !search || ex.name.toLowerCase().includes(search.toLowerCase());
+      return matchesCat && matchesSearch;
+    });
+  }, [exercises, search, filterCat]);
+
+  const handleAdd = async (data: any) => {
+    await addExercise(data);
+    setAddOpen(false);
+    setSuccessMsg('Exercise added! ✅');
+  };
+
+  const handleEdit = async (data: any) => {
+    if (!editExercise) return;
+    await updateExercise({ id: editExercise._id, ...data });
+    setEditExercise(null);
+    setSuccessMsg('Exercise updated! 🔄');
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirmId) return;
+    try {
+      await deleteExercise({ id: deleteConfirmId as any });
+      setSuccessMsg('Exercise deleted! 🗑️');
+    } catch (err) {
+      console.error("Failed to delete exercise:", err);
+      setSuccessMsg('Error deleting exercise.');
+    } finally {
+      setDeleteConfirmId(null);
+    }
+  };
+
+  return (
+    <Box sx={{ px: 2, pt: 3, pb: 2, maxWidth: 480, mx: 'auto' }}>
+      <Box sx={{ mb: 3 }}>
+        <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#00d4ff', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 0.5 }}>
+          Database
+        </Typography>
+        <Typography variant="h4" sx={{ fontWeight: 800, lineHeight: 1.1 }}>
+          Exercise<br />
+          <Box component="span" sx={{ color: '#00d4ff' }}>Manager 🗂️</Box>
+        </Typography>
+      </Box>
+
+      <Button
+        fullWidth variant="contained" size="large"
+        onClick={() => setAddOpen(true)}
+        startIcon={<AddIcon />}
+        sx={{
+          py: 2, fontSize: '1rem', fontWeight: 800, borderRadius: 4, mb: 3,
+          background: 'linear-gradient(135deg, #b06aff 0%, #7b35cc 100%)',
+          boxShadow: '0 8px 32px rgba(176,106,255,0.3)',
+        }}
+      >
+        Add New Exercise
+      </Button>
+
+      {/* Search + filter */}
+      <TextField
+        fullWidth size="small"
+        placeholder="Search exercises..."
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+        InputProps={{
+          startAdornment: <InputAdornment position="start"><SearchIcon sx={{ fontSize: '1rem', color: 'text.secondary' }} /></InputAdornment>,
+        }}
+        sx={{ mb: 1.5 }}
+      />
+      <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
+        <Chip
+          label="All"
+          onClick={() => setFilterCat('')}
+          size="small"
+          sx={{
+            cursor: 'pointer', fontWeight: 700,
+            bgcolor: !filterCat ? 'rgba(0,212,255,0.15)' : 'rgba(255,255,255,0.05)',
+            color: !filterCat ? '#00d4ff' : 'text.secondary',
+            border: !filterCat ? '1px solid rgba(0,212,255,0.4)' : '1px solid transparent',
+          }}
+        />
+        {CATEGORIES.map(cat => (
+          <Chip
+            key={cat} label={`${CATEGORY_EMOJI[cat]} ${cat}`} size="small"
+            onClick={() => setFilterCat(cat === filterCat ? '' : cat)}
+            sx={{
+              cursor: 'pointer', fontWeight: 700,
+              bgcolor: filterCat === cat ? 'rgba(0,212,255,0.15)' : 'rgba(255,255,255,0.05)',
+              color: filterCat === cat ? '#00d4ff' : 'text.secondary',
+              border: filterCat === cat ? '1px solid rgba(0,212,255,0.4)' : '1px solid transparent',
+            }}
+          />
+        ))}
+      </Box>
+
+      <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', mb: 1.5 }}>
+        {filtered.length} exercises
+      </Typography>
+
+      <Paper sx={{ borderRadius: 3, overflow: 'hidden' }}>
+        <List dense disablePadding>
+          {filtered.map((ex, i) => (
+            <React.Fragment key={ex._id}>
+              {i > 0 && <Divider sx={{ borderColor: 'rgba(255,255,255,0.05)' }} />}
+              <ListItemButton
+                sx={{ py: 1.5, '&:hover': { bgcolor: 'rgba(255,255,255,0.03)' } }}
+              >
+                <ListItemText
+                  primary={ex.name}
+                  secondary={
+                    <Box component="span" sx={{ display: 'flex', gap: 0.5, alignItems: 'center', mt: 0.25, flexWrap: 'wrap' }}>
+                      <Chip
+                        label={`${CATEGORY_EMOJI[ex.category] ?? ''} ${ex.category}`}
+                        size="small"
+                        sx={{ fontSize: '0.6rem', height: 16, bgcolor: 'rgba(0,212,255,0.1)', color: '#00d4ff' }}
+                      />
+                      {ex.isBodyweight && (
+                        <Chip label="BW" size="small" sx={{ fontSize: '0.6rem', height: 16, bgcolor: 'rgba(0,224,150,0.1)', color: '#00e096' }} />
+                      )}
+                      {Object.entries(ex.muscleWeights ?? {}).filter(([, v]) => (v as number) > 0).slice(0, 3).map(([k, v]) => (
+                        <Chip key={k} label={`${k} ×${v}`} size="small" sx={{ fontSize: '0.6rem', height: 16, bgcolor: 'rgba(255,255,255,0.05)', color: 'text.secondary' }} />
+                      ))}
+                    </Box>
+                  }
+                  primaryTypographyProps={{ fontSize: '0.9rem', fontWeight: 600 }}
+                />
+                <Box sx={{ display: 'flex', gap: 0.5 }}>
+                  <IconButton size="small" onClick={() => setEditExercise(ex)} sx={{ opacity: 0.4, '&:hover': { opacity: 1, color: '#00d4ff' } }}>
+                    <EditIcon sx={{ fontSize: '1.1rem' }} />
+                  </IconButton>
+                  <IconButton size="small" onClick={() => setDeleteConfirmId(ex._id)} sx={{ opacity: 0.4, '&:hover': { opacity: 1, color: '#ff4d6d' } }}>
+                    <DeleteIcon sx={{ fontSize: '1.1rem' }} />
+                  </IconButton>
+                </Box>
+              </ListItemButton>
+            </React.Fragment>
+          ))}
+        </List>
+      </Paper>
+
+      <ExerciseDialog open={addOpen} onClose={() => setAddOpen(false)} onSave={handleAdd} />
+      <ExerciseDialog open={!!editExercise} exercise={editExercise} onClose={() => setEditExercise(null)} onSave={handleEdit} />
+
+      {/* ─── Delete Confirmation Dialog ─────────────────────────────────── */}
+      <Dialog 
+        open={!!deleteConfirmId} 
+        onClose={() => setDeleteConfirmId(null)}
+        PaperProps={{
+          sx: {
+            borderRadius: 4,
+            p: 1,
+            background: 'linear-gradient(180deg, #1a1b1f 0%, #12141a 100%)',
+            border: '1px solid rgba(255, 77, 109, 0.3)',
+            maxWidth: 320,
+            textAlign: 'center',
+            boxShadow: '0 8px 32px rgba(255, 77, 109, 0.2)'
+          }
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, color: '#ff4d6d', pb: 1 }}>
+          Delete Exercise?
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>
+            Are you sure you want to delete this exercise? This will permanently remove it from your database.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'center', gap: 1.5, pb: 2, px: 3 }}>
+          <Button 
+            onClick={() => setDeleteConfirmId(null)} 
+            sx={{ color: 'text.secondary', fontWeight: 700, flex: 1 }}
+          >
+            Cancel
+          </Button>
+          <Button 
+            variant="contained" 
+            color="error"
+            onClick={confirmDelete}
+            sx={{ 
+              flex: 1,
+              fontWeight: 800,
+              borderRadius: 2,
+              background: '#ff4d6d',
+              color: '#fff',
+              boxShadow: '0 4px 12px rgba(255, 77, 109, 0.3)',
+              '&:hover': { background: '#e63950' }
+            }}
+          >
+            Delete 🗑️
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar open={!!successMsg} autoHideDuration={2500} onClose={() => setSuccessMsg('')}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        sx={{ bottom: '80px !important' }}
+      >
+        <Alert severity="success" sx={{ borderRadius: 3, fontWeight: 700 }}>{successMsg}</Alert>
+      </Snackbar>
+    </Box>
+  );
+}

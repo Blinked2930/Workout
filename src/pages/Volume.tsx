@@ -1,147 +1,189 @@
 // src/pages/Volume.tsx
-import React from 'react';
-import { Box, Typography, Paper, LinearProgress, Chip } from '@mui/material';
-import { useQuery } from 'convex/react';
+import React, { useState, useMemo } from 'react';
+import {
+  Box, Typography, Paper, Dialog, DialogTitle,
+  DialogContent, DialogActions, Button, TextField, IconButton,
+} from '@mui/material';
+import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
+import CloseIcon from '@mui/icons-material/Close';
+
+// Maps exercise muscleWeights schema keys → weeklyGoals muscleGroup names
+const SCHEMA_TO_GOAL: Record<string, string> = {
+  chest:      'Chest',
+  shoulders:  'Shoulders',
+  triceps:    'Triceps - Isolation',
+  back:       'Back',
+  upperTraps: 'Upper Traps',
+  biceps:     'Biceps - Isolation',
+  glutes:     'Glute',
+  quads:      'Quads',
+  hamstrings: 'Hamstrings',
+  calves:     'Calves',
+  forearms:   'Forearms',
+  neck:       'Neck',
+  core:       'Core',
+};
 
 const MUSCLE_EMOJI: Record<string, string> = {
   Chest: '🫁', Shoulders: '🏔️', 'Triceps - Isolation': '💪',
-  Back: '🔙', 'Upper Traps': '🦬', 'Biceps - Isolation': '💪',
-  Glute: '🍑', Quads: '🦵', Hamstrings: '🦿', Calves: '🦵',
-  Forearms: '🦾', Neck: '🦒', Core: '🎯',
+  Back: '🔙', 'Upper Traps': '🦬', 'Biceps - Isolation': '🦾',
+  Glute: '🍑', Quads: '🦵', Hamstrings: '🦿', Calves: '⬇️',
+  Forearms: '🤜', Neck: '🦒', Core: '🎯',
 };
 
-const MUSCLE_COLOR: Record<string, string> = {
-  Chest: '#ff6b35', Shoulders: '#ffb800', 'Triceps - Isolation': '#ff4d6d',
-  Back: '#00d4ff', 'Upper Traps': '#0099cc', 'Biceps - Isolation': '#00aaff',
-  Glute: '#b06aff', Quads: '#00e096', Hamstrings: '#00c97a', Calves: '#00a860',
-  Forearms: '#ff9500', Neck: '#ff6b6b', Core: '#ffcc00',
+const MUSCLE_SHORT: Record<string, string> = {
+  'Triceps - Isolation': 'Triceps',
+  'Biceps - Isolation': 'Biceps',
+  'Upper Traps': 'U. Traps',
 };
 
-// ExerciseDB muscle weight mapping (from spreadsheet)
-const EXERCISE_MUSCLE_MAP: Record<string, Record<string, number>> = {
-  'Bench press': { Chest: 1, Shoulders: 0.5 },
-  'Overhead press': { Shoulders: 1 },
-  'Push-Ups': { Chest: 1, Shoulders: 0.5, Core: 0.5 },
-  'Tricep pushdowns': { 'Triceps - Isolation': 1 },
-  'Wide grip pull down': { Back: 1, 'Biceps - Isolation': 0.5 },
-  'DB row': { Back: 1 },
-  'Z bar curl': { 'Biceps - Isolation': 1 },
-  'Inclined curls': { 'Biceps - Isolation': 1 },
-  'Leg extensions': { Quads: 1 },
-  'Leg press': { Quads: 1, Hamstrings: 0.5 },
-  'Seated leg curls': { Hamstrings: 1 },
-  'Laying Leg curls': { Hamstrings: 1 },
-  'Barbell RDL': { Hamstrings: 1, Glute: 0.5 },
-  'Seated toe raises': { Calves: 1 },
-  'Cable crunch': { Core: 1 },
-  'Barbell Glute bridges': { Glute: 1, Hamstrings: 0.5 },
-  'Barbell Hip Thrust': { Glute: 1 },
-};
-
-function getMuscleContributions(exerciseName: string, muscleWeights?: Record<string, number>) {
-  if (muscleWeights && Object.keys(muscleWeights).length > 0) return muscleWeights;
-  return EXERCISE_MUSCLE_MAP[exerciseName] ?? {};
+// Color thresholds for progress
+function tileColor(sets: number, low: number, high: number): string {
+  if (sets === 0)         return '#2a2a3a';
+  if (sets < low * 0.5)   return '#ff4d6d'; // very low — red
+  if (sets < low)         return '#ffb800'; // approaching min — amber
+  if (sets <= high * 0.6) return '#00e096'; // lower half of range — green
+  if (sets <= high)       return '#00d4ff'; // upper half of range — cyan
+  return '#b06aff';                         // over max — achievement purple
 }
 
-function VolumeBar({ muscle, sets, low, high, color }: {
-  muscle: string; sets: number; low: number; high: number; color: string;
+function GoalEditDialog({ goal, open, onClose, onSave }: {
+  goal: { muscleGroup: string; lowGoal: number; highGoal: number } | null;
+  open: boolean; onClose: () => void;
+  onSave: (low: number, high: number) => void;
 }) {
-  const pct = Math.min((sets / high) * 100, 100);
-  const lowPct = (low / high) * 100;
-  const status = sets === 0 ? 'none' : sets < low ? 'low' : sets <= high ? 'good' : 'over';
-  const statusColors = { none: '#555566', low: '#ffb800', good: '#00e096', over: '#00d4ff' };
+  const [low, setLow] = useState('');
+  const [high, setHigh] = useState('');
+
+  React.useEffect(() => {
+    if (goal) { setLow(goal.lowGoal.toString()); setHigh(goal.highGoal.toString()); }
+  }, [goal]);
 
   return (
-    <Paper sx={{ p: 2, borderRadius: 3, mb: 1.5 }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Typography sx={{ fontSize: '1.1rem' }}>{MUSCLE_EMOJI[muscle] ?? '💪'}</Typography>
-          <Typography sx={{ fontWeight: 700, fontSize: '0.9rem' }}>{muscle}</Typography>
-        </Box>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          <Typography sx={{ fontWeight: 800, fontSize: '1.1rem', color }}>
-            {sets.toFixed(1)}
-          </Typography>
-          <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
-            / {low}–{high}
-          </Typography>
-          <Chip
-            label={status === 'none' ? 'Start' : status === 'low' ? 'Low' : status === 'good' ? '✓ Good' : '🔥 Max'}
-            size="small"
-            sx={{
-              fontSize: '0.65rem',
-              fontWeight: 700,
-              height: 20,
-              bgcolor: `${statusColors[status]}22`,
-              color: statusColors[status],
-              border: `1px solid ${statusColors[status]}44`,
-            }}
-          />
-        </Box>
-      </Box>
-      <Box sx={{ position: 'relative' }}>
-        <LinearProgress
-          variant="determinate"
-          value={pct}
-          sx={{
-            height: 8,
-            borderRadius: 4,
-            bgcolor: 'rgba(255,255,255,0.06)',
-            '& .MuiLinearProgress-bar': {
-              borderRadius: 4,
-              background: pct >= 100
-                ? `linear-gradient(90deg, ${color}, #00d4ff)`
-                : color,
-            },
-          }}
-        />
-        {/* Low goal marker */}
-        <Box sx={{
-          position: 'absolute',
-          left: `${lowPct}%`,
-          top: -2,
-          width: 2,
-          height: 12,
-          bgcolor: 'rgba(255,255,255,0.2)',
-          borderRadius: 1,
-          transform: 'translateX(-50%)',
-        }} />
-      </Box>
-      {sets < low && sets > 0 && (
-        <Typography sx={{ fontSize: '0.7rem', color: '#ffb800', mt: 0.5 }}>
-          {(low - sets).toFixed(1)} more sets to minimum
+    <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
+      <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography sx={{ fontWeight: 800 }}>
+          {MUSCLE_EMOJI[goal?.muscleGroup ?? ''] ?? '💪'} {goal?.muscleGroup}
         </Typography>
-      )}
+        <IconButton size="small" onClick={onClose}><CloseIcon /></IconButton>
+      </DialogTitle>
+      <DialogContent sx={{ display: 'flex', gap: 2, pt: 1 }}>
+        {/* Added mt: 1 to push the text fields down so the label isn't cut off */}
+        <TextField sx={{ mt: 1 }} label="Min sets/week" type="number" size="small" fullWidth value={low} onChange={e => setLow(e.target.value)} inputProps={{ min: 0 }} />
+        <TextField sx={{ mt: 1 }} label="Max sets/week" type="number" size="small" fullWidth value={high} onChange={e => setHigh(e.target.value)} inputProps={{ min: 0 }} />
+      </DialogContent>
+      <DialogActions sx={{ px: 3, pb: 3 }}>
+        <Button onClick={onClose} sx={{ color: 'text.secondary' }}>Cancel</Button>
+        <Button variant="contained" onClick={() => onSave(parseInt(low), parseInt(high))} sx={{ flex: 1 }}>
+          Save ✅
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+function MuscleTile({ muscle, sets, low, high, onEdit }: {
+  muscle: string; sets: number; low: number; high: number; onEdit: () => void;
+}) {
+  const color = tileColor(sets, low, high);
+  const fillPct = Math.min((sets / Math.max(high, 1)) * 100, 100);
+
+  return (
+    <Paper 
+      onClick={onEdit}
+      sx={{
+        borderRadius: 3, position: 'relative', overflow: 'hidden',
+        minHeight: 110, p: 1.5,
+        border: `1px solid ${sets > 0 ? color + '55' : 'rgba(255,255,255,0.06)'}`,
+        bgcolor: 'rgba(255,255,255,0.02)',
+        cursor: 'pointer',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        textAlign: 'center',
+        transition: 'transform 0.1s ease, border-color 0.3s ease',
+        '&:active': { transform: 'scale(0.96)' }
+      }}
+    >
+      <Box sx={{
+        position: 'absolute', bottom: 0, left: 0, right: 0,
+        height: `${fillPct}%`,
+        background: `linear-gradient(to top, ${color}35 0%, ${color}05 100%)`,
+        transition: 'height 0.6s ease, background 0.4s ease',
+        pointerEvents: 'none',
+      }} />
+
+      <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
+        <Typography sx={{ fontSize: '1.2rem', mb: 0.5, lineHeight: 1 }}>
+          {MUSCLE_EMOJI[muscle] ?? '💪'}
+        </Typography>
+
+        <Typography sx={{
+          fontSize: sets >= 10 ? '1.5rem' : '1.8rem',
+          fontWeight: 800, color, lineHeight: 1, mb: 0.25,
+        }}>
+          {sets % 1 === 0 ? sets : sets.toFixed(1)}
+        </Typography>
+
+        <Typography sx={{ 
+          fontSize: '0.65rem', fontWeight: 700, color: 'text.secondary', 
+          lineHeight: 1.2, mb: 0.5, textTransform: 'uppercase', letterSpacing: '0.05em' 
+        }}>
+          {MUSCLE_SHORT[muscle] ?? muscle}
+        </Typography>
+
+        <Typography sx={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.3)', fontWeight: 600, letterSpacing: '0.05em' }}>
+          GOAL: {low}–{high}
+        </Typography>
+      </Box>
     </Paper>
   );
 }
 
 export default function Volume() {
+  const [editGoal, setEditGoal] = useState<{ muscleGroup: string; lowGoal: number; highGoal: number } | null>(null);
+
   const thisWeeksLifts = useQuery(api.lifts.getThisWeeksLifts);
   const weeklyGoals = useQuery(api.weeklyGoals.getWeeklyGoals);
+  const allExercises = useQuery(api.exercises.getExercises, { category: '' });
+  const updateGoal = useMutation(api.weeklyGoals.updateWeeklyGoal);
 
-  // Calculate sets per muscle group from this week's lifts
-  const muscleSetMap: Record<string, number> = {};
+  const exerciseMuscleMap = useMemo(() => {
+    const map: Record<string, Record<string, number>> = {};
+    allExercises?.forEach(ex => { map[ex.name] = (ex.muscleWeights as Record<string, number>) ?? {}; });
+    return map;
+  }, [allExercises]);
 
-  thisWeeksLifts?.forEach(lift => {
-    const contributions = getMuscleContributions(lift.exerciseName, {});
-    Object.entries(contributions).forEach(([muscle, weight]) => {
-      muscleSetMap[muscle] = (muscleSetMap[muscle] ?? 0) + (lift.sets * weight);
+  const muscleSetMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    thisWeeksLifts?.forEach(lift => {
+      const weights = exerciseMuscleMap[lift.exerciseName] ?? {};
+      Object.entries(weights).forEach(([schemaKey, w]) => {
+        const goalKey = SCHEMA_TO_GOAL[schemaKey];
+        if (goalKey && (w as number) > 0) {
+          map[goalKey] = (map[goalKey] ?? 0) + lift.sets * (w as number);
+        }
+      });
     });
-  });
+    return map;
+  }, [thisWeeksLifts, exerciseMuscleMap]);
 
-  const totalSetsThisWeek = thisWeeksLifts?.reduce((a, l) => a + l.sets, 0) ?? 0;
+  const totalSets = thisWeeksLifts?.reduce((a, l) => a + l.sets, 0) ?? 0;
   const musclesHit = Object.values(muscleSetMap).filter(v => v > 0).length;
+  const atGoal = weeklyGoals?.filter(g => (muscleSetMap[g.muscleGroup] ?? 0) >= g.lowGoal).length ?? 0;
+
+  const handleSaveGoal = async (low: number, high: number) => {
+    if (!editGoal) return;
+    await updateGoal({ muscleGroup: editGoal.muscleGroup, lowGoal: low, highGoal: high });
+    setEditGoal(null);
+  };
 
   return (
     <Box sx={{ px: 2, pt: 3, pb: 2, maxWidth: 480, mx: 'auto' }}>
-      {/* Header */}
       <Box sx={{ mb: 3 }}>
-        <Typography sx={{
-          fontSize: '0.75rem', fontWeight: 700, color: '#00d4ff',
-          textTransform: 'uppercase', letterSpacing: '0.12em', mb: 0.5,
-        }}>
+        <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#00d4ff', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 0.5 }}>
           This Week
         </Typography>
         <Typography variant="h4" sx={{ fontWeight: 800, lineHeight: 1.1 }}>
@@ -150,51 +192,39 @@ export default function Volume() {
         </Typography>
       </Box>
 
-      {/* Summary pills */}
-      <Box sx={{ display: 'flex', gap: 1.5, mb: 3 }}>
-        <Paper sx={{ px: 2, py: 1.5, borderRadius: 3, flex: 1, textAlign: 'center' }}>
-          <Typography sx={{ fontSize: '1.6rem', fontWeight: 800, color: '#00d4ff' }}>
-            {totalSetsThisWeek}
-          </Typography>
-          <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary', fontWeight: 700 }}>
-            TOTAL SETS
-          </Typography>
-        </Paper>
-        <Paper sx={{ px: 2, py: 1.5, borderRadius: 3, flex: 1, textAlign: 'center' }}>
-          <Typography sx={{ fontSize: '1.6rem', fontWeight: 800, color: '#00e096' }}>
-            {musclesHit}
-          </Typography>
-          <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary', fontWeight: 700 }}>
-            MUSCLES HIT
-          </Typography>
-        </Paper>
-        <Paper sx={{ px: 2, py: 1.5, borderRadius: 3, flex: 1, textAlign: 'center' }}>
-          <Typography sx={{ fontSize: '1.6rem', fontWeight: 800, color: '#ffb800' }}>
-            {weeklyGoals?.filter(g => (muscleSetMap[g.muscleGroup] ?? 0) >= g.lowGoal).length ?? 0}
-          </Typography>
-          <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary', fontWeight: 700 }}>
-            AT GOAL
-          </Typography>
-        </Paper>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 1.5, mb: 3 }}>
+        {[
+          { label: 'Total Sets', value: totalSets, color: '#00d4ff' },
+          { label: 'Muscles Hit', value: musclesHit, color: '#00e096' },
+          { label: 'At Goal', value: atGoal, color: '#ffb800' },
+        ].map(s => (
+          <Paper key={s.label} sx={{ px: 1.5, py: 1.5, borderRadius: 3, textAlign: 'center', minWidth: 0 }}>
+            <Typography sx={{ fontSize: '1.5rem', fontWeight: 800, color: s.color, lineHeight: 1 }}>{s.value}</Typography>
+            <Typography sx={{ fontSize: '0.6rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', mt: 0.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {s.label}
+            </Typography>
+          </Paper>
+        ))}
       </Box>
 
-      {/* Muscle bars */}
-      {weeklyGoals ? (
-        weeklyGoals.map(goal => (
-          <VolumeBar
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 1.5 }}>
+        {weeklyGoals?.map(goal => (
+          <MuscleTile
             key={goal.muscleGroup}
             muscle={goal.muscleGroup}
             sets={muscleSetMap[goal.muscleGroup] ?? 0}
             low={goal.lowGoal}
             high={goal.highGoal}
-            color={MUSCLE_COLOR[goal.muscleGroup] ?? '#00d4ff'}
+            onEdit={() => setEditGoal(goal)}
           />
-        ))
-      ) : (
-        <Typography sx={{ color: 'text.secondary', textAlign: 'center', mt: 4 }}>
-          Loading goals...
-        </Typography>
-      )}
+        ))}
+      </Box>
+
+      <GoalEditDialog
+        goal={editGoal} open={!!editGoal}
+        onClose={() => setEditGoal(null)}
+        onSave={handleSaveGoal}
+      />
     </Box>
   );
 }

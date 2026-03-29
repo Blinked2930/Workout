@@ -61,3 +61,39 @@ export const addExercise = mutation({
     return await ctx.db.insert("exercises", args);
   },
 });
+
+export const updateExercise = mutation({
+  args: {
+    id: v.id("exercises"),
+    name: v.string(),
+    category: v.string(),
+    subcategory: v.optional(v.string()),
+    isBodyweight: v.boolean(),
+    muscleWeights: v.object({
+      chest: v.optional(v.number()),
+      shoulders: v.optional(v.number()),
+      triceps: v.optional(v.number()),
+      back: v.optional(v.number()),
+      upperTraps: v.optional(v.number()),
+      biceps: v.optional(v.number()),
+      glutes: v.optional(v.number()),
+      quads: v.optional(v.number()),
+      hamstrings: v.optional(v.number()),
+      calves: v.optional(v.number()),
+      forearms: v.optional(v.number()),
+      neck: v.optional(v.number()),
+      core: v.optional(v.number()),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const { id, ...updates } = args;
+    await ctx.db.patch(id, updates);
+  },
+});
+
+export const deleteExercise = mutation({
+  args: { id: v.id("exercises") },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.id);
+  },
+});
