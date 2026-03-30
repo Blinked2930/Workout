@@ -12,6 +12,7 @@ import AddIcon from '@mui/icons-material/Add';
 import ArchiveIcon from '@mui/icons-material/Archive';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
+import DownloadIcon from '@mui/icons-material/Download';
 import { format } from 'date-fns';
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -207,9 +208,15 @@ export default function ExerciseManager() {
   const [addOpen, setAddOpen] = useState(false);
   const [editExercise, setEditExercise] = useState<any | null>(null);
   const [archiveConfirmId, setArchiveConfirmId] = useState<string | null>(null);
+  const [exportHubOpen, setExportHubOpen] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
 
+  // Queries
   const exercises = useQuery(api.exercises.getExercises, { category: '' });
+  const allLifts = useQuery(api.lifts.getLifts, {});
+  const allCardio = useQuery(api.cardio.getCardioSessions, {});
+  
+  // Mutations
   const addExercise = useMutation(api.exercises.addExercise);
   const updateExercise = useMutation(api.exercises.updateExercise);
   const archiveExercise = useMutation(api.exercises.archiveExercise);
@@ -245,7 +252,18 @@ export default function ExerciseManager() {
     finally { setArchiveConfirmId(null); }
   };
 
-  const exportToCSV = () => {
+  // ── CSV Export Helpers ───────────────────────────────────────────────────
+  const downloadCSV = (headers: string[], rows: string[], filename: string) => {
+    const uri = 'data:text/csv;charset=utf-8,' + encodeURI([headers.join(','), ...rows].join('\n'));
+    const a = document.createElement('a');
+    a.href = uri;
+    a.download = filename;
+    document.body.appendChild(a); 
+    a.click(); 
+    document.body.removeChild(a);
+  };
+
+  const exportExercises = () => {
     if (!exercises?.length) return;
     const muscleKeys = MUSCLE_GROUPS.map(m => m.key);
     const headers = ['Exercise Name', 'Category', 'Subcategory', ...MUSCLE_GROUPS.map(m => m.label)];
@@ -253,11 +271,36 @@ export default function ExerciseManager() {
       `"${ex.name}"`, ex.category, ex.subcategory ?? '',
       ...muscleKeys.map(k => (ex.muscleWeights as any)?.[k] ?? 0),
     ].join(','));
-    const uri = 'data:text/csv;charset=utf-8,' + encodeURI([headers.join(','), ...rows].join('\n'));
-    const a = document.createElement('a');
-    a.href = uri;
-    a.download = `LiftLog_Exercises_${format(new Date(), 'yyyy-MM-dd')}.csv`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    downloadCSV(headers, rows, `LiftLog_Exercises_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+  };
+
+  const exportLifts = () => {
+    if (!allLifts?.length) return;
+    const headers = ['Date', 'Time', 'Category', 'Subcategory', 'Exercise', 'Equipment', 'Weight (lbs)', 'Reps', 'Sets', 'Volume', 'e1RM', 'Notes'];
+    const rows = [...allLifts].sort((a, b) => a.timestamp - b.timestamp).map(l => {
+      const d = new Date(l.timestamp);
+      return [
+        format(d, 'yyyy-MM-dd'), format(d, 'HH:mm:ss'),
+        l.category ?? '', l.subcategory ?? '', `"${l.exerciseName}"`, l.equipmentType || '',
+        l.weight, l.reps, l.sets, l.volume,
+        l.e1rm ? l.e1rm.toFixed(1) : '', `"${l.notes ?? ''}"`,
+      ].join(',');
+    });
+    downloadCSV(headers, rows, `LiftLog_Lifts_${format(new Date(), 'yyyy-MM-dd')}.csv`);
+  };
+
+  const exportCardio = () => {
+    if (!allCardio?.length) return;
+    const headers = ["Date", "Time", "Movement Type", "Duration (min)", "Distance (mi)", "RPE", "Zone", "Notes"];
+    const rows = [...allCardio].sort((a,b) => a.timestamp - b.timestamp).map(s => {
+      const d = new Date(s.timestamp);
+      return [
+        format(d, 'yyyy-MM-dd'), format(d, 'HH:mm:ss'),
+        s.movementType, s.duration, s.distance || '',
+        s.rpe || '', s.zone || '', `"${s.notes || ''}"`
+      ].join(',');
+    });
+    downloadCSV(headers, rows, `LiftLog_Cardio_${format(new Date(), 'yyyy-MM-dd')}.csv`);
   };
 
   return (
@@ -273,10 +316,10 @@ export default function ExerciseManager() {
             <Box component="span" sx={{ color: '#00d4ff' }}>Manager 🗂️</Box>
           </Typography>
         </Box>
-        <Button variant="outlined" size="small" onClick={exportToCSV}
+        <Button variant="outlined" size="small" onClick={() => setExportHubOpen(true)}
           sx={{ borderColor: 'rgba(255,255,255,0.1)', color: 'text.secondary', fontSize: '0.75rem', py: 0.5,
             '&:hover': { borderColor: '#00d4ff', color: '#00d4ff', bgcolor: 'rgba(0,212,255,0.05)' } }}>
-          Export CSV 📥
+          Export Data 📥
         </Button>
       </Box>
 
@@ -352,6 +395,7 @@ export default function ExerciseManager() {
         </List>
       </Paper>
 
+      {/* Dialogs */}
       <ExerciseDialog open={addOpen} onClose={() => setAddOpen(false)} onSave={handleAdd} />
       <ExerciseDialog open={!!editExercise} exercise={editExercise} onClose={() => setEditExercise(null)} onSave={handleEdit} />
 
@@ -370,6 +414,33 @@ export default function ExerciseManager() {
             sx={{ flex: 1, fontWeight: 800, background: '#ffb800', color: '#000', '&:hover': { background: '#e0a300' } }}>
             Archive 🗄️
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Export Hub Dialog */}
+      <Dialog open={exportHubOpen} onClose={() => setExportHubOpen(false)}
+        PaperProps={{ sx: { borderRadius: 4, p: 1, maxWidth: 320, textAlign: 'center', border: '1px solid rgba(0, 212, 255, 0.3)', background: 'linear-gradient(180deg, #1a1b1f 0%, #12141a 100%)' } }}>
+        <DialogTitle sx={{ fontWeight: 800, color: '#00d4ff', pb: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 1 }}>
+          <DownloadIcon /> Export Data
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ color: 'text.secondary', fontSize: '0.85rem', mb: 2 }}>
+            Choose which records you'd like to download as a spreadsheet.
+          </Typography>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            <Button variant="outlined" onClick={exportLifts} sx={{ py: 1.5, fontWeight: 700, borderColor: 'rgba(255,255,255,0.1)', color: '#fff' }}>
+              💪 Export Lift Logs
+            </Button>
+            <Button variant="outlined" onClick={exportCardio} sx={{ py: 1.5, fontWeight: 700, borderColor: 'rgba(255,255,255,0.1)', color: '#fff' }}>
+              🏃 Export Cardio Logs
+            </Button>
+            <Button variant="outlined" onClick={exportExercises} sx={{ py: 1.5, fontWeight: 700, borderColor: 'rgba(255,255,255,0.1)', color: '#fff' }}>
+              🗂️ Export Master Exercise List
+            </Button>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'center', pb: 2 }}>
+          <Button onClick={() => setExportHubOpen(false)} sx={{ color: 'text.secondary', fontWeight: 700 }}>Close</Button>
         </DialogActions>
       </Dialog>
 

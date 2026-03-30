@@ -149,7 +149,7 @@ export default function Progress() {
       reps: l.reps,
       sets: l.sets,
       totalReps: l.reps * l.sets,
-      rawSet: l, // Store the raw object so we can edit it later
+      rawSet: l, 
     }));
   }, [historyForSelected, activeEquipment]);
 
@@ -209,44 +209,18 @@ export default function Progress() {
     setSuccessMsg('Entry deleted! 🗑️');
   };
 
-  const exportToCSV = () => {
-    if (!allLifts?.length) return;
-    const headers = ['Date', 'Time', 'Category', 'Subcategory', 'Exercise', 'Equipment', 'Weight (lbs)', 'Reps', 'Sets', 'Volume', 'e1RM', 'Notes'];
-    const rows = [...allLifts].sort((a, b) => a.timestamp - b.timestamp).map(l => {
-      const d = new Date(l.timestamp);
-      return [
-        format(d, 'yyyy-MM-dd'), format(d, 'HH:mm:ss'),
-        l.category ?? '', l.subcategory ?? '', `"${l.exerciseName}"`, l.equipmentType || '',
-        l.weight, l.reps, l.sets, l.volume,
-        l.e1rm ? l.e1rm.toFixed(1) : '', `"${l.notes ?? ''}"`,
-      ].join(',');
-    });
-    const uri = 'data:text/csv;charset=utf-8,' + encodeURI([headers.join(','), ...rows].join('\n'));
-    const a = document.createElement('a');
-    a.href = uri;
-    a.download = `LiftLog_Export_${format(new Date(), 'yyyy-MM-dd')}.csv`;
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  };
-
   // ── Render ─────────────────────────────────────────────────────────────
   return (
     <Box sx={{ px: 2, pt: 3, pb: 2, maxWidth: 480, mx: 'auto' }}>
       {/* Header */}
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-        <Box>
-          <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#00d4ff', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 0.5 }}>
-            Over Time
-          </Typography>
-          <Typography variant="h4" sx={{ fontWeight: 800, lineHeight: 1.1 }}>
-            Progress<br />
-            <Box component="span" sx={{ color: '#00d4ff' }}>Charts 📈</Box>
-          </Typography>
-        </Box>
-        <Button variant="outlined" size="small" onClick={exportToCSV}
-          sx={{ borderColor: 'rgba(255,255,255,0.1)', color: 'text.secondary', fontSize: '0.75rem', py: 0.5,
-            '&:hover': { borderColor: '#00d4ff', color: '#00d4ff', bgcolor: 'rgba(0,212,255,0.05)' } }}>
-          Export CSV 📥
-        </Button>
+      <Box sx={{ mb: 3 }}>
+        <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#00d4ff', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 0.5 }}>
+          Over Time
+        </Typography>
+        <Typography variant="h4" sx={{ fontWeight: 800, lineHeight: 1.1 }}>
+          Progress<br />
+          <Box component="span" sx={{ color: '#00d4ff' }}>Charts 📈</Box>
+        </Typography>
       </Box>
 
       {/* Exercise search */}

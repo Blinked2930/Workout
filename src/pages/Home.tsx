@@ -99,13 +99,12 @@ export default function Home() {
       let dayLabel = '';
       if (isToday(date)) dayLabel = 'Today';
       else if (isYesterday(date)) dayLabel = 'Yesterday';
-      else dayLabel = format(date, 'EEEE, MMM d'); // e.g. "Monday, Mar 30"
+      else dayLabel = format(date, 'EEEE, MMM d');
 
       if (!days[dayLabel]) {
         days[dayLabel] = { firstTimestamp: lift.timestamp, lifts: [] };
       }
       
-      // Keep track of the most recent lift in the day to sort the days correctly
       if (lift.timestamp > days[dayLabel].firstTimestamp) {
         days[dayLabel].firstTimestamp = lift.timestamp;
       }
@@ -115,10 +114,9 @@ export default function Home() {
 
     return Object.entries(days).map(([label, dayData]) => ({
       label,
-      // Sort lifts chronologically within the day (workout order)
       lifts: dayData.lifts.sort((a, b) => a.timestamp - b.timestamp),
       firstTimestamp: dayData.firstTimestamp
-    })).sort((a, b) => b.firstTimestamp - a.firstTimestamp); // Sort days newest first
+    })).sort((a, b) => b.firstTimestamp - a.firstTimestamp);
   }, [allLifts]);
 
   const resetForm = () => {
@@ -151,7 +149,7 @@ export default function Home() {
     await deleteSetMutation({ id: deleteConfirmId as any });
     setSuccessMsg('Set deleted! 🗑️');
     setDeleteConfirmId(null);
-    setOpen(false); // Close edit modal if it was open
+    setOpen(false); 
   };
 
   const handleSelectExercise = (ex: any) => {
@@ -218,7 +216,6 @@ export default function Home() {
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
           {groupedLifts.map(day => (
             <Paper key={day.label} sx={{ borderRadius: 3, overflow: 'hidden', bgcolor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
-              {/* Card Header */}
               <Box sx={{ p: 2, bgcolor: 'rgba(0,0,0,0.2)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography sx={{ fontWeight: 800, fontSize: '1rem' }}>{day.label}</Typography>
                 <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontWeight: 600 }}>
@@ -226,7 +223,6 @@ export default function Home() {
                 </Typography>
               </Box>
               
-              {/* Card Body - Dense List */}
               <List disablePadding>
                 {day.lifts.map((lift, i) => {
                   const eqEmoji = EQUIPMENT_TYPES.find(e => e.value === lift.equipmentType)?.emoji || '⚡';
@@ -338,7 +334,7 @@ export default function Home() {
                   <TextField label="RIR" type="number" size="small" fullWidth value={rir} onChange={e => setRir(e.target.value)} />
                 </Box>
                 <TextField label="Notes (optional)" size="small" fullWidth multiline rows={2} value={notes} onChange={e => setNotes(e.target.value)} />
-              </  >
+              </>
             )}
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
