@@ -9,6 +9,10 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { format } from 'date-fns';
+import { enGB } from 'date-fns/locale';
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
 
@@ -26,14 +30,19 @@ const BODYWEIGHT_METRICS = [
   { value: 'sets',      label: 'Sets',         color: '#ffb800' },
 ];
 
-const EQUIPMENT_EMOJIS: Record<string, string> = {
-  'Barbell': '🏋️',
-  'Dumbbell': '🫳',
-  'Kettlebell': '💣',
-  'Machine/Cable': '⚙️',
-  'Bodyweight': '🤸',
-  'Other': '⚡',
-};
+const EQUIPMENT_TYPES = [
+  { value: 'Barbell', emoji: '🏋️' },
+  { value: 'Dumbbell', emoji: '🫳' },
+  { value: 'Kettlebell', emoji: '💣' },
+  { value: 'Machine/Cable', emoji: '⚙️' },
+  { value: 'Bodyweight', emoji: '🤸' },
+  { value: 'Other', emoji: '⚡' },
+];
+
+const EQUIPMENT_EMOJIS: Record<string, string> = EQUIPMENT_TYPES.reduce((acc, curr) => {
+  acc[curr.value] = curr.emoji;
+  return acc;
+}, {} as Record<string, string>);
 
 // ── Tooltip ────────────────────────────────────────────────────────────────
 function CustomTooltip({ active, payload, label, isBW }: any) {
@@ -176,14 +185,17 @@ export default function Progress() {
     const weightVal = parseFloat(editSet.weight) || 0;
     const repsVal = parseInt(editSet.reps) || 0;
     const setsVal = parseInt(editSet.sets) || 1;
+    const rirVal = editSet.rir !== '' && editSet.rir !== null && editSet.rir !== undefined ? parseInt(editSet.rir) : undefined;
     
     await updateSetMutation({
       id: editSet._id,
       weight: weightVal,
       reps: repsVal,
       sets: setsVal,
+      rir: rirVal,
       notes: editSet.notes || undefined,
       equipmentType: editSet.equipmentType,
+      timestamp: editSet.timestamp,
     });
     
     setEditSet(null);
@@ -461,27 +473,63 @@ export default function Progress() {
         </>
       )}
 
-      {/* Edit Dialog */}
-      <Dialog open={!!editSet} onClose={() => setEditSet(null)} fullWidth maxWidth="xs">
-        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
-          <Typography variant="h6" sx={{ fontWeight: 800 }}>Edit Entry</Typography>
-          <IconButton onClick={() => setEditSet(null)} size="small"><CloseIcon /></IconButton>
-        </DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-          <TextField 
-            label={editSet?.equipmentType === 'Dumbbell' ? "Weight Per Side (lbs)" : "Weight (lbs)"} 
-            type="number" fullWidth 
-            value={editSet?.weight || ''} 
-            onChange={e => setEditSet({...editSet, weight: e.target.value})} 
-          />
-          <TextField label="Reps" type="number" fullWidth value={editSet?.reps || ''} onChange={e => setEditSet({...editSet, reps: e.target.value})} />
-          <TextField label="Sets" type="number" fullWidth value={editSet?.sets || ''} onChange={e => setEditSet({...editSet, sets: e.target.value})} />
-          <TextField label="Notes" multiline rows={2} fullWidth value={editSet?.notes || ''} onChange={e => setEditSet({...editSet, notes: e.target.value})} />
-        </DialogContent>
-        <DialogActions sx={{ p: 3, gap: 1 }}>
-          <Button color="error" onClick={handleDelete} sx={{ fontWeight: 700 }}>Delete</Button>
-          <Button variant="contained" fullWidth onClick={handleUpdate} sx={{ fontWeight: 800 }}>Save Changes</Button>
-        </DialogActions>
+      {/* Full Edit Dialog */}
+      <Dialog open={!!editSet} onClose={() => setEditSet(null)} fullWidth maxWidth="sm">
+        <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={enGB}>
+          <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+            <Typography variant="h6" sx={{ fontWeight: 800 }}>Edit Entry</Typography>
+            <IconButton onClick={() => setEditSet(null)} size="small"><CloseIcon /></IconButton>
+          </DialogTitle>
+          <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
+            
+            <DateTimePicker 
+              label="Date & Time" 
+              value={new Date(editSet?.timestamp || Date.now())} 
+              onChange={(v) => v && setEditSet({...editSet, timestamp: v.getTime()})} 
+              format="MMM d, yyyy '·' h:mm a" 
+              slotProps={{ textField: { size: 'small', fullWidth: true, sx: { mt: 1 } } }} 
+            />
+
+            <Box>
+              <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: 'text.secondary', mb: 1, textTransform: 'uppercase' }}>Equipment</Typography>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                {EQUIPMENT_TYPES.map(eq => (
+                  <Chip 
+                    key={eq.value} 
+                    label={`${eq.emoji} ${eq.value}`} 
+                    onClick={() => setEditSet({...editSet, equipmentType: eq.value})} 
+                    sx={{ 
+                      cursor: 'pointer', fontWeight: 700, 
+                      bgcolor: editSet?.equipmentType === eq.value ? 'rgba(0,212,255,0.15)' : 'rgba(255,255,255,0.05)', 
+                      color: editSet?.equipmentType === eq.value ? '#00d4ff' : 'text.secondary', 
+                      border: editSet?.equipmentType === eq.value ? '1px solid rgba(0,212,255,0.4)' : '1px solid transparent' 
+                    }} 
+                  />
+                ))}
+              </Box>
+            </Box>
+
+            <TextField 
+              label={editSet?.equipmentType === 'Dumbbell' ? "Weight Per Side (lbs)" : "Weight (lbs)"} 
+              type="number" size="small" fullWidth 
+              value={editSet?.weight ?? ''} 
+              onChange={e => setEditSet({...editSet, weight: e.target.value})} 
+            />
+            
+            <Box sx={{ display: 'flex', gap: 1.5 }}>
+              <TextField label="Reps" type="number" size="small" fullWidth value={editSet?.reps ?? ''} onChange={e => setEditSet({...editSet, reps: e.target.value})} />
+              <TextField label="Sets" type="number" size="small" fullWidth value={editSet?.sets ?? ''} onChange={e => setEditSet({...editSet, sets: e.target.value})} />
+              <TextField label="RIR" type="number" size="small" fullWidth value={editSet?.rir ?? ''} onChange={e => setEditSet({...editSet, rir: e.target.value})} />
+            </Box>
+            
+            <TextField label="Notes" size="small" multiline rows={2} fullWidth value={editSet?.notes ?? ''} onChange={e => setEditSet({...editSet, notes: e.target.value})} />
+          
+          </DialogContent>
+          <DialogActions sx={{ p: 3, gap: 1 }}>
+            <Button color="error" onClick={handleDelete} sx={{ fontWeight: 700 }}>Delete</Button>
+            <Button variant="contained" fullWidth onClick={handleUpdate} sx={{ fontWeight: 800 }}>Save Changes</Button>
+          </DialogActions>
+        </LocalizationProvider>
       </Dialog>
 
       <Snackbar open={!!successMsg} autoHideDuration={2000} onClose={() => setSuccessMsg('')}>
