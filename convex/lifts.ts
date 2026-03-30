@@ -6,6 +6,7 @@ export const logSet = mutation({
     exerciseName: v.string(),
     category: v.string(),
     subcategory: v.optional(v.string()),
+    equipmentType: v.optional(v.string()), // <-- This allows the backend to accept the equipment!
     weight: v.number(),
     addedWeight: v.optional(v.number()),
     reps: v.number(),
@@ -15,7 +16,10 @@ export const logSet = mutation({
     timestamp: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const effectiveWeight = args.weight + (args.addedWeight ?? 0);
+    // Smart Dumbbell Math for Volume/e1RM
+    const calcWeight = args.equipmentType === 'Dumbbell' ? args.weight * 2 : args.weight;
+    const effectiveWeight = calcWeight + (args.addedWeight ?? 0);
+    
     const volume = effectiveWeight * args.reps * args.sets;
     const e1rm = effectiveWeight > 0
       ? effectiveWeight * (1 + args.reps / 30)
@@ -26,6 +30,7 @@ export const logSet = mutation({
       exerciseName: args.exerciseName,
       category: args.category,
       subcategory: args.subcategory,
+      equipmentType: args.equipmentType,
       weight: args.weight,
       addedWeight: args.addedWeight,
       reps: args.reps,
@@ -41,6 +46,7 @@ export const logSet = mutation({
 export const updateSet = mutation({
   args: {
     id: v.id("liftSets"),
+    equipmentType: v.optional(v.string()),
     weight: v.number(),
     reps: v.number(),
     sets: v.number(),
@@ -50,9 +56,14 @@ export const updateSet = mutation({
   },
   handler: async (ctx, args) => {
     const { id, ...updates } = args;
-    const volume = updates.weight * updates.reps * updates.sets;
-    const e1rm = updates.weight > 0
-      ? updates.weight * (1 + updates.reps / 30)
+    
+    // Smart Dumbbell Math for Volume/e1RM on edits
+    const calcWeight = updates.equipmentType === 'Dumbbell' ? updates.weight * 2 : updates.weight;
+    const effectiveWeight = calcWeight; 
+    
+    const volume = effectiveWeight * updates.reps * updates.sets;
+    const e1rm = effectiveWeight > 0
+      ? effectiveWeight * (1 + updates.reps / 30)
       : undefined;
 
     await ctx.db.patch(id, {
@@ -94,7 +105,10 @@ export const getThisWeeksLifts = query({
   args: {},
   handler: async (ctx) => {
     const now = Date.now();
-    const startOfWeek = now - (new Date().getDay() * 86400000);
+    // Monday-Start Logic
+    const day = new Date().getDay();
+    const diff = day === 0 ? 6 : day - 1; 
+    const startOfWeek = now - (diff * 86400000);
     const monday = new Date(startOfWeek);
     monday.setHours(0, 0, 0, 0);
 

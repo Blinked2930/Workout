@@ -3,12 +3,14 @@ import React, { useState, useMemo, useEffect } from 'react';
 import {
   Box, Typography, Paper, Chip, TextField, InputAdornment,
   List, ListItemButton, ListItemText, Divider, Button, ToggleButton, ToggleButtonGroup,
+  Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Snackbar, Alert
 } from '@mui/material';
-import { useQuery } from 'convex/react';
+import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { format } from 'date-fns';
 import SearchIcon from '@mui/icons-material/Search';
+import CloseIcon from '@mui/icons-material/Close';
 
 // ── Metric definitions ─────────────────────────────────────────────────────
 const WEIGHTED_METRICS = [
@@ -24,13 +26,22 @@ const BODYWEIGHT_METRICS = [
   { value: 'sets',      label: 'Sets',         color: '#ffb800' },
 ];
 
+const EQUIPMENT_EMOJIS: Record<string, string> = {
+  'Barbell': '🏋️',
+  'Dumbbell': '🫳',
+  'Kettlebell': '💣',
+  'Machine/Cable': '⚙️',
+  'Bodyweight': '🤸',
+  'Other': '⚡',
+};
+
 // ── Tooltip ────────────────────────────────────────────────────────────────
-function CustomTooltip({ active, payload, label, viewMode }: any) {
+function CustomTooltip({ active, payload, label, isBW }: any) {
   if (!active || !payload?.length) return null;
   const name = payload[0]?.name;
-  const metricList = viewMode === 'bodyweight' ? BODYWEIGHT_METRICS : WEIGHTED_METRICS;
+  const metricList = isBW ? BODYWEIGHT_METRICS : WEIGHTED_METRICS;
   const m = metricList.find(m => m.value === name);
-  const showLbs = viewMode === 'weighted' && (name === 'e1rm' || name === 'weight' || name === 'volume');
+  const showLbs = !isBW && (name === 'e1rm' || name === 'weight' || name === 'volume');
   return (
     <Paper sx={{ px: 2, py: 1.5, borderRadius: 2 }}>
       <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', mb: 0.25 }}>{label}</Typography>
@@ -51,8 +62,16 @@ export default function Progress() {
   );
   const [showList, setShowList] = useState(false);
   const [metric, setMetric] = useState(() => localStorage.getItem('progress_metric') || 'e1rm');
-  // 'weighted' | 'bodyweight' — null means auto-detect
-  const [viewOverride, setViewOverride] = useState<'weighted' | 'bodyweight' | null>(null);
+  const [equipmentOverride, setEquipmentOverride] = useState<string | null>(null);
+
+  // Edit State
+  const [editSet, setEditSet] = useState<any | null>(null);
+  const [successMsg, setSuccessMsg] = useState('');
+
+  const exercises = useQuery(api.exercises.getExercises, { category: '' });
+  const allLifts = useQuery(api.lifts.getLifts, {});
+  const updateSetMutation = useMutation(api.lifts.updateSet);
+  const deleteSetMutation = useMutation(api.lifts.deleteSet);
 
   useEffect(() => {
     if (selectedExercise) localStorage.setItem('progress_exercise', selectedExercise);
@@ -62,9 +81,6 @@ export default function Progress() {
   useEffect(() => {
     localStorage.setItem('progress_metric', metric);
   }, [metric]);
-
-  const exercises = useQuery(api.exercises.getExercises, { category: '' });
-  const allLifts   = useQuery(api.lifts.getLifts, {});
 
   // Only show exercises that have history
   const exercisesWithHistory = useMemo(() => {
@@ -87,39 +103,34 @@ export default function Progress() {
       .sort((a, b) => a.timestamp - b.timestamp);
   }, [allLifts, selectedExercise]);
 
-  // ── Detect view mode from actual data ──────────────────────────────────
-  const { hasWeighted, hasBodyweight, isMixed } = useMemo(() => {
-    const hasW = historyForSelected.some(l => l.weight > 0);
-    const hasBW = historyForSelected.some(l => l.weight === 0);
-    return { hasWeighted: hasW, hasBodyweight: hasBW, isMixed: hasW && hasBW };
+  // ── Auto-Detect Equipment Types ─────────────────────────────────────────
+  const availableEquipments = useMemo(() => {
+    const types = new Set(historyForSelected.map(l => l.equipmentType || (l.weight > 0 ? 'Barbell' : 'Bodyweight')));
+    return Array.from(types).sort();
   }, [historyForSelected]);
 
-  // Resolve which mode to actually show
-  const viewMode: 'weighted' | 'bodyweight' = useMemo(() => {
-    if (isMixed && viewOverride) return viewOverride;
-    if (hasWeighted) return 'weighted';
-    return 'bodyweight';
-  }, [hasWeighted, isMixed, viewOverride]);
+  const activeEquipment = useMemo(() => {
+    if (equipmentOverride && availableEquipments.includes(equipmentOverride)) return equipmentOverride;
+    return availableEquipments.includes('Barbell') ? 'Barbell' : (availableEquipments[0] || 'Barbell');
+  }, [availableEquipments, equipmentOverride]);
+
+  const isBW = activeEquipment === 'Bodyweight';
 
   // Reset override when exercise changes
-  useEffect(() => { setViewOverride(null); }, [selectedExercise]);
+  useEffect(() => { setEquipmentOverride(null); }, [selectedExercise]);
 
-  // Auto-switch metric when mode changes
+  // Auto-switch metric when equipment mode changes
   useEffect(() => {
-    if (viewMode === 'bodyweight' && !BODYWEIGHT_METRICS.find(m => m.value === metric)) {
-      setMetric('reps');
-    }
-    if (viewMode === 'weighted' && !WEIGHTED_METRICS.find(m => m.value === metric)) {
-      setMetric('e1rm');
-    }
-  }, [viewMode, metric]);
+    if (isBW && !BODYWEIGHT_METRICS.find(m => m.value === metric)) setMetric('reps');
+    if (!isBW && !WEIGHTED_METRICS.find(m => m.value === metric)) setMetric('e1rm');
+  }, [isBW, metric]);
 
   // ── Chart data ─────────────────────────────────────────────────────────
   const chartData = useMemo(() => {
-    // Filter sessions by current view mode
-    const sessions = viewMode === 'weighted'
-      ? (isMixed ? historyForSelected.filter(l => l.weight > 0) : historyForSelected)
-      : (isMixed ? historyForSelected.filter(l => l.weight === 0) : historyForSelected);
+    const sessions = historyForSelected.filter(l => {
+      const eq = l.equipmentType || (l.weight > 0 ? 'Barbell' : 'Bodyweight');
+      return eq === activeEquipment;
+    });
 
     return sessions.map(l => ({
       date: format(new Date(l.timestamp), 'MMM d'),
@@ -129,27 +140,28 @@ export default function Progress() {
       reps: l.reps,
       sets: l.sets,
       totalReps: l.reps * l.sets,
+      rawSet: l, // Store the raw object so we can edit it later
     }));
-  }, [historyForSelected, viewMode, isMixed]);
+  }, [historyForSelected, activeEquipment]);
 
   // ── Weighted stats ─────────────────────────────────────────────────────
-  const bestE1RM    = chartData.length ? Math.max(...chartData.map(d => d.e1rm)) : 0;
+  const bestE1RM = chartData.length ? Math.max(...chartData.map(d => d.e1rm)) : 0;
   const heaviestLift = chartData.length ? Math.max(...chartData.map(d => d.weight)) : 0;
-  const bestVolume  = chartData.length ? Math.max(...chartData.map(d => d.volume)) : 0;
+  const bestVolume = chartData.length ? Math.max(...chartData.map(d => d.volume)) : 0;
   const e4RM = bestE1RM * (33 / 36);
   const e8RM = bestE1RM * (29 / 36);
 
-  const strengthLifts = historyForSelected.filter(l => l.weight > 0 && l.reps >= 4 && l.reps <= 7).sort((a, b) => b.timestamp - a.timestamp);
-  const hyperLifts    = historyForSelected.filter(l => l.weight > 0 && l.reps >= 8 && l.reps <= 15).sort((a, b) => b.timestamp - a.timestamp);
-  const lastStrength  = strengthLifts[0]?.weight ?? null;
-  const lastHyper     = hyperLifts[0]?.weight ?? null;
+  const strengthLifts = chartData.filter(d => d.weight > 0 && d.reps >= 4 && d.reps <= 7).reverse();
+  const hyperLifts = chartData.filter(d => d.weight > 0 && d.reps >= 8 && d.reps <= 15).reverse();
+  const lastStrength = strengthLifts[0]?.weight ?? null;
+  const lastHyper = hyperLifts[0]?.weight ?? null;
 
   // ── Bodyweight stats ───────────────────────────────────────────────────
-  const bestMaxReps   = chartData.length ? Math.max(...chartData.map(d => d.reps)) : 0;
+  const bestMaxReps = chartData.length ? Math.max(...chartData.map(d => d.reps)) : 0;
   const bestTotalReps = chartData.length ? Math.max(...chartData.map(d => d.totalReps)) : 0;
-  const mostSets      = chartData.length ? Math.max(...chartData.map(d => d.sets)) : 0;
+  const mostSets = chartData.length ? Math.max(...chartData.map(d => d.sets)) : 0;
 
-  const currentMetricsList = viewMode === 'bodyweight' ? BODYWEIGHT_METRICS : WEIGHTED_METRICS;
+  const currentMetricsList = isBW ? BODYWEIGHT_METRICS : WEIGHTED_METRICS;
   const selectedMetric = currentMetricsList.find(m => m.value === metric) ?? currentMetricsList[0];
 
   // ── Handlers ───────────────────────────────────────────────────────────
@@ -159,14 +171,40 @@ export default function Progress() {
     setShowList(false);
   };
 
+  const handleUpdate = async () => {
+    if (!editSet) return;
+    const weightVal = parseFloat(editSet.weight) || 0;
+    const repsVal = parseInt(editSet.reps) || 0;
+    const setsVal = parseInt(editSet.sets) || 1;
+    
+    await updateSetMutation({
+      id: editSet._id,
+      weight: weightVal,
+      reps: repsVal,
+      sets: setsVal,
+      notes: editSet.notes || undefined,
+      equipmentType: editSet.equipmentType,
+    });
+    
+    setEditSet(null);
+    setSuccessMsg('Entry updated! 🔄');
+  };
+
+  const handleDelete = async () => {
+    if (!editSet) return;
+    await deleteSetMutation({ id: editSet._id });
+    setEditSet(null);
+    setSuccessMsg('Entry deleted! 🗑️');
+  };
+
   const exportToCSV = () => {
     if (!allLifts?.length) return;
-    const headers = ['Date', 'Time', 'Category', 'Subcategory', 'Exercise', 'Weight (lbs)', 'Reps', 'Sets', 'Volume', 'e1RM', 'Notes'];
+    const headers = ['Date', 'Time', 'Category', 'Subcategory', 'Exercise', 'Equipment', 'Weight (lbs)', 'Reps', 'Sets', 'Volume', 'e1RM', 'Notes'];
     const rows = [...allLifts].sort((a, b) => a.timestamp - b.timestamp).map(l => {
       const d = new Date(l.timestamp);
       return [
         format(d, 'yyyy-MM-dd'), format(d, 'HH:mm:ss'),
-        l.category ?? '', l.subcategory ?? '', `"${l.exerciseName}"`,
+        l.category ?? '', l.subcategory ?? '', `"${l.exerciseName}"`, l.equipmentType || '',
         l.weight, l.reps, l.sets, l.volume,
         l.e1rm ? l.e1rm.toFixed(1) : '', `"${l.notes ?? ''}"`,
       ].join(',');
@@ -232,24 +270,31 @@ export default function Progress() {
         )}
       </Box>
 
-      {/* Mixed data toggle */}
-      {selectedExercise && isMixed && (
+      {/* Dynamic Equipment Toggle */}
+      {selectedExercise && availableEquipments.length > 1 && (
         <Box sx={{ mb: 2.5 }}>
           <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', mb: 1, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-            This exercise has both weighted & bodyweight sessions
+            Equipment Types Used
           </Typography>
           <ToggleButtonGroup
-            value={viewMode} exclusive
-            onChange={(_, v) => v && setViewOverride(v)}
+            value={activeEquipment} exclusive
+            onChange={(_, v) => v && setEquipmentOverride(v)}
             size="small"
-            sx={{ '& .MuiToggleButton-root': {
-              fontWeight: 700, fontSize: '0.78rem', borderRadius: '10px !important',
-              border: '1px solid rgba(255,255,255,0.1)', px: 2, py: 0.75,
-              '&.Mui-selected': { bgcolor: 'rgba(0,212,255,0.15)', color: '#00d4ff', borderColor: 'rgba(0,212,255,0.4)' },
-            }}}
+            sx={{ 
+              display: 'flex', flexWrap: 'wrap', gap: 1, 
+              '& .MuiToggleButtonGroup-grouped': { border: 0 },
+              '& .MuiToggleButton-root': {
+                fontWeight: 700, fontSize: '0.78rem', borderRadius: '10px !important',
+                border: '1px solid rgba(255,255,255,0.1) !important', px: 1.5, py: 0.75,
+                '&.Mui-selected': { bgcolor: 'rgba(0,212,255,0.15)', color: '#00d4ff', borderColor: 'rgba(0,212,255,0.4) !important' },
+              }
+            }}
           >
-            <ToggleButton value="weighted">🏋️ Weighted</ToggleButton>
-            <ToggleButton value="bodyweight">🤸 Bodyweight</ToggleButton>
+            {availableEquipments.map(eq => (
+              <ToggleButton key={eq} value={eq}>
+                {EQUIPMENT_EMOJIS[eq] ?? '⚡'} {eq}
+              </ToggleButton>
+            ))}
           </ToggleButtonGroup>
         </Box>
       )}
@@ -257,7 +302,7 @@ export default function Progress() {
       {/* Stats dashboard */}
       {selectedExercise && chartData.length > 0 && (
         <Box sx={{ mb: 3 }}>
-          {viewMode === 'weighted' ? (
+          {!isBW ? (
             <>
               <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 1.5, mb: 1.5 }}>
                 {[
@@ -331,7 +376,6 @@ export default function Progress() {
         <Paper sx={{ p: 2, borderRadius: 3, mb: 3 }}>
           <Typography sx={{ fontWeight: 700, mb: 2, fontSize: '0.82rem', color: 'text.secondary' }}>
             {selectedMetric.label} Trend
-            {isMixed && <Box component="span" sx={{ ml: 1, color: viewMode === 'weighted' ? '#ffb800' : '#00e096' }}>({viewMode})</Box>}
           </Typography>
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
@@ -344,7 +388,7 @@ export default function Progress() {
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
               <XAxis dataKey="date" tick={{ fill: '#555566', fontSize: 10 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: '#555566', fontSize: 10 }} axisLine={false} tickLine={false} />
-              <Tooltip content={<CustomTooltip viewMode={viewMode} />} />
+              <Tooltip content={<CustomTooltip isBW={isBW} />} />
               <Area type="monotone" dataKey={metric} name={metric}
                 stroke={selectedMetric.color} strokeWidth={2.5}
                 fill="url(#metricGrad)"
@@ -374,15 +418,19 @@ export default function Progress() {
         </Paper>
       )}
 
-      {/* History list */}
+      {/* History list with Edit feature */}
       {selectedExercise && chartData.length > 0 && (
         <>
           <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.1em', mb: 1.5 }}>
-            Session History
+            Session History (Tap to Edit)
           </Typography>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             {[...chartData].reverse().map((entry, i) => (
-              <Paper key={i} sx={{ px: 2, py: 1.5, borderRadius: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Paper 
+                key={i} 
+                onClick={() => setEditSet(entry.rawSet)}
+                sx={{ px: 2, py: 1.5, borderRadius: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', '&:hover': { bgcolor: 'rgba(255,255,255,0.03)' } }}
+              >
                 <Box>
                   <Typography sx={{ fontWeight: 700, fontSize: '0.9rem' }}>
                     {entry.weight > 0 ? `${entry.weight} lbs` : 'Bodyweight'}
@@ -393,7 +441,7 @@ export default function Progress() {
                   <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>{entry.date}</Typography>
                 </Box>
                 <Box sx={{ textAlign: 'right' }}>
-                  {viewMode === 'bodyweight' ? (
+                  {isBW ? (
                     <>
                       <Typography sx={{ fontWeight: 800, fontSize: '0.9rem', color: '#00d4ff' }}>{entry.totalReps}</Typography>
                       <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>Total Reps</Typography>
@@ -412,6 +460,34 @@ export default function Progress() {
           </Box>
         </>
       )}
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editSet} onClose={() => setEditSet(null)} fullWidth maxWidth="xs">
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+          <Typography variant="h6" sx={{ fontWeight: 800 }}>Edit Entry</Typography>
+          <IconButton onClick={() => setEditSet(null)} size="small"><CloseIcon /></IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+          <TextField 
+            label={editSet?.equipmentType === 'Dumbbell' ? "Weight Per Side (lbs)" : "Weight (lbs)"} 
+            type="number" fullWidth 
+            value={editSet?.weight || ''} 
+            onChange={e => setEditSet({...editSet, weight: e.target.value})} 
+          />
+          <TextField label="Reps" type="number" fullWidth value={editSet?.reps || ''} onChange={e => setEditSet({...editSet, reps: e.target.value})} />
+          <TextField label="Sets" type="number" fullWidth value={editSet?.sets || ''} onChange={e => setEditSet({...editSet, sets: e.target.value})} />
+          <TextField label="Notes" multiline rows={2} fullWidth value={editSet?.notes || ''} onChange={e => setEditSet({...editSet, notes: e.target.value})} />
+        </DialogContent>
+        <DialogActions sx={{ p: 3, gap: 1 }}>
+          <Button color="error" onClick={handleDelete} sx={{ fontWeight: 700 }}>Delete</Button>
+          <Button variant="contained" fullWidth onClick={handleUpdate} sx={{ fontWeight: 800 }}>Save Changes</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar open={!!successMsg} autoHideDuration={2000} onClose={() => setSuccessMsg('')}>
+        <Alert severity="success" sx={{ borderRadius: 2, fontWeight: 700 }}>{successMsg}</Alert>
+      </Snackbar>
+
     </Box>
   );
 }

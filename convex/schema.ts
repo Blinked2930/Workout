@@ -7,6 +7,7 @@ export default defineSchema({
     category: v.string(),          
     subcategory: v.optional(v.string()), 
     isBodyweight: v.boolean(),
+    isArchived: v.optional(v.boolean()), // Added back so we can safely archive exercises!
     muscleWeights: v.object({      
       chest: v.optional(v.number()),
       shoulders: v.optional(v.number()),

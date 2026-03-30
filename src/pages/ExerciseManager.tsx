@@ -9,7 +9,7 @@ import {
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import AddIcon from '@mui/icons-material/Add';
-import DeleteIcon from '@mui/icons-material/Delete';
+import ArchiveIcon from '@mui/icons-material/Archive';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
 import { format } from 'date-fns';
@@ -119,14 +119,12 @@ function ExerciseDialog({ exercise, open, onClose, onSave }: {
       </DialogTitle>
 
       <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
-        {/* Name */}
         <TextField
           label="Exercise name" size="small" fullWidth
           value={name} onChange={e => setName(e.target.value)}
-          placeholder="e.g. Archer Push-Ups"
+          placeholder="e.g. Lunge"
         />
 
-        {/* Category */}
         <Box>
           <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: 'text.secondary', mb: 1, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
             Category <Box component="span" sx={{ color: '#00d4ff' }}>*</Box>
@@ -146,7 +144,6 @@ function ExerciseDialog({ exercise, open, onClose, onSave }: {
           </Box>
         </Box>
 
-        {/* Subcategory — REQUIRED */}
         {category && (
           <Box>
             <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: 'text.secondary', mb: 1, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
@@ -173,7 +170,6 @@ function ExerciseDialog({ exercise, open, onClose, onSave }: {
           </Box>
         )}
 
-        {/* Muscle weights */}
         <Box>
           <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: 'text.secondary', mb: 0.5, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
             Muscle Group Contributions
@@ -210,13 +206,13 @@ export default function ExerciseManager() {
   const [filterCat, setFilterCat] = useState('');
   const [addOpen, setAddOpen] = useState(false);
   const [editExercise, setEditExercise] = useState<any | null>(null);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [archiveConfirmId, setArchiveConfirmId] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState('');
 
   const exercises = useQuery(api.exercises.getExercises, { category: '' });
   const addExercise = useMutation(api.exercises.addExercise);
   const updateExercise = useMutation(api.exercises.updateExercise);
-  const deleteExercise = useMutation(api.exercises.deleteExercise);
+  const archiveExercise = useMutation(api.exercises.archiveExercise);
 
   const filtered = useMemo(() => {
     if (!exercises) return [];
@@ -240,21 +236,21 @@ export default function ExerciseManager() {
     setSuccessMsg('Exercise updated! 🔄');
   };
 
-  const confirmDelete = async () => {
-    if (!deleteConfirmId) return;
+  const confirmArchive = async () => {
+    if (!archiveConfirmId) return;
     try {
-      await deleteExercise({ id: deleteConfirmId as any });
-      setSuccessMsg('Exercise deleted! 🗑️');
-    } catch { setSuccessMsg('Error deleting exercise.'); }
-    finally { setDeleteConfirmId(null); }
+      await archiveExercise({ id: archiveConfirmId as any });
+      setSuccessMsg('Exercise archived! 🗄️');
+    } catch { setSuccessMsg('Error archiving exercise.'); }
+    finally { setArchiveConfirmId(null); }
   };
 
   const exportToCSV = () => {
     if (!exercises?.length) return;
     const muscleKeys = MUSCLE_GROUPS.map(m => m.key);
-    const headers = ['Exercise Name', 'Category', 'Subcategory', 'Is Bodyweight', ...MUSCLE_GROUPS.map(m => m.label)];
+    const headers = ['Exercise Name', 'Category', 'Subcategory', ...MUSCLE_GROUPS.map(m => m.label)];
     const rows = [...exercises].sort((a, b) => a.name.localeCompare(b.name)).map(ex => [
-      `"${ex.name}"`, ex.category, ex.subcategory ?? '', ex.isBodyweight ? 'TRUE' : 'FALSE',
+      `"${ex.name}"`, ex.category, ex.subcategory ?? '',
       ...muscleKeys.map(k => (ex.muscleWeights as any)?.[k] ?? 0),
     ].join(','));
     const uri = 'data:text/csv;charset=utf-8,' + encodeURI([headers.join(','), ...rows].join('\n'));
@@ -299,7 +295,7 @@ export default function ExerciseManager() {
         sx={{ mb: 1.5 }}
       />
 
-      {/* Category filter — now uses Extra not Core */}
+      {/* Category filter */}
       <Box sx={{ display: 'flex', gap: 1, mb: 2, flexWrap: 'wrap' }}>
         <Chip label="All" onClick={() => setFilterCat('')} size="small"
           sx={{ cursor: 'pointer', fontWeight: 700,
@@ -346,9 +342,9 @@ export default function ExerciseManager() {
                   primaryTypographyProps={{ fontSize: '0.9rem', fontWeight: 600 }}
                 />
                 <IconButton size="small"
-                  onClick={e => { e.stopPropagation(); setDeleteConfirmId(ex._id); }}
-                  sx={{ opacity: 0.35, '&:hover': { opacity: 1, color: '#ff4d6d' } }}>
-                  <DeleteIcon sx={{ fontSize: '1rem' }} />
+                  onClick={e => { e.stopPropagation(); setArchiveConfirmId(ex._id); }}
+                  sx={{ opacity: 0.35, '&:hover': { opacity: 1, color: '#ffb800' } }}>
+                  <ArchiveIcon sx={{ fontSize: '1rem' }} />
                 </IconButton>
               </ListItemButton>
             </React.Fragment>
@@ -359,20 +355,20 @@ export default function ExerciseManager() {
       <ExerciseDialog open={addOpen} onClose={() => setAddOpen(false)} onSave={handleAdd} />
       <ExerciseDialog open={!!editExercise} exercise={editExercise} onClose={() => setEditExercise(null)} onSave={handleEdit} />
 
-      {/* Delete confirm */}
-      <Dialog open={!!deleteConfirmId} onClose={() => setDeleteConfirmId(null)}
-        PaperProps={{ sx: { borderRadius: 4, p: 1, maxWidth: 320, textAlign: 'center', border: '1px solid rgba(255,77,109,0.3)' } }}>
-        <DialogTitle sx={{ fontWeight: 800, color: '#ff4d6d', pb: 1 }}>Delete Exercise?</DialogTitle>
+      {/* Archive confirm */}
+      <Dialog open={!!archiveConfirmId} onClose={() => setArchiveConfirmId(null)}
+        PaperProps={{ sx: { borderRadius: 4, p: 1, maxWidth: 320, textAlign: 'center', border: '1px solid rgba(255, 184, 0, 0.3)', background: 'linear-gradient(180deg, #1a1b1f 0%, #12141a 100%)' } }}>
+        <DialogTitle sx={{ fontWeight: 800, color: '#ffb800', pb: 1 }}>Archive Exercise?</DialogTitle>
         <DialogContent>
           <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>
-            This will permanently remove it from your database.
+            This will hide it from your logging searches, but keep your past sets and charts perfectly intact.
           </Typography>
         </DialogContent>
         <DialogActions sx={{ justifyContent: 'center', gap: 1.5, pb: 2, px: 3 }}>
-          <Button onClick={() => setDeleteConfirmId(null)} sx={{ color: 'text.secondary', flex: 1 }}>Cancel</Button>
-          <Button variant="contained" onClick={confirmDelete}
-            sx={{ flex: 1, fontWeight: 800, background: '#ff4d6d', '&:hover': { background: '#e63950' } }}>
-            Delete 🗑️
+          <Button onClick={() => setArchiveConfirmId(null)} sx={{ color: 'text.secondary', flex: 1 }}>Cancel</Button>
+          <Button variant="contained" onClick={confirmArchive}
+            sx={{ flex: 1, fontWeight: 800, background: '#ffb800', color: '#000', '&:hover': { background: '#e0a300' } }}>
+            Archive 🗄️
           </Button>
         </DialogActions>
       </Dialog>
