@@ -12,6 +12,8 @@ import AddIcon from '@mui/icons-material/Add';
 import ArchiveIcon from '@mui/icons-material/Archive';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
 import { format } from 'date-fns';
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -206,13 +208,21 @@ export default function ExerciseManager() {
   const [filterCat, setFilterCat] = useState('');
   const [addOpen, setAddOpen] = useState(false);
   const [editExercise, setEditExercise] = useState<any | null>(null);
+  
+  // Dialog states
   const [archiveConfirmId, setArchiveConfirmId] = useState<string | null>(null);
+  const [logsConfirmOpen, setLogsConfirmOpen] = useState(false);
+  const [nukeConfirmOpen, setNukeConfirmOpen] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
 
   const exercises = useQuery(api.exercises.getExercises, { category: '' });
   const addExercise = useMutation(api.exercises.addExercise);
   const updateExercise = useMutation(api.exercises.updateExercise);
   const archiveExercise = useMutation(api.exercises.archiveExercise);
+  
+  // Admin mutations
+  const wipeLogsOnly = useMutation(api.admin.wipeLogsOnly);
+  const wipeAllData = useMutation(api.admin.wipeAllData);
 
   const filtered = useMemo(() => {
     if (!exercises) return [];
@@ -224,7 +234,7 @@ export default function ExerciseManager() {
   }, [exercises, search, filterCat]);
 
   const handleAdd = async (data: any) => {
-    await addExercise({ ...data, isBodyweight: false }); // isBodyweight inferred from data
+    await addExercise({ ...data, isBodyweight: false }); 
     setAddOpen(false);
     setSuccessMsg('Exercise added! ✅');
   };
@@ -245,6 +255,18 @@ export default function ExerciseManager() {
     finally { setArchiveConfirmId(null); }
   };
 
+  const handleWipeLogs = async () => {
+    await wipeLogsOnly();
+    setLogsConfirmOpen(false);
+    setSuccessMsg('All logs deleted! 🧹');
+  };
+
+  const handleWipeEverything = async () => {
+    await wipeAllData();
+    setNukeConfirmOpen(false);
+    setSuccessMsg('Database annihilated! ☢️');
+  };
+
   const exportToCSV = () => {
     if (!exercises?.length) return;
     const muscleKeys = MUSCLE_GROUPS.map(m => m.key);
@@ -261,7 +283,7 @@ export default function ExerciseManager() {
   };
 
   return (
-    <Box sx={{ px: 2, pt: 3, pb: 2, maxWidth: 480, mx: 'auto' }}>
+    <Box sx={{ px: 2, pt: 3, pb: 4, maxWidth: 480, mx: 'auto' }}>
       {/* Header */}
       <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <Box>
@@ -316,7 +338,7 @@ export default function ExerciseManager() {
         {filtered.length} exercise{filtered.length !== 1 ? 's' : ''}
       </Typography>
 
-      <Paper sx={{ borderRadius: 3, overflow: 'hidden' }}>
+      <Paper sx={{ borderRadius: 3, overflow: 'hidden', mb: 4 }}>
         <List dense disablePadding>
           {filtered.map((ex, i) => (
             <React.Fragment key={ex._id}>
@@ -352,6 +374,31 @@ export default function ExerciseManager() {
         </List>
       </Paper>
 
+      {/* ─── DANGER ZONE ──────────────────────────────────────────────────────── */}
+      <Box sx={{ mt: 4, pt: 3, borderTop: '1px solid rgba(255, 77, 109, 0.2)' }}>
+        <Typography sx={{ display: 'flex', alignItems: 'center', gap: 1, fontSize: '0.85rem', fontWeight: 800, color: '#ff4d6d', textTransform: 'uppercase', letterSpacing: '0.1em', mb: 2 }}>
+          <WarningAmberIcon fontSize="small" /> Danger Zone
+        </Typography>
+
+        <Button 
+          fullWidth variant="outlined" color="warning" 
+          onClick={() => setLogsConfirmOpen(true)}
+          sx={{ mb: 2, py: 1.5, fontWeight: 700, borderRadius: 2, borderColor: 'rgba(255, 184, 0, 0.3)', color: '#ffb800', '&:hover': { borderColor: '#ffb800', bgcolor: 'rgba(255, 184, 0, 0.05)' } }}
+        >
+          Clear Workout Logs (Keep Exercises)
+        </Button>
+
+        <Button 
+          fullWidth variant="contained" color="error" 
+          onClick={() => setNukeConfirmOpen(true)}
+          startIcon={<DeleteForeverIcon />}
+          sx={{ py: 1.5, fontWeight: 800, borderRadius: 2, background: '#ff4d6d', '&:hover': { background: '#e63950' } }}
+        >
+          Factory Reset (Delete EVERYTHING)
+        </Button>
+      </Box>
+
+      {/* Dialogs */}
       <ExerciseDialog open={addOpen} onClose={() => setAddOpen(false)} onSave={handleAdd} />
       <ExerciseDialog open={!!editExercise} exercise={editExercise} onClose={() => setEditExercise(null)} onSave={handleEdit} />
 
@@ -369,6 +416,43 @@ export default function ExerciseManager() {
           <Button variant="contained" onClick={confirmArchive}
             sx={{ flex: 1, fontWeight: 800, background: '#ffb800', color: '#000', '&:hover': { background: '#e0a300' } }}>
             Archive 🗄️
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Clear Logs Confirm */}
+      <Dialog open={logsConfirmOpen} onClose={() => setLogsConfirmOpen(false)}
+        PaperProps={{ sx: { borderRadius: 4, p: 1, maxWidth: 320, textAlign: 'center', border: '1px solid rgba(255, 184, 0, 0.5)', background: 'linear-gradient(180deg, #1a1b1f 0%, #12141a 100%)' } }}>
+        <DialogTitle sx={{ fontWeight: 800, color: '#ffb800', pb: 1 }}>Wipe All Logs?</DialogTitle>
+        <DialogContent>
+          <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>
+            This will permanently delete all your logged sets and cardio history, but your master exercise list will remain intact.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'center', gap: 1.5, pb: 2, px: 3 }}>
+          <Button onClick={() => setLogsConfirmOpen(false)} sx={{ color: 'text.secondary', flex: 1 }}>Cancel</Button>
+          <Button variant="contained" color="warning" onClick={handleWipeLogs} sx={{ flex: 1, fontWeight: 800 }}>
+            Wipe Logs
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Nuke Everything Confirm */}
+      <Dialog open={nukeConfirmOpen} onClose={() => setNukeConfirmOpen(false)}
+        PaperProps={{ sx: { borderRadius: 4, p: 1, maxWidth: 320, textAlign: 'center', border: '1px solid rgba(255, 77, 109, 0.5)', background: 'linear-gradient(180deg, #1a1b1f 0%, #12141a 100%)' } }}>
+        <DialogTitle sx={{ fontWeight: 800, color: '#ff4d6d', pb: 1, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <WarningAmberIcon sx={{ fontSize: 40, mb: 1 }} />
+          NUKE DATABASE?
+        </DialogTitle>
+        <DialogContent>
+          <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>
+            This will permanently delete absolutely everything: exercises, goals, sets, and cardio. Your app will return to a completely blank slate.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ justifyContent: 'center', gap: 1.5, pb: 2, px: 3 }}>
+          <Button onClick={() => setNukeConfirmOpen(false)} sx={{ color: 'text.secondary', flex: 1, fontWeight: 700 }}>Cancel</Button>
+          <Button variant="contained" color="error" onClick={handleWipeEverything} sx={{ flex: 1, fontWeight: 800, background: '#ff4d6d' }}>
+            DESTROY 💥
           </Button>
         </DialogActions>
       </Dialog>
