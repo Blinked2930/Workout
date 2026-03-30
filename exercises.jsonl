@@ -1,0 +1,73 @@
+{"name":"Bicep Curl","category":"Pull","subcategory":"Biceps","isBodyweight":false,"muscleWeights":{"biceps":1.0}}
+{"name":"Standing Calf Raise","category":"Legs","subcategory":"Calves","isBodyweight":false,"muscleWeights":{"calves":1.0}}
+{"name":"Close-Grip Lat Pulldown","category":"Pull","subcategory":"Back","isBodyweight":false,"muscleWeights":{"back":1.0,"biceps":0.5}}
+{"name":"Single-Leg Standing Calf Raise","category":"Legs","subcategory":"Calves","isBodyweight":false,"muscleWeights":{"calves":1.0}}
+{"name":"RDL","category":"Legs","subcategory":"Hamstrings","isBodyweight":false,"muscleWeights":{"hamstrings":1.0,"glutes":1.0,"back":0.5}}
+{"name":"Incline Bench Press","category":"Push","subcategory":"Chest","isBodyweight":false,"muscleWeights":{"chest":1.0,"shoulders":0.5}}
+{"name":"Airborne Lunge","category":"Legs","subcategory":"Quads","isBodyweight":true,"muscleWeights":{"quads":1.0,"glutes":0.5}}
+{"name":"Tricep Pushdown","category":"Push","subcategory":"Triceps","isBodyweight":false,"muscleWeights":{"triceps":1.0}}
+{"name":"Pistol Squat","category":"Legs","subcategory":"Quads","isBodyweight":true,"muscleWeights":{"quads":1.0,"glutes":1.0,"core":0.5}}
+{"name":"Seated Leg Curl","category":"Legs","subcategory":"Hamstrings","isBodyweight":false,"muscleWeights":{"hamstrings":1.0}}
+{"name":"Leg Extension","category":"Legs","subcategory":"Quads","isBodyweight":false,"muscleWeights":{"quads":1.0}}
+{"name":"Lat Pulldown","category":"Pull","subcategory":"Back","isBodyweight":false,"muscleWeights":{"back":1.0,"biceps":0.5}}
+{"name":"Slider Leg Curl","category":"Legs","subcategory":"Hamstrings","isBodyweight":true,"muscleWeights":{"hamstrings":1.0,"glutes":0.5}}
+{"name":"Overhead Press","category":"Push","subcategory":"Shoulders","isBodyweight":false,"muscleWeights":{"shoulders":1.0,"triceps":0.5}}
+{"name":"Squat","category":"Legs","subcategory":"Quads","isBodyweight":false,"muscleWeights":{"quads":1.0,"glutes":1.0,"hamstrings":0.5,"core":0.5}}
+{"name":"Chin-Up","category":"Pull","subcategory":"Back","isBodyweight":true,"muscleWeights":{"back":1.0,"biceps":1.0}}
+{"name":"Bench Press","category":"Push","subcategory":"Chest","isBodyweight":false,"muscleWeights":{"chest":1.0,"shoulders":0.5,"triceps":0.5}}
+{"name":"Hollow Body Rocks","category":"Extra","subcategory":"Core","isBodyweight":true,"muscleWeights":{"core":1.0}}
+{"name":"Incline Bicep Curl","category":"Pull","subcategory":"Biceps","isBodyweight":false,"muscleWeights":{"biceps":1.0}}
+{"name":"Pull-Up","category":"Pull","subcategory":"Back","isBodyweight":true,"muscleWeights":{"back":1.0,"biceps":0.5}}
+{"name":"Face Pull","category":"Pull","subcategory":"Shoulders","isBodyweight":false,"muscleWeights":{"shoulders":1.0,"upperTraps":0.5,"back":0.5}}
+{"name":"Leg Press","category":"Legs","subcategory":"Quads","isBodyweight":false,"muscleWeights":{"quads":1.0,"glutes":0.5}}
+{"name":"Cable Crossover","category":"Push","subcategory":"Chest","isBodyweight":false,"muscleWeights":{"chest":1.0}}
+{"name":"Bent-Over Row","category":"Pull","subcategory":"Back","isBodyweight":false,"muscleWeights":{"back":1.0,"biceps":0.5}}
+{"name":"Overhead Tricep Extension","category":"Push","subcategory":"Triceps","isBodyweight":false,"muscleWeights":{"triceps":1.0}}
+{"name":"Single-Leg Seated Calf Raise","category":"Legs","subcategory":"Calves","isBodyweight":false,"muscleWeights":{"calves":1.0}}
+{"name":"Seated Cable Row","category":"Pull","subcategory":"Back","isBodyweight":false,"muscleWeights":{"back":1.0,"biceps":0.5}}
+{"name":"Planche Lean","category":"Push","subcategory":"Shoulders","isBodyweight":true,"muscleWeights":{"shoulders":1.0,"core":0.5}}
+{"name":"Lying Leg Curl","category":"Legs","subcategory":"Hamstrings","isBodyweight":false,"muscleWeights":{"hamstrings":1.0}}
+{"name":"Cable Crunch","category":"Extra","subcategory":"Core","isBodyweight":false,"muscleWeights":{"core":1.0}}
+{"name":"Pike Push-Up","category":"Push","subcategory":"Shoulders","isBodyweight":true,"muscleWeights":{"shoulders":1.0,"triceps":0.5,"core":0.5}}
+{"name":"Reverse Lunge","category":"Legs","subcategory":"Quads","isBodyweight":false,"muscleWeights":{"quads":1.0,"glutes":1.0,"hamstrings":0.5}}
+{"name":"Deadlift","category":"Legs","subcategory":"Hamstrings","isBodyweight":false,"muscleWeights":{"hamstrings":1.0,"glutes":1.0,"back":1.0,"quads":0.5,"core":0.5}}
+{"name":"Lat Pullover","category":"Pull","subcategory":"Back","isBodyweight":false,"muscleWeights":{"back":1.0}}
+{"name":"Seated Calf Raise","category":"Legs","subcategory":"Calves","isBodyweight":false,"muscleWeights":{"calves":1.0}}
+{"name":"Goblet Squat","category":"Legs","subcategory":"Quads","isBodyweight":false,"muscleWeights":{"quads":1.0,"glutes":1.0,"core":0.5}}
+{"name":"Hammer Curl","category":"Pull","subcategory":"Biceps","isBodyweight":false,"muscleWeights":{"biceps":1.0,"forearms":1.0}}
+{"name":"Lateral Raise","category":"Push","subcategory":"Shoulders","isBodyweight":false,"muscleWeights":{"shoulders":1.0}}
+{"name":"Rear Delt Fly","category":"Push","subcategory":"Shoulders","isBodyweight":false,"muscleWeights":{"shoulders":1.0,"back":0.5}}
+{"name":"Archer Push-Up","category":"Push","subcategory":"Chest","isBodyweight":true,"muscleWeights":{"chest":1.0,"shoulders":0.5,"core":0.5}}
+{"name":"Single-Arm Chest Press","category":"Push","subcategory":"Chest","isBodyweight":false,"muscleWeights":{"chest":1.0,"shoulders":0.5}}
+{"name":"Leaning Lateral Raise","category":"Push","subcategory":"Shoulders","isBodyweight":false,"muscleWeights":{"shoulders":1.0}}
+{"name":"Cable Pull-Through","category":"Legs","subcategory":"Glutes","isBodyweight":false,"muscleWeights":{"glutes":1.0,"hamstrings":0.5}}
+{"name":"Pseudo Planche Push-Up","category":"Push","subcategory":"Chest","isBodyweight":true,"muscleWeights":{"chest":1.0,"shoulders":1.0,"core":0.5}}
+{"name":"Diamond Push-Up","category":"Push","subcategory":"Triceps","isBodyweight":true,"muscleWeights":{"triceps":1.0,"chest":0.5}}
+{"name":"Tibialis Raise","category":"Legs","subcategory":"Calves","isBodyweight":true,"muscleWeights":{"calves":1.0}}
+{"name":"Skull Crusher","category":"Push","subcategory":"Triceps","isBodyweight":false,"muscleWeights":{"triceps":1.0}}
+{"name":"Dip (Chest)","category":"Push","subcategory":"Chest","isBodyweight":true,"muscleWeights":{"chest":1.0,"triceps":0.5,"shoulders":0.5}}
+{"name":"Dip (Triceps)","category":"Push","subcategory":"Triceps","isBodyweight":true,"muscleWeights":{"triceps":1.0,"chest":0.5,"shoulders":0.5}}
+{"name":"Seated Overhead Press","category":"Push","subcategory":"Shoulders","isBodyweight":false,"muscleWeights":{"shoulders":1.0,"triceps":0.5}}
+{"name":"Side Lunge","category":"Legs","subcategory":"Quads","isBodyweight":false,"muscleWeights":{"quads":1.0,"glutes":0.5}}
+{"name":"Bayesian Curl","category":"Pull","subcategory":"Biceps","isBodyweight":false,"muscleWeights":{"biceps":1.0}}
+{"name":"Glute-Ham Raise","category":"Legs","subcategory":"Hamstrings","isBodyweight":true,"muscleWeights":{"hamstrings":1.0,"glutes":1.0}}
+{"name":"Machine Chest Press","category":"Push","subcategory":"Chest","isBodyweight":false,"muscleWeights":{"chest":1.0,"shoulders":0.5,"triceps":0.5}}
+{"name":"Back Extension","category":"Pull","subcategory":"Back","isBodyweight":true,"muscleWeights":{"back":1.0,"glutes":1.0,"hamstrings":0.5}}
+{"name":"Push-Up","category":"Push","subcategory":"Chest","isBodyweight":true,"muscleWeights":{"chest":1.0,"triceps":0.5,"core":0.5}}
+{"name":"Chest Fly","category":"Push","subcategory":"Chest","isBodyweight":false,"muscleWeights":{"chest":1.0}}
+{"name":"Bulgarian Split Squat","category":"Legs","subcategory":"Quads","isBodyweight":false,"muscleWeights":{"quads":1.0,"glutes":1.0,"hamstrings":0.5}}
+{"name":"Front Squat","category":"Legs","subcategory":"Quads","isBodyweight":false,"muscleWeights":{"quads":1.0,"core":1.0}}
+{"name":"Glute Bridge","category":"Legs","subcategory":"Glutes","isBodyweight":false,"muscleWeights":{"glutes":1.0,"hamstrings":0.5}}
+{"name":"Hip Thrust","category":"Legs","subcategory":"Glutes","isBodyweight":false,"muscleWeights":{"glutes":1.0,"hamstrings":0.5}}
+{"name":"Ab Rollout","category":"Extra","subcategory":"Core","isBodyweight":true,"muscleWeights":{"core":1.0}}
+{"name":"Front Lever Hold","category":"Pull","subcategory":"Back","isBodyweight":true,"muscleWeights":{"back":1.0,"core":1.0}}
+{"name":"Muscle-Up","category":"Pull","subcategory":"Back","isBodyweight":true,"muscleWeights":{"back":1.0,"chest":0.5,"triceps":0.5}}
+{"name":"Shrug","category":"Pull","subcategory":"Upper Traps","isBodyweight":false,"muscleWeights":{"upperTraps":1.0}}
+{"name":"Deadbug","category":"Extra","subcategory":"Core","isBodyweight":true,"muscleWeights":{"core":1.0}}
+{"name":"Plank","category":"Extra","subcategory":"Core","isBodyweight":true,"muscleWeights":{"core":1.0}}
+{"name":"Side Plank","category":"Extra","subcategory":"Core","isBodyweight":true,"muscleWeights":{"core":1.0}}
+{"name":"Farmer's Walk","category":"Extra","subcategory":"Forearms","isBodyweight":false,"muscleWeights":{"forearms":1.0,"core":0.5,"upperTraps":1.0}}
+{"name":"Kettlebell Swing","category":"Legs","subcategory":"Glutes","isBodyweight":false,"muscleWeights":{"glutes":1.0,"hamstrings":1.0,"back":0.5,"core":0.5}}
+{"name":"Good Morning","category":"Legs","subcategory":"Hamstrings","isBodyweight":false,"muscleWeights":{"hamstrings":1.0,"glutes":1.0,"back":1.0}}
+{"name":"T-Bar Row","category":"Pull","subcategory":"Back","isBodyweight":false,"muscleWeights":{"back":1.0,"biceps":0.5,"upperTraps":0.5}}
+{"name":"Step-Up","category":"Legs","subcategory":"Quads","isBodyweight":false,"muscleWeights":{"quads":1.0,"glutes":1.0}}

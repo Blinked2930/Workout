@@ -4,10 +4,10 @@ import { v } from "convex/values";
 export default defineSchema({
   exercises: defineTable({
     name: v.string(),
-    category: v.string(),          // "Push" | "Pull" | "Legs" | "Core" | "Cardio"
-    subcategory: v.optional(v.string()), // "Chest" | "Shoulders" | "Triceps" etc.
+    category: v.string(),          
+    subcategory: v.optional(v.string()), 
     isBodyweight: v.boolean(),
-    muscleWeights: v.object({      // fractional muscle group contributions
+    muscleWeights: v.object({      
       chest: v.optional(v.number()),
       shoulders: v.optional(v.number()),
       triceps: v.optional(v.number()),
@@ -29,24 +29,25 @@ export default defineSchema({
     exerciseName: v.string(),
     category: v.string(),
     subcategory: v.optional(v.string()),
-    weight: v.number(),            // 0 for pure bodyweight
-    addedWeight: v.optional(v.number()), // vest/bands
+    equipmentType: v.optional(v.string()), // "Barbell" | "Dumbbell" | "Kettlebell" | "Machine/Cable" | "Bodyweight" | "Other"
+    weight: v.number(),            
+    addedWeight: v.optional(v.number()), 
     reps: v.number(),
     sets: v.number(),
     rir: v.optional(v.number()),
     notes: v.optional(v.string()),
-    volume: v.number(),            // weight * reps * sets
-    e1rm: v.optional(v.number()),  // estimated 1 rep max
+    volume: v.number(),            
+    e1rm: v.optional(v.number()),  
   }).index("by_timestamp", ["timestamp"])
     .index("by_exercise", ["exerciseName"]),
 
   cardioSessions: defineTable({
     timestamp: v.number(),
-    movementType: v.string(),      // "Run" | "Walk" | "Bike" | "Other"
-    duration: v.number(),          // minutes
+    movementType: v.string(),      
+    duration: v.number(),          
     distance: v.optional(v.number()),
     rpe: v.optional(v.number()),
-    zone: v.string(),              // "Zone 2" | "Anaerobic"
+    zone: v.string(),              
     notes: v.optional(v.string()),
   }).index("by_timestamp", ["timestamp"])
     .index("by_zone", ["zone"]),
