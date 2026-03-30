@@ -4,7 +4,7 @@ import {
   Box, Typography, Button, Paper, Chip, Dialog, DialogTitle,
   DialogContent, DialogActions, TextField, IconButton,
   Snackbar, Alert, InputAdornment, List, ListItemButton,
-  ListItemText, Divider
+  Divider
 } from '@mui/material';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
@@ -89,26 +89,36 @@ export default function Home() {
   const totalVolume = thisWeeksLifts?.reduce((a, l) => a + l.volume, 0) ?? 0;
   const uniqueCount = new Set(thisWeeksLifts?.map(l => l.exerciseName) ?? []).size;
 
+  // ─── DAILY WORKOUT CARD LOGIC ──────────────
   const groupedLifts = useMemo(() => {
     if (!allLifts) return [];
-    const groups: Record<string, typeof allLifts> = {};
-    
+    const days: Record<string, { firstTimestamp: number; lifts: typeof allLifts }> = {};
+
     allLifts.forEach(lift => {
       const date = new Date(lift.timestamp);
-      let label = '';
-      if (isToday(date)) label = 'Today';
-      else if (isYesterday(date)) label = 'Yesterday';
-      else label = format(date, 'MMM d, yyyy');
+      let dayLabel = '';
+      if (isToday(date)) dayLabel = 'Today';
+      else if (isYesterday(date)) dayLabel = 'Yesterday';
+      else dayLabel = format(date, 'EEEE, MMM d'); // e.g. "Monday, Mar 30"
 
-      if (!groups[label]) groups[label] = [];
-      groups[label].push(lift);
+      if (!days[dayLabel]) {
+        days[dayLabel] = { firstTimestamp: lift.timestamp, lifts: [] };
+      }
+      
+      // Keep track of the most recent lift in the day to sort the days correctly
+      if (lift.timestamp > days[dayLabel].firstTimestamp) {
+        days[dayLabel].firstTimestamp = lift.timestamp;
+      }
+
+      days[dayLabel].lifts.push(lift);
     });
 
-    return Object.entries(groups).map(([label, lifts]) => ({
+    return Object.entries(days).map(([label, dayData]) => ({
       label,
-      lifts: lifts.sort((a, b) => b.timestamp - a.timestamp),
-      firstTimestamp: lifts[0].timestamp
-    })).sort((a, b) => b.firstTimestamp - a.firstTimestamp);
+      // Sort lifts chronologically within the day (workout order)
+      lifts: dayData.lifts.sort((a, b) => a.timestamp - b.timestamp),
+      firstTimestamp: dayData.firstTimestamp
+    })).sort((a, b) => b.firstTimestamp - a.firstTimestamp); // Sort days newest first
   }, [allLifts]);
 
   const resetForm = () => {
@@ -141,6 +151,7 @@ export default function Home() {
     await deleteSetMutation({ id: deleteConfirmId as any });
     setSuccessMsg('Set deleted! 🗑️');
     setDeleteConfirmId(null);
+    setOpen(false); // Close edit modal if it was open
   };
 
   const handleSelectExercise = (ex: any) => {
@@ -202,40 +213,61 @@ export default function Home() {
         <StatCard label="Exercises" value={uniqueCount} color="#ffb800" />
       </Box>
 
-      {/* Grouped History Feed */}
+      {/* DAILY WORKOUT CARDS */}
       {groupedLifts.length > 0 ? (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          {groupedLifts.map(group => (
-            <Box key={group.label}>
-              <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.1em', mb: 1.5 }}>{group.label}</Typography>
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                {group.lifts.map(lift => {
-                  const eqEmoji = EQUIPMENT_TYPES.find(e => e.value === lift.equipmentType)?.emoji || '';
+          {groupedLifts.map(day => (
+            <Paper key={day.label} sx={{ borderRadius: 3, overflow: 'hidden', bgcolor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+              {/* Card Header */}
+              <Box sx={{ p: 2, bgcolor: 'rgba(0,0,0,0.2)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Typography sx={{ fontWeight: 800, fontSize: '1rem' }}>{day.label}</Typography>
+                <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontWeight: 600 }}>
+                  {day.lifts.length} {day.lifts.length === 1 ? 'entry' : 'entries'}
+                </Typography>
+              </Box>
+              
+              {/* Card Body - Dense List */}
+              <List disablePadding>
+                {day.lifts.map((lift, i) => {
+                  const eqEmoji = EQUIPMENT_TYPES.find(e => e.value === lift.equipmentType)?.emoji || '⚡';
                   return (
-                    <Paper key={lift._id} sx={{ borderRadius: 3, overflow: 'hidden' }}>
-                      <ListItemButton onClick={() => handleEdit(lift)} sx={{ px: 2, py: 1.5, display: 'flex', alignItems: 'center', gap: 1.5, minWidth: 0 }}>
-                        <Typography sx={{ fontSize: '1.1rem', flexShrink: 0 }}>{CATEGORY_EMOJI[lift.category] ?? '💪'}</Typography>
+                    <React.Fragment key={lift._id}>
+                      {i > 0 && <Divider sx={{ borderColor: 'rgba(255,255,255,0.05)' }} />}
+                      <ListItemButton 
+                        onClick={() => handleEdit(lift)} 
+                        sx={{ px: 2, py: 1.5, display: 'flex', alignItems: 'flex-start', gap: 1.5, '&:hover': { bgcolor: 'rgba(255,255,255,0.03)' } }}
+                      >
+                        <Typography sx={{ fontSize: '1.2rem', mt: -0.2 }}>{CATEGORY_EMOJI[lift.category] ?? '💪'}</Typography>
                         <Box sx={{ flex: 1, minWidth: 0 }}>
-                          <Typography sx={{ fontWeight: 700, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {lift.exerciseName} {eqEmoji}
+                          <Typography sx={{ fontWeight: 800, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.25 }}>
+                            {lift.exerciseName} 
+                            <Box component="span" sx={{ opacity: 0.6, fontSize: '0.85rem', fontWeight: 400 }}>{eqEmoji}</Box>
                           </Typography>
-                          <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>
-                            {lift.sets}×{lift.reps} reps {lift.weight > 0 ? ` · ${lift.weight} lbs` : ' · BW'} {lift.rir !== undefined ? ` · RIR ${lift.rir}` : ''}
-                          </Typography>
-                          <Typography sx={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.4)', mt: 0.25 }}>{format(new Date(lift.timestamp), "h:mm a")}</Typography>
-                          {lift.notes && <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary', fontStyle: 'italic', mt: 0.5, borderLeft: '2px solid rgba(255,255,255,0.1)', pl: 1 }}>{lift.notes}</Typography>}
-                        </Box>
-                        <Box sx={{ display: 'flex', gap: 0.5, flexShrink: 0 }}>
-                          <IconButton size="small" onClick={(e) => { e.stopPropagation(); setDeleteConfirmId(lift._id); }} sx={{ opacity: 0.4, '&:hover': { opacity: 1, color: '#ff4d6d' } }}>
-                            <DeleteIcon sx={{ fontSize: '1.1rem' }} />
-                          </IconButton>
+                          
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                            <Typography sx={{ fontSize: '0.85rem', color: '#00d4ff', fontWeight: 700 }}>
+                              {lift.sets} × {lift.reps}
+                            </Typography>
+                            <Typography sx={{ fontSize: '0.85rem', color: 'text.secondary' }}>
+                              @ {lift.weight > 0 ? `${lift.weight} lbs` : 'BW'}
+                            </Typography>
+                            {lift.rir !== undefined && (
+                              <Chip label={`RIR ${lift.rir}`} size="small" sx={{ height: 18, fontSize: '0.65rem', fontWeight: 700, bgcolor: 'rgba(255,255,255,0.1)', color: 'text.secondary' }} />
+                            )}
+                          </Box>
+                          
+                          {lift.notes && (
+                            <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontStyle: 'italic', mt: 0.5 }}>
+                              "{lift.notes}"
+                            </Typography>
+                          )}
                         </Box>
                       </ListItemButton>
-                    </Paper>
+                    </React.Fragment>
                   );
                 })}
-              </Box>
-            </Box>
+              </List>
+            </Paper>
           ))}
         </Box>
       ) : (
@@ -310,9 +342,14 @@ export default function Home() {
             )}
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
+            {editingId && (
+              <Button color="error" onClick={() => setDeleteConfirmId(editingId)} sx={{ fontWeight: 700, mr: 'auto' }}>
+                Delete
+              </Button>
+            )}
             <Button onClick={() => setOpen(false)} sx={{ color: 'text.secondary' }}>Cancel</Button>
-            <Button variant="contained" onClick={handleSubmit} disabled={!exerciseName || !reps} sx={{ flex: 1, py: 1.5 }}>
-              {editingId ? 'Update Set ✅' : 'Save Set ✅'}
+            <Button variant="contained" onClick={handleSubmit} disabled={!exerciseName || !reps} sx={{ px: 3, py: 1.5 }}>
+              {editingId ? 'Update ✅' : 'Save Set ✅'}
             </Button>
           </DialogActions>
         </LocalizationProvider>

@@ -59,7 +59,11 @@ export const getThisWeeksCardio = query({
   args: {},
   handler: async (ctx) => {
     const now = Date.now();
-    const startOfWeek = now - (new Date().getDay() * 86400000);
+    
+    // 👇 Monday-Start Logic
+    const day = new Date().getDay();
+    const diff = day === 0 ? 6 : day - 1; // If Sunday (0), go back 6 days. Otherwise go back (day - 1) days.
+    const startOfWeek = now - (diff * 86400000);
     const monday = new Date(startOfWeek);
     monday.setHours(0, 0, 0, 0);
 

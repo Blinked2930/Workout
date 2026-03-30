@@ -12,6 +12,7 @@ import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { format } from 'date-fns';
+import { enGB } from 'date-fns/locale';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -59,7 +60,7 @@ function CardioForm({
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
       
-      <LocalizationProvider dateAdapter={AdapterDateFns}>
+      <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={enGB}>
         <DateTimePicker
           label="Date & Time"
           value={new Date(form.timestamp)}
@@ -401,7 +402,7 @@ export default function Cardio() {
 
       {/* Recent sessions */}
       <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.1em', mb: 1.5 }}>
-        Recent Sessions
+        Recent Sessions (Tap to Edit)
       </Typography>
 
       {sessions?.length === 0 ? (
@@ -414,7 +415,15 @@ export default function Cardio() {
           {sessions?.slice(0, 20).map(session => {
             const mt = MOVEMENT_TYPES.find(m => m.value === session.movementType);
             return (
-              <Paper key={session._id} sx={{ px: 2, py: 1.5, borderRadius: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Paper 
+                key={session._id} 
+                onClick={() => handleEditOpen(session)}
+                sx={{ 
+                  px: 2, py: 1.5, borderRadius: 3, display: 'flex', 
+                  justifyContent: 'space-between', alignItems: 'center',
+                  cursor: 'pointer', '&:hover': { bgcolor: 'rgba(255,255,255,0.03)' }
+                }}
+              >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                   <Typography sx={{ fontSize: '1.3rem' }}>{mt?.emoji ?? '⚡'}</Typography>
                   <Box>
@@ -448,10 +457,11 @@ export default function Cardio() {
                       }}
                     />
                   </Box>
-                  <IconButton size="small" onClick={() => handleEditOpen(session)} sx={{ opacity: 0.4, '&:hover': { opacity: 1, color: '#00d4ff' } }}>
-                    <EditIcon sx={{ fontSize: '0.85rem' }} />
-                  </IconButton>
-                  <IconButton size="small" onClick={() => handleDeleteClick(session._id)} sx={{ opacity: 0.4, '&:hover': { opacity: 1, color: '#ff4d6d' } }}>
+                  <IconButton 
+                    size="small" 
+                    onClick={(e) => { e.stopPropagation(); handleDeleteClick(session._id); }} 
+                    sx={{ opacity: 0.4, '&:hover': { opacity: 1, color: '#ff4d6d' } }}
+                  >
                     <DeleteIcon sx={{ fontSize: '0.85rem' }} />
                   </IconButton>
                 </Box>
