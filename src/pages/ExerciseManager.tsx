@@ -102,12 +102,11 @@ function ExerciseDialog({ exercise, open, onClose, onSave }: {
     }
   }, [exercise, open]);
 
-  // Subcategory is now required
   const isValid = name.trim() && category && subcategory;
 
   const handleCategoryChange = (cat: string) => {
     setCategory(cat);
-    setSubcategory(''); // reset subcategory when category changes
+    setSubcategory('');
   };
 
   return (
@@ -231,7 +230,7 @@ export default function ExerciseManager() {
   }, [exercises, search, filterCat]);
 
   const handleAdd = async (data: any) => {
-    await addExercise({ ...data, isBodyweight: false }); // isBodyweight inferred from data
+    await addExercise({ ...data, isBodyweight: false }); 
     setAddOpen(false);
     setSuccessMsg('Exercise added! ✅');
   };
@@ -359,7 +358,7 @@ export default function ExerciseManager() {
         {filtered.length} exercise{filtered.length !== 1 ? 's' : ''}
       </Typography>
 
-      <Paper sx={{ borderRadius: 3, overflow: 'hidden' }}>
+      <Paper sx={{ borderRadius: 3, overflow: 'hidden', mb: 4 }}>
         <List dense disablePadding>
           {filtered.map((ex, i) => (
             <React.Fragment key={ex._id}>

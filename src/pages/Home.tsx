@@ -4,7 +4,7 @@ import {
   Box, Typography, Button, Paper, Chip, Dialog, DialogTitle,
   DialogContent, DialogActions, TextField, IconButton,
   Snackbar, Alert, InputAdornment, List, ListItemButton,
-  Divider
+  ListItemText, Divider
 } from '@mui/material';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
@@ -12,7 +12,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { format, isToday, isYesterday } from 'date-fns';
+import { format, isToday, isYesterday, isValid } from 'date-fns';
 import { enGB } from 'date-fns/locale';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -29,13 +29,14 @@ const EQUIPMENT_TYPES = [
   { value: 'Other', emoji: '⚡' },
 ];
 
-function matchesSearch(ex: { name: string; subcategory?: string; category: string; isBodyweight: boolean; isArchived?: boolean }, query: string): boolean {
-  if (ex.isArchived) return false; 
+// BULLETPROOF SEARCH: Added optional chaining (?.) so missing data won't crash the app
+function matchesSearch(ex: any, query: string): boolean {
+  if (ex?.isArchived) return false; 
   if (!query) return true;
   const q = query.toLowerCase();
-  if (ex.name.toLowerCase().includes(q)) return true;
-  if ((ex.subcategory ?? '').toLowerCase().includes(q)) return true;
-  if (ex.category.toLowerCase().includes(q)) return true;
+  if (ex?.name?.toLowerCase().includes(q)) return true;
+  if (ex?.subcategory?.toLowerCase().includes(q)) return true;
+  if (ex?.category?.toLowerCase().includes(q)) return true;
   return false;
 }
 
@@ -69,6 +70,7 @@ export default function Home() {
   const [notes, setNotes] = useState('');
   const [timestamp, setTimestamp] = useState<number>(Date.now());
   const [successMsg, setSuccessMsg] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
 
   const allExercises = useQuery(api.exercises.getExercises, { category: '' });
   const thisWeeksLifts = useQuery(api.lifts.getThisWeeksLifts);
@@ -80,7 +82,7 @@ export default function Home() {
   const filteredExercises = useMemo(() => {
     if (!allExercises) return [];
     return allExercises.filter(ex => {
-      const matchesCat = !filterCat || ex.category === filterCat;
+      const matchesCat = !filterCat || ex?.category === filterCat;
       return matchesCat && matchesSearch(ex, exerciseSearch);
     }).slice(0, 30);
   }, [allExercises, filterCat, exerciseSearch]);
@@ -96,6 +98,9 @@ export default function Home() {
 
     allLifts.forEach(lift => {
       const date = new Date(lift.timestamp);
+      // Safety check to prevent date-fns from crashing on invalid dates
+      if (!isValid(date)) return; 
+
       let dayLabel = '';
       if (isToday(date)) dayLabel = 'Today';
       else if (isYesterday(date)) dayLabel = 'Yesterday';
@@ -140,16 +145,22 @@ export default function Home() {
     setSets(lift.sets.toString());
     setRir(lift.rir?.toString() ?? '');
     setNotes(lift.notes ?? '');
-    setTimestamp(lift.timestamp);
+    setTimestamp(lift.timestamp || Date.now());
     setOpen(true);
   };
 
   const confirmDelete = async () => {
     if (!deleteConfirmId) return;
-    await deleteSetMutation({ id: deleteConfirmId as any });
-    setSuccessMsg('Set deleted! 🗑️');
-    setDeleteConfirmId(null);
-    setOpen(false); 
+    try {
+      await deleteSetMutation({ id: deleteConfirmId as any });
+      setSuccessMsg('Set deleted! 🗑️');
+    } catch (err) {
+      console.error(err);
+      setErrorMsg('Failed to delete set.');
+    } finally {
+      setDeleteConfirmId(null);
+      setOpen(false); 
+    }
   };
 
   const handleSelectExercise = (ex: any) => {
@@ -160,37 +171,47 @@ export default function Home() {
 
   const handleSubmit = async () => {
     if (!exerciseName || !reps) return;
-    const parsedWeight = parseFloat(weight) || 0;
-    const targetTimestamp = new Date(timestamp).getTime();
+    
+    try {
+      const parsedWeight = parseFloat(weight) || 0;
+      const parsedReps = parseInt(reps) || 0;
+      const parsedSets = parseInt(sets) || 1;
+      
+      // Fallback to Date.now() if timestamp is somehow corrupted
+      const targetTimestamp = isNaN(new Date(timestamp).getTime()) ? Date.now() : new Date(timestamp).getTime();
 
-    if (editingId) {
-      await updateSetMutation({
-        id: editingId as any,
-        equipmentType: equipment,
-        weight: parsedWeight,
-        reps: parseInt(reps),
-        sets: parseInt(sets) || 1,
-        rir: rir ? parseInt(rir) : undefined,
-        notes: notes || undefined,
-        timestamp: targetTimestamp,
-      });
-      setSuccessMsg('Set updated! 🔄');
-    } else {
-      await logSetMutation({
-        exerciseName,
-        category: exerciseCategory || 'Other',
-        subcategory: exerciseSubcat || undefined,
-        equipmentType: equipment,
-        weight: parsedWeight,
-        reps: parseInt(reps),
-        sets: parseInt(sets) || 1,
-        rir: rir ? parseInt(rir) : undefined,
-        notes: notes || undefined,
-        timestamp: targetTimestamp,
-      });
-      setSuccessMsg('Set logged! 🔥');
+      if (editingId) {
+        await updateSetMutation({
+          id: editingId as any,
+          equipmentType: equipment,
+          weight: parsedWeight,
+          reps: parsedReps,
+          sets: parsedSets,
+          rir: rir ? parseInt(rir) : undefined,
+          notes: notes || undefined,
+          timestamp: targetTimestamp,
+        });
+        setSuccessMsg('Set updated! 🔄');
+      } else {
+        await logSetMutation({
+          exerciseName,
+          category: exerciseCategory || 'Other',
+          subcategory: exerciseSubcat || undefined,
+          equipmentType: equipment,
+          weight: parsedWeight,
+          reps: parsedReps,
+          sets: parsedSets,
+          rir: rir ? parseInt(rir) : undefined,
+          notes: notes || undefined,
+          timestamp: targetTimestamp,
+        });
+        setSuccessMsg('Set logged! 🔥');
+      }
+      setOpen(false);
+    } catch (err) {
+      console.error(err);
+      setErrorMsg('Failed to save set. Please check your inputs.');
     }
-    setOpen(false);
   };
 
   return (
@@ -305,7 +326,7 @@ export default function Home() {
                         <React.Fragment key={ex._id}>
                           {i > 0 && <Divider sx={{ borderColor: 'rgba(255,255,255,0.05)' }} />}
                           <ListItemButton onClick={() => handleSelectExercise(ex)} sx={{ py: 0.75, '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' } }}>
-                            <ListItemText primary={ex.name} secondary={`${ex.category}${ex.subcategory ? ' · ' + ex.subcategory : ''}`} primaryTypographyProps={{ fontSize: '0.88rem', fontWeight: 600 }} secondaryTypographyProps={{ fontSize: '0.7rem' }} />
+                            <ListItemText primary={ex?.name || 'Unknown'} secondary={`${ex?.category || ''}${ex?.subcategory ? ' · ' + ex.subcategory : ''}`} primaryTypographyProps={{ fontSize: '0.88rem', fontWeight: 600 }} secondaryTypographyProps={{ fontSize: '0.7rem' }} />
                           </ListItemButton>
                         </React.Fragment>
                       ))}
@@ -361,6 +382,7 @@ export default function Home() {
       </Dialog>
 
       <Snackbar open={!!successMsg} autoHideDuration={2000} onClose={() => setSuccessMsg('')}><Alert severity="success">{successMsg}</Alert></Snackbar>
+      <Snackbar open={!!errorMsg} autoHideDuration={3000} onClose={() => setErrorMsg('')}><Alert severity="error">{errorMsg}</Alert></Snackbar>
     </Box>
   );
 }

@@ -215,6 +215,7 @@ export default function Cardio() {
   const [zone2Goal, setZone2Goal] = useState(150);
   const [anaerobicGoal, setAnaerobicGoal] = useState(30);
   const [successMsg, setSuccessMsg] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
 
   const sessions = useQuery(api.cardio.getCardioSessions, {});
   const thisWeek = useQuery(api.cardio.getThisWeeksCardio);
@@ -244,32 +245,39 @@ export default function Cardio() {
   const handleSubmit = async () => {
     if (!form.duration) return;
     
-    if (editSession) {
-      await updateCardio({
-        id: editSession._id,
-        movementType: form.movementType,
-        duration: parseFloat(form.duration),
-        distance: form.distance ? parseFloat(form.distance) : undefined,
-        rpe: form.rpe ? parseFloat(form.rpe) : undefined,
-        zone: form.zone,
-        notes: form.notes || undefined,
-        timestamp: form.timestamp,
-      });
-      setSuccessMsg('Session updated! 🔄');
-    } else {
-      await logCardio({
-        movementType: form.movementType,
-        duration: parseFloat(form.duration),
-        distance: form.distance ? parseFloat(form.distance) : undefined,
-        rpe: form.rpe ? parseFloat(form.rpe) : undefined,
-        zone: form.zone,
-        notes: form.notes || undefined,
-        timestamp: form.timestamp,
-      });
-      setSuccessMsg('Cardio logged! 🔥');
+    try {
+      const targetTimestamp = isNaN(new Date(form.timestamp).getTime()) ? Date.now() : new Date(form.timestamp).getTime();
+
+      if (editSession) {
+        await updateCardio({
+          id: editSession._id,
+          movementType: form.movementType,
+          duration: parseFloat(form.duration),
+          distance: form.distance ? parseFloat(form.distance) : undefined,
+          rpe: form.rpe ? parseFloat(form.rpe) : undefined,
+          zone: form.zone,
+          notes: form.notes || undefined,
+          timestamp: targetTimestamp,
+        });
+        setSuccessMsg('Session updated! 🔄');
+      } else {
+        await logCardio({
+          movementType: form.movementType,
+          duration: parseFloat(form.duration),
+          distance: form.distance ? parseFloat(form.distance) : undefined,
+          rpe: form.rpe ? parseFloat(form.rpe) : undefined,
+          zone: form.zone,
+          notes: form.notes || undefined,
+          timestamp: targetTimestamp,
+        });
+        setSuccessMsg('Cardio logged! 🔥');
+      }
+      setOpen(false);
+      setEditSession(null);
+    } catch (err) {
+      console.error(err);
+      setErrorMsg('Failed to save cardio session.');
     }
-    setOpen(false);
-    setEditSession(null);
   };
 
   const handleDeleteClick = (id: any) => {
@@ -282,8 +290,8 @@ export default function Cardio() {
       await deleteCardio({ id: deleteConfirmId as any });
       setSuccessMsg('Session deleted! 🗑️');
     } catch (err) {
-      console.error("Failed to delete session:", err);
-      setSuccessMsg('Error deleting session.');
+      console.error(err);
+      setErrorMsg('Error deleting session.');
     } finally {
       setDeleteConfirmId(null);
     }
@@ -518,6 +526,12 @@ export default function Cardio() {
         sx={{ bottom: '80px !important' }}
       >
         <Alert severity="success" sx={{ borderRadius: 3, fontWeight: 700 }}>{successMsg}</Alert>
+      </Snackbar>
+      <Snackbar open={!!errorMsg} autoHideDuration={3000} onClose={() => setErrorMsg('')}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        sx={{ bottom: '80px !important' }}
+      >
+        <Alert severity="error" sx={{ borderRadius: 3, fontWeight: 700 }}>{errorMsg}</Alert>
       </Snackbar>
     </Box>
   );
