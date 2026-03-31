@@ -76,6 +76,7 @@ export default function Progress() {
   // Edit State
   const [editSet, setEditSet] = useState<any | null>(null);
   const [successMsg, setSuccessMsg] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
 
   const exercises = useQuery(api.exercises.getExercises, { category: '' });
   const allLifts = useQuery(api.lifts.getLifts, {});
@@ -91,7 +92,6 @@ export default function Progress() {
     localStorage.setItem('progress_metric', metric);
   }, [metric]);
 
-  // Only show exercises that have history
   const exercisesWithHistory = useMemo(() => {
     if (!allLifts) return new Set<string>();
     return new Set(allLifts.map(l => l.exerciseName));
@@ -104,7 +104,6 @@ export default function Progress() {
     return withHistory.filter(e => e.name.toLowerCase().includes(search.toLowerCase())).slice(0, 25);
   }, [exercises, search, exercisesWithHistory]);
 
-  // All logged sessions for selected exercise
   const historyForSelected = useMemo(() => {
     if (!allLifts || !selectedExercise) return [];
     return allLifts
@@ -112,7 +111,6 @@ export default function Progress() {
       .sort((a, b) => a.timestamp - b.timestamp);
   }, [allLifts, selectedExercise]);
 
-  // ── Auto-Detect Equipment Types ─────────────────────────────────────────
   const availableEquipments = useMemo(() => {
     const types = new Set(historyForSelected.map(l => l.equipmentType || (l.weight > 0 ? 'Barbell' : 'Bodyweight')));
     return Array.from(types).sort();
@@ -125,16 +123,13 @@ export default function Progress() {
 
   const isBW = activeEquipment === 'Bodyweight';
 
-  // Reset override when exercise changes
   useEffect(() => { setEquipmentOverride(null); }, [selectedExercise]);
 
-  // Auto-switch metric when equipment mode changes
   useEffect(() => {
     if (isBW && !BODYWEIGHT_METRICS.find(m => m.value === metric)) setMetric('reps');
     if (!isBW && !WEIGHTED_METRICS.find(m => m.value === metric)) setMetric('e1rm');
   }, [isBW, metric]);
 
-  // ── Chart data ─────────────────────────────────────────────────────────
   const chartData = useMemo(() => {
     const sessions = historyForSelected.filter(l => {
       const eq = l.equipmentType || (l.weight > 0 ? 'Barbell' : 'Bodyweight');
@@ -153,7 +148,6 @@ export default function Progress() {
     }));
   }, [historyForSelected, activeEquipment]);
 
-  // ── Weighted stats ─────────────────────────────────────────────────────
   const bestE1RM = chartData.length ? Math.max(...chartData.map(d => d.e1rm)) : 0;
   const heaviestLift = chartData.length ? Math.max(...chartData.map(d => d.weight)) : 0;
   const bestVolume = chartData.length ? Math.max(...chartData.map(d => d.volume)) : 0;
@@ -165,7 +159,6 @@ export default function Progress() {
   const lastStrength = strengthLifts[0]?.weight ?? null;
   const lastHyper = hyperLifts[0]?.weight ?? null;
 
-  // ── Bodyweight stats ───────────────────────────────────────────────────
   const bestMaxReps = chartData.length ? Math.max(...chartData.map(d => d.reps)) : 0;
   const bestTotalReps = chartData.length ? Math.max(...chartData.map(d => d.totalReps)) : 0;
   const mostSets = chartData.length ? Math.max(...chartData.map(d => d.sets)) : 0;
@@ -173,7 +166,6 @@ export default function Progress() {
   const currentMetricsList = isBW ? BODYWEIGHT_METRICS : WEIGHTED_METRICS;
   const selectedMetric = currentMetricsList.find(m => m.value === metric) ?? currentMetricsList[0];
 
-  // ── Handlers ───────────────────────────────────────────────────────────
   const handleSelectExercise = (name: string) => {
     setSelectedExercise(name);
     setSearch(name);
@@ -182,37 +174,47 @@ export default function Progress() {
 
   const handleUpdate = async () => {
     if (!editSet) return;
-    const weightVal = parseFloat(editSet.weight) || 0;
-    const repsVal = parseInt(editSet.reps) || 0;
-    const setsVal = parseInt(editSet.sets) || 1;
-    const rirVal = editSet.rir !== '' && editSet.rir !== null && editSet.rir !== undefined ? parseInt(editSet.rir) : undefined;
     
-    await updateSetMutation({
-      id: editSet._id,
-      weight: weightVal,
-      reps: repsVal,
-      sets: setsVal,
-      rir: rirVal,
-      notes: editSet.notes || undefined,
-      equipmentType: editSet.equipmentType,
-      timestamp: editSet.timestamp,
-    });
-    
-    setEditSet(null);
-    setSuccessMsg('Entry updated! 🔄');
+    try {
+      const weightVal = parseFloat(editSet.weight) || 0;
+      const repsVal = parseInt(editSet.reps) || 0;
+      const setsVal = parseInt(editSet.sets) || 1;
+      const rirVal = editSet.rir !== '' && editSet.rir !== null && editSet.rir !== undefined ? parseInt(editSet.rir) : undefined;
+      const targetTimestamp = isNaN(new Date(editSet.timestamp).getTime()) ? Date.now() : new Date(editSet.timestamp).getTime();
+      
+      await updateSetMutation({
+        id: editSet._id,
+        weight: weightVal,
+        reps: repsVal,
+        sets: setsVal,
+        rir: rirVal,
+        notes: editSet.notes || undefined,
+        equipmentType: editSet.equipmentType,
+        timestamp: targetTimestamp,
+      });
+      
+      setEditSet(null);
+      setSuccessMsg('Entry updated! 🔄');
+    } catch (err) {
+      console.error(err);
+      setErrorMsg('Failed to update set.');
+    }
   };
 
   const handleDelete = async () => {
     if (!editSet) return;
-    await deleteSetMutation({ id: editSet._id });
-    setEditSet(null);
-    setSuccessMsg('Entry deleted! 🗑️');
+    try {
+      await deleteSetMutation({ id: editSet._id });
+      setEditSet(null);
+      setSuccessMsg('Entry deleted! 🗑️');
+    } catch (err) {
+      console.error(err);
+      setErrorMsg('Failed to delete set.');
+    }
   };
 
-  // ── Render ─────────────────────────────────────────────────────────────
   return (
     <Box sx={{ px: 2, pt: 3, pb: 2, maxWidth: 480, mx: 'auto' }}>
-      {/* Header */}
       <Box sx={{ mb: 3 }}>
         <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#00d4ff', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 0.5 }}>
           Over Time
@@ -506,10 +508,8 @@ export default function Progress() {
         </LocalizationProvider>
       </Dialog>
 
-      <Snackbar open={!!successMsg} autoHideDuration={2000} onClose={() => setSuccessMsg('')}>
-        <Alert severity="success" sx={{ borderRadius: 2, fontWeight: 700 }}>{successMsg}</Alert>
-      </Snackbar>
-
+      <Snackbar open={!!successMsg} autoHideDuration={2000} onClose={() => setSuccessMsg('')}><Alert severity="success">{successMsg}</Alert></Snackbar>
+      <Snackbar open={!!errorMsg} autoHideDuration={3000} onClose={() => setErrorMsg('')}><Alert severity="error">{errorMsg}</Alert></Snackbar>
     </Box>
   );
 }
