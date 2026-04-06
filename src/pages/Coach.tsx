@@ -1,13 +1,14 @@
 // src/pages/Coach.tsx
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Paper, Button, CircularProgress, Slider, Select, MenuItem, FormControl, InputLabel, Checkbox, Divider, TextField, Dialog, DialogTitle, DialogContent, DialogActions, IconButton } from '@mui/material';
+import { Box, Typography, Paper, Button, CircularProgress, Slider, Select, MenuItem, FormControl, InputLabel, Checkbox, Divider, TextField, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Collapse } from '@mui/material';
 import { useAction, useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import SearchIcon from '@mui/icons-material/Search';
 import AddTaskIcon from '@mui/icons-material/AddTask';
 import CloseIcon from '@mui/icons-material/Close';
-import EditNoteIcon from '@mui/icons-material/EditNote';
+import HistoryIcon from '@mui/icons-material/History';
+import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
 
 // JSON Interfaces
 interface SuggestionJSON { focusTitle: string; reasoning: string; }
@@ -61,6 +62,9 @@ export default function Coach() {
     return saved ? JSON.parse(saved) : {};
   });
 
+  // Cell Expansion State
+  const [expandedCells, setExpandedCells] = useState<Record<string, boolean>>({});
+
   // Modal Logging State
   const [logModalOpen, setLogModalOpen] = useState(false);
   const [activeLoggingExercise, setActiveLoggingExercise] = useState<string>('');
@@ -79,15 +83,14 @@ export default function Coach() {
   const generateWorkout = useAction("ai:generateWorkout");
   const logSet = useMutation(api.lifts.logSet);
   
-  // Fetch live exercises to auto-fill category
+  // Fetch live databases
   const exercisesDB = useQuery(api.exercises.getExercises, { category: "" });
+  const allLiftsDB = useQuery(api.lifts.getLifts, {}) || [];
 
-  // Auto-route to WORKOUT phase
   useEffect(() => {
     if (workoutData) setPhase('WORKOUT');
   }, []);
 
-  // Save states to LocalStorage
   useEffect(() => {
     if (workoutData) {
       localStorage.setItem('liftlog_active_workout', JSON.stringify(workoutData));
@@ -118,7 +121,8 @@ export default function Coach() {
     setIsProcessing(true);
     setCompletedExercises({}); 
     setLoggedExercises({});
-    setExerciseDrafts({}); // Clear old drafts
+    setExerciseDrafts({});
+    setExpandedCells({});
 
     try {
       const result = await generateWorkout({ timeAvailable: time, equipment, style, localTime: new Date().toISOString(), approvedFocus: suggestion.focusTitle, userTweaks: tweaks });
@@ -136,32 +140,38 @@ export default function Coach() {
     setCompletedExercises({});
     setLoggedExercises({});
     setExerciseDrafts({});
+    setExpandedCells({});
     setSuggestion(null);
     setTweaks('');
     setCustomInput('');
     setPhase('SETUP');
   };
 
-  // Opening the Logger logic
+  const toggleCellExpand = (exerciseName: string) => {
+    setExpandedCells(prev => ({ ...prev, [exerciseName]: !prev[exerciseName] }));
+  };
+
   const openLogger = (exerciseName: string) => {
     setActiveLoggingExercise(exerciseName);
     
-    // Auto-resolve Category from DB
     const dbMatch = exercisesDB?.find(ex => ex.name.toLowerCase() === exerciseName.toLowerCase());
     const resolvedCategory = dbMatch?.category || 'Custom';
     
-    // Pull from draft memory if it exists
+    const previousLifts = allLiftsDB.filter(l => l.exerciseName.toLowerCase() === exerciseName.toLowerCase()).sort((a,b) => b.timestamp - a.timestamp);
+    const lastLift = previousLifts.length > 0 ? previousLifts[0] : null;
+
     const draft = exerciseDrafts[exerciseName];
     setLogCategory(draft?.category || resolvedCategory);
-    setLogEquipment(draft?.equipment || 'Bodyweight');
-    setLogWeight(draft?.weight !== undefined ? draft.weight : '');
-    setLogReps(draft?.reps !== undefined ? draft.reps : '');
+    setLogEquipment(draft?.equipment || lastLift?.equipmentType || 'Bodyweight');
+    setLogWeight(draft?.weight !== undefined ? draft.weight : (lastLift?.weight || ''));
+    setLogReps(draft?.reps !== undefined ? draft.reps : (lastLift?.reps || ''));
     setLogSets(draft?.sets !== undefined ? draft.sets : 1);
     
     setLogModalOpen(true);
   };
 
-  const handleExerciseClick = (exerciseName: string, isCurrentlyDone: boolean) => {
+  const handleCheckboxClick = (e: React.MouseEvent, exerciseName: string, isCurrentlyDone: boolean) => {
+    e.stopPropagation(); 
     if (isCurrentlyDone) {
       setCompletedExercises(prev => ({ ...prev, [exerciseName]: false }));
     } else {
@@ -203,6 +213,39 @@ export default function Coach() {
       alert("⚠️ Failed to save set to database.");
     }
     setIsSavingLog(false);
+  };
+
+  // Helper to render the history inside an expanded cell
+  const renderLiftHistory = (exerciseName: string) => {
+    const history = allLiftsDB.filter(l => l.exerciseName.toLowerCase() === exerciseName.toLowerCase()).sort((a,b) => b.timestamp - a.timestamp).slice(0, 3);
+    
+    if (history.length === 0) {
+      return (
+        <Typography variant="body2" sx={{ color: '#8a8a9a', fontStyle: 'italic', p: 2, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2 }}>
+          No previous logs found for this exercise. Time to set a baseline!
+        </Typography>
+      );
+    }
+
+    return (
+      <Box sx={{ bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, p: 1.5, mt: 1 }}>
+        <Typography sx={{ fontSize: '0.75rem', fontWeight: 800, color: '#00d4ff', textTransform: 'uppercase', mb: 1, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          <HistoryIcon sx={{ fontSize: '1rem' }}/> Recent Performance
+        </Typography>
+        {history.map((lift, i) => {
+          return (
+            <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: i < history.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none', py: 0.5 }}>
+              <Typography variant="body2" sx={{ color: i === 0 ? '#00e096' : '#d2a8ff', fontWeight: i === 0 ? 700 : 400 }}>
+                {lift.weight} lbs × {lift.reps} reps ({lift.sets} sets)
+              </Typography>
+              <Typography variant="body2" sx={{ color: '#8a8a9a', fontSize: '0.8rem' }}>
+                {new Date(lift.timestamp).toLocaleDateString()}
+              </Typography>
+            </Box>
+          )
+        })}
+      </Box>
+    );
   };
 
   return (
@@ -298,148 +341,146 @@ export default function Coach() {
 
           <Box sx={{ p: 3 }}>
             
-            {/* 🔥 UPDATED WARM-UP SECTION 🔥 */}
+            {/* WARM-UP */}
             <Typography variant="h6" sx={{ fontWeight: 800, color: '#00d4ff', mb: 1.5 }}>1. Warm-up</Typography>
             {workoutData.warmup.map((ex, idx) => {
               const isDone = completedExercises[ex.name] || false;
               const isLogged = loggedExercises[ex.name] || false;
+              const isExpanded = expandedCells[ex.name] || false;
               
               return (
-                <Paper key={idx} sx={{ 
-                  p: 2, mb: 2, borderRadius: 3, 
+                <Paper key={idx} onClick={() => toggleCellExpand(ex.name)} sx={{ 
+                  p: 2, mb: 2, borderRadius: 3, cursor: 'pointer',
                   bgcolor: isDone ? 'rgba(0, 224, 150, 0.05)' : 'rgba(255,255,255,0.03)', 
                   border: isDone ? '1px solid rgba(0, 224, 150, 0.3)' : '1px solid rgba(255,255,255,0.05)',
-                  opacity: isDone ? 0.6 : 1, transition: 'all 0.2s ease'
+                  opacity: isDone ? 0.6 : 1, transition: 'all 0.2s ease', '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' }
                 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: isExpanded ? 1 : 0 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Checkbox 
-                        checked={isDone} 
-                        onChange={() => handleExerciseClick(ex.name, isDone)} 
-                        sx={{ color: '#b06aff', '&.Mui-checked': { color: '#00e096' }, p: 0 }} 
-                      />
-                      <Typography sx={{ fontWeight: 700, fontSize: '1.1rem', textDecoration: isDone ? 'line-through' : 'none', display: 'flex', alignItems: 'center', gap: 1 }}>
-                        {ex.name}
-                        {isLogged && (
-                          <Typography component="span" sx={{ fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(0, 224, 150, 0.2)', color: '#00e096', px: 1, py: 0.3, borderRadius: 2, textTransform: 'uppercase' }}>
-                            Logged
-                          </Typography>
-                        )}
-                        {isDone && !isLogged && (
-                          <Typography component="span" sx={{ fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(255, 184, 0, 0.2)', color: '#ffb800', px: 1, py: 0.3, borderRadius: 2, textTransform: 'uppercase' }}>
-                            Not Logged
-                          </Typography>
-                        )}
-                      </Typography>
+                      <Checkbox checked={isDone} onClick={(e) => handleCheckboxClick(e, ex.name, isDone)} sx={{ color: '#b06aff', '&.Mui-checked': { color: '#00e096' }, p: 0 }} />
+                      
+                      <Box 
+                        onClick={(e) => { if(isDone) { e.stopPropagation(); openLogger(ex.name); } }} 
+                        sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: isDone ? 'pointer' : 'default', '&:hover': { opacity: isDone ? 0.8 : 1 } }}
+                      >
+                        <Typography sx={{ fontWeight: 700, fontSize: '1.1rem', textDecoration: isDone ? 'line-through' : 'none' }}>
+                          {ex.name}
+                        </Typography>
+                        {isLogged && <Typography component="span" sx={{ fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(0, 224, 150, 0.2)', color: '#00e096', px: 1, py: 0.3, borderRadius: 2, textTransform: 'uppercase' }}>Logged</Typography>}
+                        {isDone && !isLogged && <Typography component="span" sx={{ fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(255, 184, 0, 0.2)', color: '#ffb800', px: 1, py: 0.3, borderRadius: 2, textTransform: 'uppercase' }}>Not Logged</Typography>}
+                      </Box>
                     </Box>
-                    <IconButton size="small" onClick={() => openLogger(ex.name)} sx={{ bgcolor: 'rgba(0, 212, 255, 0.1)', color: '#00d4ff', borderRadius: 2 }}>
-                      <EditNoteIcon sx={{ fontSize: '1.2rem' }} />
-                    </IconButton>
                   </Box>
-                  <Box sx={{ pl: 4 }}>
-                    <Typography variant="body2" sx={{ color: '#00d4ff', fontWeight: 600 }}>{ex.reps}</Typography>
-                  </Box>
+                  <Collapse in={isExpanded}>
+                    <Box sx={{ pl: 4 }}>
+                      <Typography variant="body2" sx={{ color: '#00d4ff', fontWeight: 600 }}>Target: {ex.reps}</Typography>
+                      {renderLiftHistory(ex.name)}
+                    </Box>
+                  </Collapse>
                 </Paper>
               );
             })}
 
             <Divider sx={{ my: 3, borderColor: 'rgba(255,255,255,0.1)' }} />
 
+            {/* MAIN BLOCK */}
             <Typography variant="h6" sx={{ fontWeight: 800, color: '#00d4ff', mb: 2 }}>2. Main Block</Typography>
             {workoutData.mainBlock.map((ex, idx) => {
               const isDone = completedExercises[ex.name] || false;
               const isLogged = loggedExercises[ex.name] || false;
-              
+              const isExpanded = expandedCells[ex.name] || false;
+              const pastLifts = allLiftsDB.filter(l => l.exerciseName.toLowerCase() === ex.name.toLowerCase()).sort((a,b) => b.timestamp - a.timestamp);
+              const lastLift = pastLifts.length > 0 ? pastLifts[0] : null;
+
               return (
-                <Paper key={idx} sx={{ 
-                  p: 2, mb: 2, borderRadius: 3, 
+                <Paper key={idx} onClick={() => toggleCellExpand(ex.name)} sx={{ 
+                  p: 2, mb: 2, borderRadius: 3, cursor: 'pointer',
                   bgcolor: isDone ? 'rgba(0, 224, 150, 0.05)' : 'rgba(255,255,255,0.03)', 
                   border: isDone ? '1px solid rgba(0, 224, 150, 0.3)' : '1px solid rgba(255,255,255,0.05)',
-                  opacity: isDone ? 0.6 : 1, transition: 'all 0.2s ease'
+                  opacity: isDone ? 0.6 : 1, transition: 'all 0.2s ease', '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' }
                 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Checkbox 
-                        checked={isDone} 
-                        onChange={() => handleExerciseClick(ex.name, isDone)} 
-                        sx={{ color: '#b06aff', '&.Mui-checked': { color: '#00e096' }, p: 0 }} 
-                      />
-                      <Typography sx={{ fontWeight: 700, fontSize: '1.1rem', textDecoration: isDone ? 'line-through' : 'none', display: 'flex', alignItems: 'center', gap: 1 }}>
-                        {ex.name}
-                        {isLogged && (
-                          <Typography component="span" sx={{ fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(0, 224, 150, 0.2)', color: '#00e096', px: 1, py: 0.3, borderRadius: 2, textTransform: 'uppercase' }}>
-                            Logged
-                          </Typography>
-                        )}
-                        {isDone && !isLogged && (
-                          <Typography component="span" sx={{ fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(255, 184, 0, 0.2)', color: '#ffb800', px: 1, py: 0.3, borderRadius: 2, textTransform: 'uppercase' }}>
-                            Not Logged
-                          </Typography>
-                        )}
+                      <Checkbox checked={isDone} onClick={(e) => handleCheckboxClick(e, ex.name, isDone)} sx={{ color: '#b06aff', '&.Mui-checked': { color: '#00e096' }, p: 0 }} />
+                      
+                      <Box 
+                        onClick={(e) => { if(isDone) { e.stopPropagation(); openLogger(ex.name); } }} 
+                        sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: isDone ? 'pointer' : 'default', '&:hover': { opacity: isDone ? 0.8 : 1 } }}
+                      >
+                        <Typography sx={{ fontWeight: 700, fontSize: '1.1rem', textDecoration: isDone ? 'line-through' : 'none' }}>
+                          {ex.name}
+                        </Typography>
+                        {isLogged && <Typography component="span" sx={{ fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(0, 224, 150, 0.2)', color: '#00e096', px: 1, py: 0.3, borderRadius: 2, textTransform: 'uppercase' }}>Logged</Typography>}
+                        {isDone && !isLogged && <Typography component="span" sx={{ fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(255, 184, 0, 0.2)', color: '#ffb800', px: 1, py: 0.3, borderRadius: 2, textTransform: 'uppercase' }}>Not Logged</Typography>}
+                      </Box>
+                    </Box>
+                  </Box>
+
+                  {/* Inline Progressive Overload Target */}
+                  {!isExpanded && lastLift && (
+                    <Box sx={{ pl: 4, mb: 1 }}>
+                      <Typography variant="caption" sx={{ color: '#00e096', fontWeight: 700, bgcolor: 'rgba(0, 224, 150, 0.1)', px: 1, py: 0.3, borderRadius: 1, display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
+                        <WorkspacePremiumIcon sx={{ fontSize: '0.9rem' }}/> Aim to beat: {lastLift.weight}lbs × {lastLift.reps}
                       </Typography>
                     </Box>
-                    <IconButton size="small" onClick={() => openLogger(ex.name)} sx={{ bgcolor: 'rgba(0, 212, 255, 0.1)', color: '#00d4ff', borderRadius: 2 }}>
-                      <EditNoteIcon sx={{ fontSize: '1.2rem' }} />
-                    </IconButton>
-                  </Box>
-                  <Box sx={{ pl: 4 }}>
-                    <Box sx={{ display: 'flex', gap: 2, mb: 0.5 }}>
-                      <Typography variant="body2" sx={{ color: '#00d4ff', fontWeight: 600 }}>{ex.setsReps}</Typography>
-                      <Typography variant="body2" sx={{ color: '#8a8a9a' }}>Rest: {ex.rest}</Typography>
+                  )}
+
+                  <Collapse in={isExpanded}>
+                    <Box sx={{ pl: 4 }}>
+                      <Box sx={{ display: 'flex', gap: 2, mb: 0.5 }}>
+                        <Typography variant="body2" sx={{ color: '#00d4ff', fontWeight: 600 }}>Target: {ex.setsReps}</Typography>
+                        <Typography variant="body2" sx={{ color: '#8a8a9a' }}>Rest: {ex.rest}</Typography>
+                      </Box>
+                      <Typography variant="body2" sx={{ color: '#d2a8ff', fontStyle: 'italic', mb: 1 }}>{ex.notes}</Typography>
+                      
+                      {renderLiftHistory(ex.name)}
                     </Box>
-                    <Typography variant="body2" sx={{ color: '#d2a8ff', fontStyle: 'italic' }}>{ex.notes}</Typography>
-                  </Box>
+                  </Collapse>
                 </Paper>
               );
             })}
 
             <Divider sx={{ my: 3, borderColor: 'rgba(255,255,255,0.1)' }} />
 
-            {/* 🔥 UPDATED COOLDOWN SECTION 🔥 */}
+            {/* COOLDOWN */}
             <Typography variant="h6" sx={{ fontWeight: 800, color: '#00d4ff', mb: 1.5 }}>3. Cooldown</Typography>
             {workoutData.cooldown.map((ex, idx) => {
               const isDone = completedExercises[ex.name] || false;
               const isLogged = loggedExercises[ex.name] || false;
+              const isExpanded = expandedCells[ex.name] || false;
               
               return (
-                <Paper key={idx} sx={{ 
-                  p: 2, mb: 2, borderRadius: 3, 
+                <Paper key={idx} onClick={() => toggleCellExpand(ex.name)} sx={{ 
+                  p: 2, mb: 2, borderRadius: 3, cursor: 'pointer',
                   bgcolor: isDone ? 'rgba(0, 224, 150, 0.05)' : 'rgba(255,255,255,0.03)', 
                   border: isDone ? '1px solid rgba(0, 224, 150, 0.3)' : '1px solid rgba(255,255,255,0.05)',
-                  opacity: isDone ? 0.6 : 1, transition: 'all 0.2s ease'
+                  opacity: isDone ? 0.6 : 1, transition: 'all 0.2s ease', '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' }
                 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: isExpanded ? 1 : 0 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Checkbox 
-                        checked={isDone} 
-                        onChange={() => handleExerciseClick(ex.name, isDone)} 
-                        sx={{ color: '#b06aff', '&.Mui-checked': { color: '#00e096' }, p: 0 }} 
-                      />
-                      <Typography sx={{ fontWeight: 700, fontSize: '1.1rem', textDecoration: isDone ? 'line-through' : 'none', display: 'flex', alignItems: 'center', gap: 1 }}>
-                        {ex.name}
-                        {isLogged && (
-                          <Typography component="span" sx={{ fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(0, 224, 150, 0.2)', color: '#00e096', px: 1, py: 0.3, borderRadius: 2, textTransform: 'uppercase' }}>
-                            Logged
-                          </Typography>
-                        )}
-                        {isDone && !isLogged && (
-                          <Typography component="span" sx={{ fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(255, 184, 0, 0.2)', color: '#ffb800', px: 1, py: 0.3, borderRadius: 2, textTransform: 'uppercase' }}>
-                            Not Logged
-                          </Typography>
-                        )}
-                      </Typography>
+                      <Checkbox checked={isDone} onClick={(e) => handleCheckboxClick(e, ex.name, isDone)} sx={{ color: '#b06aff', '&.Mui-checked': { color: '#00e096' }, p: 0 }} />
+                      
+                      <Box 
+                        onClick={(e) => { if(isDone) { e.stopPropagation(); openLogger(ex.name); } }} 
+                        sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: isDone ? 'pointer' : 'default', '&:hover': { opacity: isDone ? 0.8 : 1 } }}
+                      >
+                        <Typography sx={{ fontWeight: 700, fontSize: '1.1rem', textDecoration: isDone ? 'line-through' : 'none' }}>
+                          {ex.name}
+                        </Typography>
+                        {isLogged && <Typography component="span" sx={{ fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(0, 224, 150, 0.2)', color: '#00e096', px: 1, py: 0.3, borderRadius: 2, textTransform: 'uppercase' }}>Logged</Typography>}
+                        {isDone && !isLogged && <Typography component="span" sx={{ fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(255, 184, 0, 0.2)', color: '#ffb800', px: 1, py: 0.3, borderRadius: 2, textTransform: 'uppercase' }}>Not Logged</Typography>}
+                      </Box>
                     </Box>
-                    <IconButton size="small" onClick={() => openLogger(ex.name)} sx={{ bgcolor: 'rgba(0, 212, 255, 0.1)', color: '#00d4ff', borderRadius: 2 }}>
-                      <EditNoteIcon sx={{ fontSize: '1.2rem' }} />
-                    </IconButton>
                   </Box>
-                  <Box sx={{ pl: 4 }}>
-                    <Typography variant="body2" sx={{ color: '#00d4ff', fontWeight: 600 }}>{ex.reps}</Typography>
-                  </Box>
+                  <Collapse in={isExpanded}>
+                    <Box sx={{ pl: 4 }}>
+                      <Typography variant="body2" sx={{ color: '#00d4ff', fontWeight: 600 }}>Target: {ex.reps}</Typography>
+                      {renderLiftHistory(ex.name)}
+                    </Box>
+                  </Collapse>
                 </Paper>
               );
             })}
-
           </Box>
         </Paper>
       )}
@@ -460,12 +501,7 @@ export default function Coach() {
           <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
             <FormControl fullWidth size="small">
               <InputLabel sx={{ color: 'rgba(255,255,255,0.5)' }}>Equipment</InputLabel>
-              <Select 
-                value={logEquipment} 
-                onChange={(e) => setLogEquipment(e.target.value)}
-                label="Equipment" 
-                sx={{ borderRadius: 2 }}
-              >
+              <Select value={logEquipment} onChange={(e) => setLogEquipment(e.target.value)} label="Equipment" sx={{ borderRadius: 2 }}>
                 <MenuItem value="Bodyweight">Bodyweight</MenuItem>
                 <MenuItem value="Barbell">Barbell</MenuItem>
                 <MenuItem value="Dumbbell">Dumbbell</MenuItem>
@@ -482,17 +518,11 @@ export default function Coach() {
           </Box>
         </DialogContent>
         <DialogActions sx={{ p: 3, pt: 0 }}>
-          <Button 
-            fullWidth variant="contained" 
-            onClick={handleSaveLogToDB}
-            disabled={isSavingLog}
-            sx={{ py: 1.5, borderRadius: 3, fontWeight: 800, background: 'linear-gradient(135deg, #00d4ff 0%, #0099cc 100%)', color: '#000' }}
-          >
+          <Button fullWidth variant="contained" onClick={handleSaveLogToDB} disabled={isSavingLog} sx={{ py: 1.5, borderRadius: 3, fontWeight: 800, background: 'linear-gradient(135deg, #00d4ff 0%, #0099cc 100%)', color: '#000' }}>
             {isSavingLog ? <CircularProgress size={24} sx={{ color: '#000' }} /> : <><AddTaskIcon sx={{ mr: 1 }} /> Save Log</>}
           </Button>
         </DialogActions>
       </Dialog>
-
     </Box>
   );
 }
