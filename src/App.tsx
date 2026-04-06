@@ -6,6 +6,7 @@ import Home from './pages/Home';
 import Volume from './pages/Volume';
 import Progress from './pages/Progress';
 import Cardio from './pages/Cardio';
+import Coach from './pages/Coach';
 import ExerciseManager from './pages/ExerciseManager';
 import { ConvexProvider, ConvexReactClient } from 'convex/react';
 
@@ -68,7 +69,7 @@ export const theme = createTheme({
           color: '#555566',
           '&.Mui-selected': { color: '#00d4ff' },
           minWidth: 'unset',
-          padding: '6px 4px',
+          padding: '6px 2px', // Slightly tighter padding to fit 6 tabs perfectly
         },
         label: {
           fontFamily: '"Barlow", sans-serif',
@@ -120,6 +121,7 @@ const NAV_ITEMS = [
   { label: 'Volume', emoji: '📊', path: '/volume' },
   { label: 'Progress', emoji: '📈', path: '/progress' },
   { label: 'Cardio', emoji: '🏃', path: '/cardio' },
+  { label: 'Coach', emoji: '🧠', path: '/coach' },
   { label: 'Exercises', emoji: '🗂️', path: '/exercises' },
 ];
 
@@ -141,6 +143,7 @@ function AppShell() {
           <Route path="/volume" element={<Volume />} />
           <Route path="/progress" element={<Progress />} />
           <Route path="/cardio" element={<Cardio />} />
+          <Route path="/coach" element={<Coach />} />
           <Route path="/exercises" element={<ExerciseManager />} />
         </Routes>
       </Box>
@@ -163,7 +166,7 @@ function AppShell() {
   );
 }
 
-// --- The New Login Wrapper ---
+// --- The Login Wrapper ---
 function AuthGate({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [username, setUsername] = useState('');
