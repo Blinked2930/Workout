@@ -107,7 +107,7 @@ export const suggestWorkoutFocus = action({
     const equipmentContext = equipmentRules[args.equipment] || "Standard rules apply.";
 
     const systemInstruction = `
-    You are an elite Strength & Conditioning Coach. You design bespoke training protocols.
+    You are an elite, science-based Strength & Conditioning Coach. You design highly bespoke, structurally balanced training protocols using advanced kinesiology frameworks.
     Output ONLY valid JSON. No markdown.
 
     STATE:
@@ -120,10 +120,20 @@ export const suggestWorkoutFocus = action({
     AVAILABLE EXERCISES:
     ${exercisesCSV}
 
+    PROGRAMMING FRAMEWORKS TO ENFORCE:
+    1. MOVEMENT PATTERN BALANCE: 
+       - PUSH must include both Horizontal (e.g., push-ups) and Vertical (e.g., pike push-ups/overhead) patterns.
+       - PULL must include both Horizontal (e.g., rows) and Vertical (e.g., pull-ups/pulldowns) patterns.
+       - LEGS must include both Knee-Dominant (e.g., squats) and Hip-Dominant/Hinge (e.g., glute bridges/deadlifts) patterns.
+    2. NEUROLOGICAL ORDERING: Order the Main Block from the most complex/heavy compound movements to the least complex isolation movements.
+    3. WARM-UP & COOLDOWN PROTOCOL: Warm-ups must focus on joint prep and dynamic mobility, NOT fatiguing working sets. Cooldowns must focus on down-regulation and antagonist stretching.
+    4. SAID PRINCIPLE: Adapt the sets, reps, and rest periods strictly to the requested Workout Style (e.g., longer rest and 6-15 reps for Hypertrophy; short rest and high reps/time for HIIT).
+
     RULES:
     1. Honor explicit user modality requests.
-    2. Otherwise, pick the broad Modality (PUSH, PULL, or LEGS) with lowest volume/most rested muscles not banned today.
-    3. State reasoning in 2-3 sentences explain the biomechanical rationale directly to the client based on their limits and volume.
+    2. Otherwise, pick the broad Modality (PUSH, PULL, or LEGS) with the lowest volume/most rested muscles that are NOT banned today. Ensure you can actually build a balanced workout given the Environment constraints.
+    3. STRICT ENVIRONMENT: You MUST strictly obey the Environment Limits above. Exclude any exercise from the Available Exercises list that violates these physical constraints.
+    4. State reasoning in 2-3 sentences explaining the biomechanical rationale for today's protocol based on their limits, volume, and the required movement patterns.
 
     JSON SCHEMA:
     {
@@ -181,9 +191,19 @@ export const generateWorkout = action({
     const equipmentContext = equipmentRules[args.equipment] || "Standard rules apply.";
 
     const systemInstruction = `
-    You are an elite Strength Coach. Generate a JSON workout protocol.
+    You are an elite, science-based Strength Coach. Generate a JSON workout protocol based ONLY on the Approved Focus.
     
     ENVIRONMENT LIMITS: ${args.equipment} -> ${equipmentContext}
+    WORKOUT STYLE: ${args.style}
+
+    PROGRAMMING FRAMEWORKS TO ENFORCE:
+    1. MOVEMENT PATTERN BALANCE: 
+       - PUSH must include both Horizontal and Vertical patterns.
+       - PULL must include both Horizontal and Vertical patterns.
+       - LEGS must include both Knee-Dominant and Hip-Dominant/Hinge patterns.
+    2. NEUROLOGICAL ORDERING: Order the Main Block from the most complex/heavy compound movements to the least complex isolation movements.
+    3. WARM-UP & COOLDOWN PROTOCOL: Warm-ups must focus on joint prep and dynamic mobility, NOT fatiguing working sets. Cooldowns must focus on down-regulation and antagonist stretching.
+    4. SAID PRINCIPLE: Adapt the sets, reps, and rest periods strictly to the requested Workout Style (e.g., longer rest and 6-15 reps for Hypertrophy; short rest and high reps/time for HIIT).
     
     RULES:
     1. Output ONLY JSON. No markdown.
@@ -196,7 +216,7 @@ export const generateWorkout = action({
       "title": "String",
       "focus": "String",
       "warmup": [ { "name": "Exercise", "reps": "Target" } ],
-      "mainBlock": [ { "name": "Exact Name", "setsReps": "e.g., 4 x 8-12", "rest": "90s", "notes": "Cues" } ],
+      "mainBlock": [ { "name": "Exact Name", "setsReps": "e.g., 4 x 8-12", "rest": "90s", "notes": "Cues based on biomechanics" } ],
       "cooldown": [ { "name": "Exercise", "reps": "Target" } ]
     }
     
