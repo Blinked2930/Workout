@@ -60,8 +60,9 @@ export const suggestWorkoutFocus = action({
       (e.subcategory || e.category || "Unknown").toLowerCase()
     ]));
 
-    const exercisesCSV = "Exercise Name,Category,Subcategory,Equipment\n" + 
-      (exercises || []).map(ex => `"${ex.name}",${ex.category},${ex.subcategory || ''},${ex.isBodyweight ? 'Bodyweight' : 'Weighted'}`).join("\n");
+    // REMOVED BROKEN EQUIPMENT TAG. The AI will use its internal knowledge.
+    const exercisesCSV = "Exercise Name,Category,Subcategory\n" + 
+      (exercises || []).map(ex => `"${ex.name}",${ex.category},${ex.subcategory || ''}`).join("\n");
 
     const pushGroups = ['chest', 'shoulders', 'triceps', 'upper body push'];
     const pullGroups = ['back', 'u. traps', 'biceps', 'forearms', 'neck', 'upper body pull'];
@@ -132,7 +133,7 @@ export const suggestWorkoutFocus = action({
     RULES:
     1. Honor explicit user modality requests.
     2. Otherwise, pick the broad Modality (PUSH, PULL, or LEGS) with the lowest volume/most rested muscles that are NOT banned today. Ensure you can actually build a balanced workout given the Environment constraints.
-    3. STRICT ENVIRONMENT: You MUST strictly obey the Environment Limits above. Exclude any exercise from the Available Exercises list that violates these physical constraints.
+    3. STRICT ENVIRONMENT: You MUST strictly obey the Environment Limits above. Use your expert knowledge to determine the equipment required for each exercise in the Available Exercises list. Exclude any exercise that requires equipment violating these physical constraints.
     4. State reasoning in 2-3 sentences explaining the biomechanical rationale for today's protocol based on their limits, volume, and the required movement patterns.
 
     JSON SCHEMA:
@@ -185,8 +186,10 @@ export const generateWorkout = action({
     } catch (e) {
       console.error("Data fetch error:", e);
     }
-    const exercisesCSV = "Exercise Name,Category,Subcategory,Equipment\n" + 
-      (exercises || []).map(ex => `"${ex.name}",${ex.category},${ex.subcategory || ''},${ex.isBodyweight ? 'Bodyweight' : 'Weighted'}`).join("\n");
+    
+    // REMOVED BROKEN EQUIPMENT TAG. The AI will use its internal knowledge.
+    const exercisesCSV = "Exercise Name,Category,Subcategory\n" + 
+      (exercises || []).map(ex => `"${ex.name}",${ex.category},${ex.subcategory || ''}`).join("\n");
     
     const equipmentContext = equipmentRules[args.equipment] || "Standard rules apply.";
 
@@ -208,7 +211,7 @@ export const generateWorkout = action({
     RULES:
     1. Output ONLY JSON. No markdown.
     2. STRICT ISOLATION: Do not mix modalities. If focus is PUSH, no LEGS or PULL.
-    3. STRICT ENVIRONMENT: You MUST strictly obey the Environment Limits above. Exclude any exercise from the Available Exercises list that violates these physical constraints.
+    3. STRICT ENVIRONMENT: You MUST strictly obey the Environment Limits above. Use your expert knowledge to determine the equipment required for each exercise in the Available Exercises list. Exclude any exercise that requires equipment violating these physical constraints.
     4. Use EXACT names from Available Exercises.
 
     JSON SCHEMA:
