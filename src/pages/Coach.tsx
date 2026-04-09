@@ -9,13 +9,17 @@ import AddTaskIcon from '@mui/icons-material/AddTask';
 import CloseIcon from '@mui/icons-material/Close';
 import HistoryIcon from '@mui/icons-material/History';
 import WorkspacePremiumIcon from '@mui/icons-material/WorkspacePremium';
+import TerminalIcon from '@mui/icons-material/Terminal';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 
 // JSON Interfaces
 interface SuggestionJSON { focusTitle: string; reasoning: string; }
 interface WorkoutJSON { title: string; focus: string; warmup: { name: string; reps: string }[]; mainBlock: { name: string; setsReps: string; rest: string; notes: string }[]; cooldown: { name: string; reps: string }[]; }
 interface ExerciseDraft { equipment: string; category: string; weight: number | string; reps: number | string; sets: number | string; }
+interface DebugData { yesterdayBanned: string; weeklyMuscle: string; dateMath: string; aiPrompt: string; }
 
-// Sanitizer for AI JSON output
 const parseAIJSON = (rawStr: string) => {
   try {
     const cleaned = rawStr.replace(/```json\n?/gi, '').replace(/```\n?/g, '').trim();
@@ -31,17 +35,16 @@ const parseAIJSON = (rawStr: string) => {
 export default function Coach() {
   const [phase, setPhase] = useState<'SETUP' | 'REVIEW' | 'WORKOUT'>('SETUP');
 
-  // Form State
   const [time, setTime] = useState<number>(45);
   const [equipment, setEquipment] = useState<string>('Floor Mode (Bodyweight Only)');
   const [style, setStyle] = useState<string>('Strength & Hypertrophy');
   const [customInput, setCustomInput] = useState<string>('');
   
-  // Suggestion & Tweaks State
   const [suggestion, setSuggestion] = useState<SuggestionJSON | null>(null);
+  const [debugData, setDebugData] = useState<DebugData | null>(null); 
+  const [showDebug, setShowDebug] = useState(false); 
   const [tweaks, setTweaks] = useState<string>('');
   
-  // --- PERSISTENT WORKOUT STATES ---
   const [workoutData, setWorkoutData] = useState<WorkoutJSON | null>(() => {
     const saved = localStorage.getItem('liftlog_active_workout');
     return saved ? JSON.parse(saved) : null;
@@ -62,34 +65,34 @@ export default function Coach() {
     return saved ? JSON.parse(saved) : {};
   });
 
-  // Cell Expansion State
   const [expandedCells, setExpandedCells] = useState<Record<string, boolean>>({});
 
-  // Modal Logging State
   const [logModalOpen, setLogModalOpen] = useState(false);
   const [activeLoggingExercise, setActiveLoggingExercise] = useState<string>('');
   
-  // Live Modal Inputs
   const [logCategory, setLogCategory] = useState('Custom'); 
   const [logEquipment, setLogEquipment] = useState('Bodyweight');
   const [logWeight, setLogWeight] = useState<string | number>('');
   const [logReps, setLogReps] = useState<string | number>('');
   const [logSets, setLogSets] = useState<string | number>(1);
 
-  // AI & DB Actions
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSavingLog, setIsSavingLog] = useState(false);
+
+  // --- NEW: Global Error State ---
+  const [errorModal, setErrorModal] = useState({ open: false, title: '', message: '', rawError: '' });
+  const [isCopied, setIsCopied] = useState(false);
+  
   const suggestWorkoutFocus = useAction("ai:suggestWorkoutFocus");
   const generateWorkout = useAction("ai:generateWorkout");
   const logSet = useMutation(api.lifts.logSet);
   
-  // Fetch live databases
   const exercisesDB = useQuery(api.exercises.getExercises, { category: "" });
   const allLiftsDB = useQuery(api.lifts.getLifts, {}) || [];
 
   useEffect(() => {
     if (workoutData) setPhase('WORKOUT');
-  }, []);
+  }, [workoutData]);
 
   useEffect(() => {
     if (workoutData) {
@@ -102,18 +105,54 @@ export default function Coach() {
     localStorage.setItem('liftlog_exercise_drafts', JSON.stringify(exerciseDrafts));
   }, [workoutData, completedExercises, loggedExercises, exerciseDrafts]);
 
-  // --- HANDLERS ---
+  const handleCopyError = () => {
+    navigator.clipboard.writeText(errorModal.rawError);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
+
   const handleGetSuggestion = async () => {
     setIsProcessing(true);
+    setShowDebug(false); 
     try {
-      const result = await suggestWorkoutFocus({ timeAvailable: time, equipment, style, customRequest: customInput, localTime: new Date().toISOString() });
-      setSuggestion(parseAIJSON(result as string));
+      const response: any = await suggestWorkoutFocus({ 
+        timeAvailable: time, 
+        equipment, 
+        style, 
+        customRequest: customInput, 
+        localTime: new Date().toISOString(),
+        timezoneOffset: new Date().getTimezoneOffset()
+      });
+      
+      let rawAIString = "";
+      let incomingDebugData = null;
+
+      if (typeof response === "string") {
+        rawAIString = response;
+      } else if (response && response.suggestionText) {
+        rawAIString = response.suggestionText;
+        incomingDebugData = response.debugData;
+      } else {
+        throw new Error("Invalid response format from server.");
+      }
+      
+      const parsedSuggestion = parseAIJSON(rawAIString);
+      setSuggestion(parsedSuggestion);
+      if (incomingDebugData) {
+        setDebugData(incomingDebugData); 
+      }
       setPhase('REVIEW');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("⚠️ Error analyzing data.");
+      setErrorModal({
+        open: true,
+        title: "AI Analysis Interrupted",
+        message: "The model encountered an error during gap analysis. It may be experiencing high demand.",
+        rawError: err.message || String(err)
+      });
+    } finally {
+      setIsProcessing(false);
     }
-    setIsProcessing(false);
   };
 
   const handleFinalizeWorkout = async () => {
@@ -128,11 +167,17 @@ export default function Coach() {
       const result = await generateWorkout({ timeAvailable: time, equipment, style, localTime: new Date().toISOString(), approvedFocus: suggestion.focusTitle, userTweaks: tweaks });
       setWorkoutData(parseAIJSON(result as string));
       setPhase('WORKOUT');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("⚠️ Error generating workout.");
+      setErrorModal({
+        open: true,
+        title: "Protocol Generation Failed",
+        message: "Could not generate the workout protocol. The model may have rejected the constraints or timed out.",
+        rawError: err.message || String(err)
+      });
+    } finally {
+      setIsProcessing(false);
     }
-    setIsProcessing(false);
   };
 
   const clearSession = () => {
@@ -142,6 +187,7 @@ export default function Coach() {
     setExerciseDrafts({});
     setExpandedCells({});
     setSuggestion(null);
+    setDebugData(null);
     setTweaks('');
     setCustomInput('');
     setPhase('SETUP');
@@ -191,31 +237,41 @@ export default function Coach() {
   const handleSaveLogToDB = async () => {
     setIsSavingLog(true);
     try {
+      const safeWeight = isNaN(Number(logWeight)) ? 0 : Number(logWeight);
+      const safeReps = isNaN(Number(logReps)) ? 0 : Number(logReps);
+      const safeSets = isNaN(Number(logSets)) ? 1 : Number(logSets);
+      const safeCategory = logCategory ? String(logCategory) : "Custom";
+
       await logSet({
         exerciseName: activeLoggingExercise,
-        category: logCategory, 
+        category: safeCategory, 
         equipmentType: logEquipment,
-        weight: Number(logWeight) || 0,
-        reps: Number(logReps) || 0,
-        sets: Number(logSets) || 1,
+        weight: safeWeight,
+        reps: safeReps,
+        sets: safeSets,
       });
       
       setExerciseDrafts(prev => ({
         ...prev,
-        [activeLoggingExercise]: { equipment: logEquipment, category: logCategory, weight: logWeight, reps: logReps, sets: logSets }
+        [activeLoggingExercise]: { equipment: logEquipment, category: safeCategory, weight: safeWeight, reps: safeReps, sets: safeSets }
       }));
       
       setLoggedExercises(prev => ({ ...prev, [activeLoggingExercise]: true }));
       setCompletedExercises(prev => ({ ...prev, [activeLoggingExercise]: true })); 
       setLogModalOpen(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error saving log:", err);
-      alert("⚠️ Failed to save set to database.");
+      setErrorModal({
+        open: true,
+        title: "Database Sync Error",
+        message: "Failed to save your set to the database. Check your connection.",
+        rawError: err.message || String(err)
+      });
+    } finally {
+      setIsSavingLog(false);
     }
-    setIsSavingLog(false);
   };
 
-  // Helper to render the history inside an expanded cell
   const renderLiftHistory = (exerciseName: string) => {
     const history = allLiftsDB.filter(l => l.exerciseName.toLowerCase() === exerciseName.toLowerCase()).sort((a,b) => b.timestamp - a.timestamp).slice(0, 3);
     
@@ -251,7 +307,6 @@ export default function Coach() {
   return (
     <Box sx={{ px: 2, pt: 3, pb: 10, maxWidth: 800, mx: 'auto', display: 'flex', flexDirection: 'column', gap: 3 }}>
       
-      {/* Header */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <Box>
           <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#b06aff', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 0.5 }}>
@@ -266,7 +321,6 @@ export default function Coach() {
         )}
       </Box>
 
-      {/* PHASE 1: SETUP */}
       {phase === 'SETUP' && (
         <Paper sx={{ p: 3, borderRadius: 4, bgcolor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: 4 }}>
           <Box>
@@ -305,7 +359,6 @@ export default function Coach() {
         </Paper>
       )}
 
-      {/* PHASE 2: REVIEW AI SUGGESTION */}
       {phase === 'REVIEW' && suggestion && (
         <Paper sx={{ p: 3, borderRadius: 4, bgcolor: 'rgba(176, 106, 255, 0.08)', border: '1px solid #b06aff', display: 'flex', flexDirection: 'column', gap: 3 }}>
           <Box>
@@ -313,6 +366,34 @@ export default function Coach() {
             <Typography variant="h5" sx={{ fontWeight: 900, color: '#fff', mb: 1 }}>{suggestion.focusTitle}</Typography>
             <Typography variant="body1" sx={{ color: '#d2a8ff' }}>{suggestion.reasoning}</Typography>
           </Box>
+
+          {debugData && (
+            <Box sx={{ mt: 1, mb: 1 }}>
+              <Button 
+                size="small" 
+                onClick={() => setShowDebug(!showDebug)} 
+                sx={{ color: '#8a8a9a', textTransform: 'none', display: 'flex', alignItems: 'center', gap: 0.5 }}
+              >
+                <TerminalIcon sx={{ fontSize: '1rem' }} /> {showDebug ? "Hide System Audit" : "View Data Sent to AI"} <ExpandMoreIcon sx={{ transform: showDebug ? 'rotate(180deg)' : 'none', transition: '0.2s' }} />
+              </Button>
+              <Collapse in={showDebug}>
+                <Paper sx={{ p: 2, mt: 1, bgcolor: '#0d0e12', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 2, fontFamily: 'monospace', fontSize: '0.8rem', color: '#00d4ff', maxHeight: '400px', overflowY: 'auto' }}>
+                  
+                  <Typography variant="caption" sx={{ color: '#ffb800', display: 'block', mb: 1 }}>// Diagnostics: Timezone & Date Math</Typography>
+                  <Box sx={{ mb: 2, pl: 1, color: '#ff4d6d' }}>{debugData.dateMath}</Box>
+
+                  <Typography variant="caption" sx={{ color: '#ffb800', display: 'block', mb: 1 }}>// Yesterday's Banned Modalities</Typography>
+                  <Box sx={{ mb: 2, pl: 1 }}>{debugData.yesterdayBanned}</Box>
+
+                  <Typography variant="caption" sx={{ color: '#ffb800', display: 'block', mb: 1 }}>// This Week's Specific Muscle Sets</Typography>
+                  <Box sx={{ mb: 2, pl: 1 }}>{debugData.weeklyMuscle}</Box>
+
+                  <Typography variant="caption" sx={{ color: '#ffb800', display: 'block', mb: 1 }}>// Payload Sent to AI:</Typography>
+                  <Box sx={{ pl: 1, color: '#d2a8ff', whiteSpace: 'pre-wrap' }}>{debugData.aiPrompt}</Box>
+                </Paper>
+              </Collapse>
+            </Box>
+          )}
 
           <Divider sx={{ borderColor: 'rgba(176, 106, 255, 0.2)' }} />
 
@@ -331,7 +412,6 @@ export default function Coach() {
         </Paper>
       )}
 
-      {/* PHASE 3: ACTIVE WORKOUT */}
       {phase === 'WORKOUT' && workoutData && (
         <Paper sx={{ p: 0, borderRadius: 4, bgcolor: 'rgba(176, 106, 255, 0.05)', border: '1px solid rgba(176, 106, 255, 0.2)', overflow: 'hidden' }}>
           <Box sx={{ p: 3, bgcolor: 'rgba(176, 106, 255, 0.1)' }}>
@@ -341,7 +421,6 @@ export default function Coach() {
 
           <Box sx={{ p: 3 }}>
             
-            {/* WARM-UP */}
             <Typography variant="h6" sx={{ fontWeight: 800, color: '#00d4ff', mb: 1.5 }}>1. Warm-up</Typography>
             {workoutData.warmup.map((ex, idx) => {
               const isDone = completedExercises[ex.name] || false;
@@ -383,7 +462,6 @@ export default function Coach() {
 
             <Divider sx={{ my: 3, borderColor: 'rgba(255,255,255,0.1)' }} />
 
-            {/* MAIN BLOCK */}
             <Typography variant="h6" sx={{ fontWeight: 800, color: '#00d4ff', mb: 2 }}>2. Main Block</Typography>
             {workoutData.mainBlock.map((ex, idx) => {
               const isDone = completedExercises[ex.name] || false;
@@ -416,7 +494,6 @@ export default function Coach() {
                     </Box>
                   </Box>
 
-                  {/* Inline Progressive Overload Target */}
                   {!isExpanded && lastLift && (
                     <Box sx={{ pl: 4, mb: 1 }}>
                       <Typography variant="caption" sx={{ color: '#00e096', fontWeight: 700, bgcolor: 'rgba(0, 224, 150, 0.1)', px: 1, py: 0.3, borderRadius: 1, display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
@@ -442,7 +519,6 @@ export default function Coach() {
 
             <Divider sx={{ my: 3, borderColor: 'rgba(255,255,255,0.1)' }} />
 
-            {/* COOLDOWN */}
             <Typography variant="h6" sx={{ fontWeight: 800, color: '#00d4ff', mb: 1.5 }}>3. Cooldown</Typography>
             {workoutData.cooldown.map((ex, idx) => {
               const isDone = completedExercises[ex.name] || false;
@@ -485,7 +561,7 @@ export default function Coach() {
         </Paper>
       )}
 
-      {/* INLINE LOGGING MODAL */}
+      {/* COMPLETED EXERCISE LOGGER DIALOG */}
       <Dialog 
         open={logModalOpen} 
         onClose={handleCloseModal}
@@ -520,6 +596,51 @@ export default function Coach() {
         <DialogActions sx={{ p: 3, pt: 0 }}>
           <Button fullWidth variant="contained" onClick={handleSaveLogToDB} disabled={isSavingLog} sx={{ py: 1.5, borderRadius: 3, fontWeight: 800, background: 'linear-gradient(135deg, #00d4ff 0%, #0099cc 100%)', color: '#000' }}>
             {isSavingLog ? <CircularProgress size={24} sx={{ color: '#000' }} /> : <><AddTaskIcon sx={{ mr: 1 }} /> Save Log</>}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* THEMED ERROR MODAL */}
+      <Dialog 
+        open={errorModal.open} 
+        onClose={() => setErrorModal(prev => ({ ...prev, open: false }))}
+        PaperProps={{ sx: { bgcolor: '#1a0f14', borderRadius: 4, border: '1px solid rgba(255, 77, 109, 0.4)', width: '100%', maxWidth: 500 } }}
+      >
+        <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1, borderBottom: '1px solid rgba(255, 77, 109, 0.2)' }}>
+          <Typography sx={{ fontWeight: 800, color: '#ff4d6d', display: 'flex', alignItems: 'center', gap: 1 }}>
+            <ErrorOutlineIcon /> {errorModal.title}
+          </Typography>
+          <IconButton onClick={() => setErrorModal(prev => ({ ...prev, open: false }))} size="small" sx={{ color: '#ff4d6d' }}><CloseIcon /></IconButton>
+        </DialogTitle>
+        <DialogContent sx={{ pt: 3 }}>
+          <Typography variant="body1" sx={{ color: '#fff', mb: 3, fontWeight: 500 }}>
+            {errorModal.message}
+          </Typography>
+          
+          <Box sx={{ position: 'relative' }}>
+            <Paper sx={{ p: 2, bgcolor: '#0d0709', border: '1px solid rgba(255, 77, 109, 0.2)', borderRadius: 2, maxHeight: '200px', overflowY: 'auto' }}>
+              <Typography variant="caption" sx={{ fontFamily: 'monospace', color: '#ff8da1', whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+                {errorModal.rawError}
+              </Typography>
+            </Paper>
+            <Button 
+              size="small" 
+              onClick={handleCopyError} 
+              sx={{ 
+                position: 'absolute', top: 8, right: 8, 
+                bgcolor: 'rgba(255, 77, 109, 0.1)', color: '#ff4d6d', 
+                '&:hover': { bgcolor: 'rgba(255, 77, 109, 0.2)' },
+                textTransform: 'none', fontWeight: 700, borderRadius: 2
+              }}
+              startIcon={<ContentCopyIcon sx={{ fontSize: '1rem' }}/>}
+            >
+              {isCopied ? 'Copied!' : 'Copy Error'}
+            </Button>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 3, pt: 1 }}>
+          <Button fullWidth variant="contained" onClick={() => setErrorModal(prev => ({ ...prev, open: false }))} sx={{ py: 1.5, borderRadius: 3, fontWeight: 800, bgcolor: '#ff4d6d', color: '#000', '&:hover': { bgcolor: '#ff2a55' } }}>
+            Acknowledge
           </Button>
         </DialogActions>
       </Dialog>
