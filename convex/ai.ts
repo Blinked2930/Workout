@@ -30,6 +30,23 @@ const equipmentRules: Record<string, string> = {
   "Full Gym Access": "Full commercial gym access. Barbells, dumbbells, cables, and machines are all permitted."
 };
 
+// Fallback Goals if DB fetch fails
+const defaultGoals = [
+  { muscleGroup: "Core", lowGoal: 6, highGoal: 10 },
+  { muscleGroup: "Neck", lowGoal: 3, highGoal: 10 },
+  { muscleGroup: "Forearms", lowGoal: 3, highGoal: 8 },
+  { muscleGroup: "Calves", lowGoal: 6, highGoal: 10 },
+  { muscleGroup: "Hamstrings", lowGoal: 8, highGoal: 12 },
+  { muscleGroup: "Quads", lowGoal: 10, highGoal: 15 },
+  { muscleGroup: "Glute", lowGoal: 10, highGoal: 20 },
+  { muscleGroup: "Biceps - Isolation", lowGoal: 6, highGoal: 10 },
+  { muscleGroup: "Upper Traps", lowGoal: 3, highGoal: 10 },
+  { muscleGroup: "Back", lowGoal: 10, highGoal: 20 },
+  { muscleGroup: "Triceps - Isolation", lowGoal: 6, highGoal: 10 },
+  { muscleGroup: "Shoulders", lowGoal: 10, highGoal: 20 },
+  { muscleGroup: "Chest", lowGoal: 8, highGoal: 15 }
+];
+
 // ---------------------------------------------------------
 // ACTION 1: The Gap Analysis & Suggestion Engine
 // ---------------------------------------------------------
@@ -48,19 +65,26 @@ export const suggestWorkoutFocus = action({
 
     let allLifts: any[] = [];
     let exercises: any[] = [];
+    let weeklyGoals: any[] = [];
     try {
       allLifts = await ctx.runQuery(api.lifts.getLifts, {});
       exercises = await ctx.runQuery(api.exercises.getExercises, { category: "" });
+      try {
+        weeklyGoals = await ctx.runQuery(api.weeklyGoals.get as any, {});
+      } catch (e) {
+        weeklyGoals = defaultGoals;
+      }
     } catch (e) {
       console.error("Data fetch error:", e);
     }
     
+    if (!weeklyGoals || weeklyGoals.length === 0) weeklyGoals = defaultGoals;
+
     const muscleMap = new Map((exercises || []).map(e => [
       e.name.toLowerCase(), 
       (e.subcategory || e.category || "Unknown").toLowerCase()
     ]));
 
-    // REMOVED BROKEN EQUIPMENT TAG. The AI will use its internal knowledge.
     const exercisesCSV = "Exercise Name,Category,Subcategory\n" + 
       (exercises || []).map(ex => `"${ex.name}",${ex.category},${ex.subcategory || ''}`).join("\n");
 
@@ -97,13 +121,24 @@ export const suggestWorkoutFocus = action({
     });
     const bannedStr = yesterdayModalities.size > 0 ? Array.from(yesterdayModalities).join(", ") : "None. User is rested.";
 
+    // Target vs Actual Math
     const muscleBreakdown: Record<string, number> = {};
     recentLifts.forEach((l: any) => {
-      const muscle = muscleMap.get(l.exerciseName.toLowerCase()) || "unknown";
+      let muscle = muscleMap.get(l.exerciseName.toLowerCase()) || "unknown";
+      // Ensure isolation tracking for arms based on goals map
+      if (muscle.includes("tricep")) muscle = "triceps - isolation";
+      if (muscle.includes("bicep")) muscle = "biceps - isolation";
       muscleBreakdown[muscle] = (muscleBreakdown[muscle] || 0) + l.sets;
     });
 
-    const muscleBreakdownStr = Object.entries(muscleBreakdown).map(([m, s]) => `${m}: ${s} sets`).join(", ") || "No volume logged this week.";
+    const goalsMap = new Map(weeklyGoals.map(g => [g.muscleGroup.toLowerCase(), { low: g.lowGoal, high: g.highGoal }]));
+    const volumeStrings: string[] = [];
+    
+    for (const [muscle, goal] of goalsMap.entries()) {
+        const sets = muscleBreakdown[muscle] || 0;
+        volumeStrings.push(`${muscle}: ${sets} sets (Target: ${goal.low}-${goal.high})`);
+    }
+    const muscleBreakdownStr = volumeStrings.join(" | ") || "No volume logged this week.";
 
     const equipmentContext = equipmentRules[args.equipment] || "Standard rules apply.";
 
@@ -116,25 +151,27 @@ export const suggestWorkoutFocus = action({
     - Environment Limits: ${args.equipment} -> ${equipmentContext}
     - Workout Style: ${args.style}
     - BANNED TODAY (Hit Yesterday): ${bannedStr}
-    - Weekly Muscle Volume: ${muscleBreakdownStr}
+    - Weekly Muscle Volume Scoreboard: ${muscleBreakdownStr}
 
     AVAILABLE EXERCISES:
     ${exercisesCSV}
 
     PROGRAMMING FRAMEWORKS TO ENFORCE:
-    1. MOVEMENT PATTERN BALANCE: 
+    1. VOLUME TARGETS: Analyze the Weekly Muscle Volume Scoreboard. Prioritize muscle groups that are furthest behind their weekly targets.
+    2. EXERCISE SELECTION & STRUCTURE: 
+       - Aim for 2-3 unique exercises per primary muscle group within the chosen modality (e.g., Push day = 2 chest, 2 shoulders, 1-2 triceps).
+       - Biceps and Triceps volume ONLY counts from strict isolation exercises. Do not prescribe compound movements to target them.
+    3. MOVEMENT PATTERN BALANCE: 
        - PUSH must include both Horizontal (e.g., push-ups) and Vertical (e.g., pike push-ups/overhead) patterns.
        - PULL must include both Horizontal (e.g., rows) and Vertical (e.g., pull-ups/pulldowns) patterns.
        - LEGS must include both Knee-Dominant (e.g., squats) and Hip-Dominant/Hinge (e.g., glute bridges/deadlifts) patterns.
-    2. NEUROLOGICAL ORDERING: Order the Main Block from the most complex/heavy compound movements to the least complex isolation movements.
-    3. WARM-UP & COOLDOWN PROTOCOL: Warm-ups must focus on joint prep and dynamic mobility, NOT fatiguing working sets. Cooldowns must focus on down-regulation and antagonist stretching.
-    4. SAID PRINCIPLE: Adapt the sets, reps, and rest periods strictly to the requested Workout Style (e.g., longer rest and 6-15 reps for Hypertrophy; short rest and high reps/time for HIIT).
+    4. SAID PRINCIPLE: Adapt the sets, reps, and rest periods strictly to the requested Workout Style.
 
     RULES:
     1. Honor explicit user modality requests.
-    2. Otherwise, pick the broad Modality (PUSH, PULL, or LEGS) with the lowest volume/most rested muscles that are NOT banned today. Ensure you can actually build a balanced workout given the Environment constraints.
-    3. STRICT ENVIRONMENT: You MUST strictly obey the Environment Limits above. Use your expert knowledge to determine the equipment required for each exercise in the Available Exercises list. Exclude any exercise that requires equipment violating these physical constraints.
-    4. State reasoning in 2-3 sentences explaining the biomechanical rationale for today's protocol based on their limits, volume, and the required movement patterns.
+    2. Otherwise, pick the broad Modality (PUSH, PULL, or LEGS) containing the muscles furthest behind their weekly targets that are NOT banned today. Ensure you can build a balanced workout given the Environment constraints.
+    3. STRICT ENVIRONMENT: You MUST strictly obey the Environment Limits above. Exclude any exercise that requires equipment violating these physical constraints.
+    4. State reasoning in 2-3 sentences explaining the biomechanical rationale for today's protocol based on their targets, limits, and the required movement patterns.
 
     JSON SCHEMA:
     {
@@ -187,7 +224,6 @@ export const generateWorkout = action({
       console.error("Data fetch error:", e);
     }
     
-    // REMOVED BROKEN EQUIPMENT TAG. The AI will use its internal knowledge.
     const exercisesCSV = "Exercise Name,Category,Subcategory\n" + 
       (exercises || []).map(ex => `"${ex.name}",${ex.category},${ex.subcategory || ''}`).join("\n");
     
@@ -198,28 +234,32 @@ export const generateWorkout = action({
     
     ENVIRONMENT LIMITS: ${args.equipment} -> ${equipmentContext}
     WORKOUT STYLE: ${args.style}
+    TIME AVAILABLE: ${args.timeAvailable} minutes.
 
     PROGRAMMING FRAMEWORKS TO ENFORCE:
-    1. MOVEMENT PATTERN BALANCE: 
-       - PUSH must include both Horizontal and Vertical patterns.
-       - PULL must include both Horizontal and Vertical patterns.
-       - LEGS must include both Knee-Dominant and Hip-Dominant/Hinge patterns.
-    2. NEUROLOGICAL ORDERING: Order the Main Block from the most complex/heavy compound movements to the least complex isolation movements.
-    3. WARM-UP & COOLDOWN PROTOCOL: Warm-ups must focus on joint prep and dynamic mobility, NOT fatiguing working sets. Cooldowns must focus on down-regulation and antagonist stretching.
-    4. SAID PRINCIPLE: Adapt the sets, reps, and rest periods strictly to the requested Workout Style (e.g., longer rest and 6-15 reps for Hypertrophy; short rest and high reps/time for HIIT).
+    1. EXERCISE SELECTION & STRUCTURE: 
+       - Aim for 2-3 unique exercises per primary muscle group. Scale total volume to fit Time Available.
+       - Biceps/Triceps volume ONLY counts from strict isolation exercises.
+    2. MOVEMENT PATTERN BALANCE: Include both Horizontal and Vertical patterns for Push/Pull, and Knee/Hip patterns for Legs.
+    3. NEUROLOGICAL ORDERING: Order Main Block from most complex/heavy compound movements to least complex isolations.
+    4. WARM-UP & COOLDOWN: Warm-ups = joint prep/mobility. Cooldowns = down-regulation/stretching.
+    5. SAID PRINCIPLE: Adapt sets, reps, and rest strictly to Workout Style:
+       - Hypertrophy (8-12 reps): 8-12 reps, 90s rest.
+       - Strength (4-10 reps): 4-10 reps, 120s+ rest.
+       - HIIT/Recovery: Adjust as needed.
     
     RULES:
     1. Output ONLY JSON. No markdown.
-    2. STRICT ISOLATION: Do not mix modalities. If focus is PUSH, no LEGS or PULL.
-    3. STRICT ENVIRONMENT: You MUST strictly obey the Environment Limits above. Use your expert knowledge to determine the equipment required for each exercise in the Available Exercises list. Exclude any exercise that requires equipment violating these physical constraints.
-    4. Use EXACT names from Available Exercises.
+    2. STRICT ENVIRONMENT: Obey the Environment Limits above using your expert knowledge of equipment required for each exercise in Available Exercises.
+    3. Use EXACT names from Available Exercises.
+    4. For mainBlock items, output sets, repsMin, and repsMax strictly as INTEGERS.
 
     JSON SCHEMA:
     {
       "title": "String",
       "focus": "String",
       "warmup": [ { "name": "Exercise", "reps": "Target" } ],
-      "mainBlock": [ { "name": "Exact Name", "setsReps": "e.g., 4 x 8-12", "rest": "90s", "notes": "Cues based on biomechanics" } ],
+      "mainBlock": [ { "name": "Exact Name", "sets": Number, "repsMin": Number, "repsMax": Number, "rest": "90s", "notes": "Cues" } ],
       "cooldown": [ { "name": "Exercise", "reps": "Target" } ]
     }
     
