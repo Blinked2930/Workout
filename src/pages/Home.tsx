@@ -11,25 +11,24 @@ import { api } from '../../convex/_generated/api';
 import CloseIcon from '@mui/icons-material/Close';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
-import DeleteIcon from '@mui/icons-material/Delete';
 import { format, isToday, isYesterday, isValid } from 'date-fns';
 import { enGB } from 'date-fns/locale';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { useUnit } from '../context/UnitContext'; // <-- GLOBAL BRAIN IMPORTED
 
 const CATEGORIES = ['Push', 'Pull', 'Legs', 'Extra'];
 const CATEGORY_EMOJI: Record<string, string> = { Push: '🫸', Pull: '🫷', Legs: '🦵', Extra: '⚡' };
 const EQUIPMENT_TYPES = [
   { value: 'Barbell', emoji: '🏋️' },
   { value: 'Dumbbell', emoji: '🫳' },
-  { value: 'Kettlebell', emoji: '💣' },
+  { value: 'Smith', emoji: '🦾' }, // NEW SMITH ADDED
   { value: 'Machine/Cable', emoji: '⚙️' },
   { value: 'Bodyweight', emoji: '🤸' },
   { value: 'Other', emoji: '⚡' },
 ];
 
-// BULLETPROOF SEARCH: Added optional chaining (?.) so missing data won't crash the app
 function matchesSearch(ex: any, query: string): boolean {
   if (ex?.isArchived) return false; 
   if (!query) return true;
@@ -51,6 +50,8 @@ function StatCard({ label, value, sub, color = '#00d4ff' }: { label: string; val
 }
 
 export default function Home() {
+  const { unit, toDisplay, toDB, displayWeight } = useUnit(); // Inject Converter
+
   const [open, setOpen] = useState(false);
   const [filterCat, setFilterCat] = useState('');
   
@@ -88,17 +89,19 @@ export default function Home() {
   }, [allExercises, filterCat, exerciseSearch]);
 
   const totalSets = thisWeeksLifts?.reduce((a, l) => a + l.sets, 0) ?? 0;
-  const totalVolume = thisWeeksLifts?.reduce((a, l) => a + l.volume, 0) ?? 0;
+  
+  // Mathematically convert weekly volume payload
+  const totalVolumeLbs = thisWeeksLifts?.reduce((a, l) => a + l.volume, 0) ?? 0;
+  const totalVolumeDisplay = totalVolumeLbs > 0 ? (toDisplay(totalVolumeLbs) as number) : 0;
+  
   const uniqueCount = new Set(thisWeeksLifts?.map(l => l.exerciseName) ?? []).size;
 
-  // ─── DAILY WORKOUT CARD LOGIC ──────────────
   const groupedLifts = useMemo(() => {
     if (!allLifts) return [];
     const days: Record<string, { firstTimestamp: number; lifts: typeof allLifts }> = {};
 
     allLifts.forEach(lift => {
       const date = new Date(lift.timestamp);
-      // Safety check to prevent date-fns from crashing on invalid dates
       if (!isValid(date)) return; 
 
       let dayLabel = '';
@@ -140,7 +143,7 @@ export default function Home() {
     setExerciseSubcat(lift.subcategory ?? '');
     setExerciseSearch(lift.exerciseName);
     setEquipment(lift.equipmentType || 'Barbell');
-    setWeight(lift.weight.toString());
+    setWeight(lift.weight > 0 ? toDisplay(lift.weight).toString() : ''); // CONVERT FOR EDIT FORM
     setReps(lift.reps.toString());
     setSets(lift.sets.toString());
     setRir(lift.rir?.toString() ?? '');
@@ -174,17 +177,18 @@ export default function Home() {
     
     try {
       const parsedWeight = parseFloat(weight) || 0;
+      const dbWeight = toDB(parsedWeight); // CONVERT BACK TO DB FORMAT (LBS)
+      
       const parsedReps = parseInt(reps) || 0;
       const parsedSets = parseInt(sets) || 1;
       
-      // Fallback to Date.now() if timestamp is somehow corrupted
       const targetTimestamp = isNaN(new Date(timestamp).getTime()) ? Date.now() : new Date(timestamp).getTime();
 
       if (editingId) {
         await updateSetMutation({
           id: editingId as any,
           equipmentType: equipment,
-          weight: parsedWeight,
+          weight: dbWeight,
           reps: parsedReps,
           sets: parsedSets,
           rir: rir ? parseInt(rir) : undefined,
@@ -198,7 +202,7 @@ export default function Home() {
           category: exerciseCategory || 'Other',
           subcategory: exerciseSubcat || undefined,
           equipmentType: equipment,
-          weight: parsedWeight,
+          weight: dbWeight,
           reps: parsedReps,
           sets: parsedSets,
           rir: rir ? parseInt(rir) : undefined,
@@ -228,7 +232,7 @@ export default function Home() {
       <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.1em', mb: 1.5 }}>This Week</Typography>
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 1.5, mb: 3 }}>
         <StatCard label="Sets" value={totalSets} />
-        <StatCard label="Volume" value={totalVolume >= 1000 ? `${(totalVolume / 1000).toFixed(1)}k` : totalVolume} sub="lbs" color="#00e096" />
+        <StatCard label="Volume" value={totalVolumeDisplay >= 1000 ? `${(totalVolumeDisplay / 1000).toFixed(1)}k` : totalVolumeDisplay} sub={unit} color="#00e096" />
         <StatCard label="Exercises" value={uniqueCount} color="#ffb800" />
       </Box>
 
@@ -266,7 +270,7 @@ export default function Home() {
                               {lift.sets} × {lift.reps}
                             </Typography>
                             <Typography sx={{ fontSize: '0.85rem', color: 'text.secondary' }}>
-                              @ {lift.weight > 0 ? `${lift.weight} lbs` : 'BW'}
+                              @ {lift.weight > 0 ? `${toDisplay(lift.weight)} ${unit}` : 'BW'}
                             </Typography>
                             {lift.rir !== undefined && (
                               <Chip label={`RIR ${lift.rir}`} size="small" sx={{ height: 18, fontSize: '0.65rem', fontWeight: 700, bgcolor: 'rgba(255,255,255,0.1)', color: 'text.secondary' }} />
@@ -348,7 +352,7 @@ export default function Home() {
                     ))}
                   </Box>
                 </Box>
-                <TextField label="Weight (lbs)" type="number" size="small" fullWidth placeholder="0 = pure bodyweight" value={weight} onChange={e => setWeight(e.target.value)} helperText={equipment === 'Dumbbell' ? "Enter weight of ONE dumbbell (app calculates total volume automatically)." : "Enter total weight. Leave blank for bodyweight."} />
+                <TextField label={`Weight (${unit})`} type="number" size="small" fullWidth placeholder="0 = pure bodyweight" value={weight} onChange={e => setWeight(e.target.value)} helperText={equipment === 'Dumbbell' ? "Enter weight of ONE dumbbell (app calculates total volume automatically)." : "Enter total weight. Leave blank for bodyweight."} />
                 <Box sx={{ display: 'flex', gap: 1.5 }}>
                   <TextField label="Reps *" type="number" size="small" fullWidth value={reps} onChange={e => setReps(e.target.value)} />
                   <TextField label="Sets" type="number" size="small" fullWidth value={sets} onChange={e => setSets(e.target.value)} />
