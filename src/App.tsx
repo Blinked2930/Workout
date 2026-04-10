@@ -71,13 +71,13 @@ export const theme = createTheme({
         root: {
           color: '#555566',
           '&.Mui-selected': { color: '#00d4ff' },
-          minWidth: '40px', // MOBILE TWEAK: Prevents wrapping
-          padding: '6px 0px', // MOBILE TWEAK: Removes tight gaps
+          minWidth: '40px', // Shrink for mobile
+          padding: '6px 0px', // Tighten padding
         },
         label: {
           fontFamily: '"Barlow", sans-serif',
           fontWeight: 700,
-          fontSize: '0.6rem !important', // MOBILE TWEAK: Smaller label
+          fontSize: '0.6rem !important', // Shrunk for mobile
           marginTop: '2px',
         },
       },
@@ -120,7 +120,6 @@ export const theme = createTheme({
   },
 });
 
-// Shorter labels for the mobile squeeze
 const NAV_ITEMS = [
   { label: 'Log', emoji: '💪', path: '/' },
   { label: 'Vol', emoji: '📊', path: '/volume' },
@@ -146,7 +145,6 @@ function AppShell() {
     }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@700;800;900&display=swap');`}</style>
 
-      {/* Global Settings Button */}
       <IconButton 
         onClick={() => setSettingsOpen(true)}
         sx={{ position: 'fixed', top: 16, right: 16, zIndex: 100, bgcolor: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(10px)' }}
@@ -154,7 +152,6 @@ function AppShell() {
         <SettingsIcon sx={{ color: '#fff' }} />
       </IconButton>
 
-      {/* Settings Modal */}
       <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} PaperProps={{ sx: { maxWidth: 350, width: '100%', p: 2 } }}>
         <DialogTitle sx={{ fontWeight: 800, textAlign: 'center' }}>Global Settings</DialogTitle>
         <DialogContent>
@@ -174,7 +171,7 @@ function AppShell() {
           <Route path="/progress" element={<Progress />} />
           <Route path="/cardio" element={<Cardio />} />
           <Route path="/coach" element={<Coach />} />
-          <Route path="/manual" element={<Manual />} /> 
+          <Route path="/manual" element={<Manual />} />
           <Route path="/exercises" element={<ExerciseManager />} />
         </Routes>
       </Box>

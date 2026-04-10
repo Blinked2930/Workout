@@ -1,5 +1,5 @@
 // src/pages/Progress.tsx
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Box, Typography, Paper, Chip, TextField, InputAdornment,
   List, ListItemButton, ListItemText, Divider, Button, ToggleButton, ToggleButtonGroup,
@@ -16,6 +16,7 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
 import AddTaskIcon from '@mui/icons-material/AddTask';
+import { useUnit } from '../context/UnitContext'; 
 
 // ── Metric definitions ─────────────────────────────────────────────────────
 const WEIGHTED_METRICS = [
@@ -34,7 +35,7 @@ const BODYWEIGHT_METRICS = [
 const EQUIPMENT_TYPES = [
   { value: 'Barbell', emoji: '🏋️' },
   { value: 'Dumbbell', emoji: '🫳' },
-  { value: 'Kettlebell', emoji: '💣' },
+  { value: 'Smith', emoji: '🦾' },
   { value: 'Machine/Cable', emoji: '⚙️' },
   { value: 'Bodyweight', emoji: '🤸' },
   { value: 'Other', emoji: '⚡' },
@@ -46,17 +47,17 @@ const EQUIPMENT_EMOJIS: Record<string, string> = EQUIPMENT_TYPES.reduce((acc, cu
 }, {} as Record<string, string>);
 
 // ── Tooltip ────────────────────────────────────────────────────────────────
-function CustomTooltip({ active, payload, label, isBW }: any) {
+function CustomTooltip({ active, payload, label, isBW, unit }: any) {
   if (!active || !payload?.length) return null;
   const name = payload[0]?.name;
   const metricList = isBW ? BODYWEIGHT_METRICS : WEIGHTED_METRICS;
   const m = metricList.find(m => m.value === name);
-  const showLbs = !isBW && (name === 'e1rm' || name === 'weight' || name === 'volume');
+  const isWeightBased = !isBW && (name === 'e1rm' || name === 'weight' || name === 'volume');
   return (
     <Paper sx={{ px: 2, py: 1.5, borderRadius: 2 }}>
       <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', mb: 0.25 }}>{label}</Typography>
       <Typography sx={{ fontWeight: 800, color: m?.color ?? '#00d4ff', fontSize: '1rem' }}>
-        {payload[0]?.value?.toFixed(showLbs ? 1 : 0)}{showLbs ? ' lbs' : ''}
+        {payload[0]?.value?.toFixed(isWeightBased ? 1 : 0)}{isWeightBased ? ` ${unit}` : ''}
       </Typography>
     </Paper>
   );
@@ -64,6 +65,10 @@ function CustomTooltip({ active, payload, label, isBW }: any) {
 
 // ── Main component ─────────────────────────────────────────────────────────
 export default function Progress() {
+  const { unit, toDisplay, toDB } = useUnit(); 
+
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
   const [selectedExercise, setSelectedExercise] = useState<string | null>(
     () => localStorage.getItem('progress_exercise')
   );
@@ -120,6 +125,12 @@ export default function Progress() {
     if (!allLifts || !selectedExercise) return [];
     return allLifts
       .filter(l => l.exerciseName === selectedExercise)
+      .map(l => {
+        // Clean up legacy categories dynamically
+        let eq = l.equipmentType;
+        if (eq === 'Machine' || eq === 'Cable') eq = 'Machine/Cable';
+        return { ...l, equipmentType: eq };
+      })
       .sort((a, b) => a.timestamp - b.timestamp);
   }, [allLifts, selectedExercise]);
 
@@ -150,15 +161,15 @@ export default function Progress() {
 
     return sessions.map(l => ({
       date: format(new Date(l.timestamp), 'MMM d'),
-      e1rm: +(l.e1rm ?? 0).toFixed(1),
-      volume: l.volume,
-      weight: l.weight,
+      e1rm: isBW ? 0 : Number(toDisplay(l.e1rm ?? 0)),
+      volume: isBW ? 0 : Number(toDisplay(l.volume)),
+      weight: isBW ? 0 : Number(toDisplay(l.weight)),
       reps: l.reps,
       sets: l.sets,
       totalReps: l.reps * l.sets,
       rawSet: l, 
     }));
-  }, [historyForSelected, activeEquipment]);
+  }, [historyForSelected, activeEquipment, isBW, toDisplay]);
 
   const bestE1RM = chartData.length ? Math.max(...chartData.map(d => d.e1rm)) : 0;
   const heaviestLift = chartData.length ? Math.max(...chartData.map(d => d.weight)) : 0;
@@ -166,8 +177,8 @@ export default function Progress() {
   const e4RM = bestE1RM * (33 / 36);
   const e8RM = bestE1RM * (29 / 36);
 
-  const strengthLifts = chartData.filter(d => d.weight > 0 && d.reps >= 4 && d.reps <= 7).reverse();
-  const hyperLifts = chartData.filter(d => d.weight > 0 && d.reps >= 8 && d.reps <= 15).reverse();
+  const strengthLifts = chartData.filter(d => d.weight > 0 && d.reps >= 4 && d.reps <= 8).reverse();
+  const hyperLifts = chartData.filter(d => d.weight > 0 && d.reps >= 9 && d.reps <= 15).reverse();
   const lastStrength = strengthLifts[0]?.weight ?? null;
   const lastHyper = hyperLifts[0]?.weight ?? null;
 
@@ -184,10 +195,19 @@ export default function Progress() {
     setShowList(false);
   };
 
+  const handleClearSearch = () => {
+    setSearch('');
+    setSelectedExercise(null);
+    setShowList(true);
+    setTimeout(() => {
+      searchInputRef.current?.focus();
+    }, 10);
+  };
+
   const handleOpenNewLog = () => {
     const lastLift = historyForSelected.length > 0 ? historyForSelected[historyForSelected.length - 1] : null;
     setLogEquipment(activeEquipment || 'Barbell');
-    setLogWeight(lastLift?.weight || '');
+    setLogWeight(lastLift?.weight ? toDisplay(lastLift.weight) : '');
     setLogReps(lastLift?.reps || '');
     setLogSets(1);
     setLogTimestamp(Date.now());
@@ -205,7 +225,7 @@ export default function Progress() {
         exerciseName: selectedExercise,
         category: safeCategory,
         equipmentType: logEquipment,
-        weight: parseFloat(logWeight.toString()) || 0,
+        weight: toDB(parseFloat(logWeight.toString()) || 0),
         reps: parseInt(logReps.toString()) || 0,
         sets: parseInt(logSets.toString()) || 1,
         timestamp: logTimestamp,
@@ -223,7 +243,7 @@ export default function Progress() {
   const handleUpdate = async () => {
     if (!editSet) return;
     try {
-      const weightVal = parseFloat(editSet.weight) || 0;
+      const weightVal = toDB(parseFloat(editSet.weight) || 0); 
       const repsVal = parseInt(editSet.reps) || 0;
       const setsVal = parseInt(editSet.sets) || 1;
       const rirVal = editSet.rir !== '' && editSet.rir !== null && editSet.rir !== undefined ? parseInt(editSet.rir) : undefined;
@@ -276,12 +296,19 @@ export default function Progress() {
         {/* Exercise search */}
         <Box sx={{ mb: 3 }}>
           <TextField fullWidth size="small" placeholder="Search logged exercises..."
+            inputRef={searchInputRef}
             value={search}
             onChange={e => { setSearch(e.target.value); setSelectedExercise(null); setShowList(true); }}
             onFocus={() => setShowList(true)}
             InputProps={{
               startAdornment: <InputAdornment position="start"><SearchIcon sx={{ fontSize: '1rem', color: 'text.secondary' }} /></InputAdornment>,
-              endAdornment: selectedExercise ? <InputAdornment position="end"><Typography sx={{ fontSize: '0.75rem', color: '#00e096', fontWeight: 700 }}>✓</Typography></InputAdornment> : null,
+              endAdornment: search ? (
+                <InputAdornment position="end">
+                  <IconButton size="small" onClick={handleClearSearch} edge="end">
+                    <CloseIcon sx={{ fontSize: '1rem' }} />
+                  </IconButton>
+                </InputAdornment>
+              ) : null,
             }}
           />
           {showList && !selectedExercise && filteredExercises.length > 0 && (
@@ -306,10 +333,9 @@ export default function Progress() {
           )}
         </Box>
 
-        {/* Dynamic Equipment Toggle & Quick Log Button */}
         {selectedExercise && (
-          <Box sx={{ mb: 2.5, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <Box>
+          <Box sx={{ mb: 2.5, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2 }}>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
               {availableEquipments.length > 1 && (
                 <>
                   <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', mb: 1, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
@@ -342,7 +368,7 @@ export default function Progress() {
               variant="contained" 
               size="small" 
               onClick={handleOpenNewLog}
-              sx={{ fontWeight: 800, bgcolor: '#00d4ff', color: '#000', '&:hover': { bgcolor: '#00b8e6' }, borderRadius: 2, height: 36 }}
+              sx={{ fontWeight: 800, bgcolor: '#00d4ff', color: '#000', '&:hover': { bgcolor: '#00b8e6' }, borderRadius: 2, height: 36, whiteSpace: 'nowrap', flexShrink: 0 }}
               startIcon={<AddTaskIcon />}
             >
               Log Set
@@ -372,21 +398,21 @@ export default function Progress() {
                 <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 1.5, mb: 1.5 }}>
                   <Paper sx={{ p: 1.5, borderRadius: 3, textAlign: 'center' }}>
                     <Typography sx={{ fontSize: '0.62rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', mb: 0.25 }}>Heaviest Lift</Typography>
-                    <Typography sx={{ fontSize: '1.2rem', fontWeight: 800, color: '#ffb800' }}>{heaviestLift > 0 ? `${heaviestLift} lbs` : '—'}</Typography>
+                    <Typography sx={{ fontSize: '1.2rem', fontWeight: 800, color: '#ffb800' }}>{heaviestLift > 0 ? `${heaviestLift} ${unit}` : '—'}</Typography>
                   </Paper>
                   <Paper sx={{ p: 1.5, borderRadius: 3, textAlign: 'center' }}>
                     <Typography sx={{ fontSize: '0.62rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', mb: 0.25 }}>Best Volume</Typography>
-                    <Typography sx={{ fontSize: '1.2rem', fontWeight: 800, color: '#00e096' }}>{bestVolume > 0 ? `${bestVolume} lbs` : '—'}</Typography>
+                    <Typography sx={{ fontSize: '1.2rem', fontWeight: 800, color: '#00e096' }}>{bestVolume > 0 ? `${bestVolume} ${unit}` : '—'}</Typography>
                   </Paper>
                 </Box>
                 <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 1.5 }}>
                   <Paper sx={{ p: 1.5, borderRadius: 3, textAlign: 'center' }}>
-                    <Typography sx={{ fontSize: '0.62rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', mb: 0.25 }}>Last Strength (4–7)</Typography>
-                    <Typography sx={{ fontSize: '1.1rem', fontWeight: 700 }}>{lastStrength ? `${lastStrength} lbs` : '—'}</Typography>
+                    <Typography sx={{ fontSize: '0.62rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', mb: 0.25 }}>Last Strength (4-8)</Typography>
+                    <Typography sx={{ fontSize: '1.1rem', fontWeight: 700 }}>{lastStrength ? `${lastStrength} ${unit}` : '—'}</Typography>
                   </Paper>
                   <Paper sx={{ p: 1.5, borderRadius: 3, textAlign: 'center' }}>
-                    <Typography sx={{ fontSize: '0.62rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', mb: 0.25 }}>Last Hyper (8–15)</Typography>
-                    <Typography sx={{ fontSize: '1.1rem', fontWeight: 700 }}>{lastHyper ? `${lastHyper} lbs` : '—'}</Typography>
+                    <Typography sx={{ fontSize: '0.62rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', mb: 0.25 }}>Last Hyper (9-15)</Typography>
+                    <Typography sx={{ fontSize: '1.1rem', fontWeight: 700 }}>{lastHyper ? `${lastHyper} ${unit}` : '—'}</Typography>
                   </Paper>
                 </Box>
               </>
@@ -439,7 +465,7 @@ export default function Progress() {
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                 <XAxis dataKey="date" tick={{ fill: '#555566', fontSize: 10 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: '#555566', fontSize: 10 }} axisLine={false} tickLine={false} />
-                <Tooltip content={<CustomTooltip isBW={isBW} />} />
+                <Tooltip content={<CustomTooltip isBW={isBW} unit={unit} />} />
                 <Area type="monotone" dataKey={metric} name={metric}
                   stroke={selectedMetric.color} strokeWidth={2.5}
                   fill="url(#metricGrad)"
@@ -484,7 +510,7 @@ export default function Progress() {
                 >
                   <Box>
                     <Typography sx={{ fontWeight: 700, fontSize: '0.9rem' }}>
-                      {entry.weight > 0 ? `${entry.weight} lbs` : 'Bodyweight'}
+                      {entry.weight > 0 ? `${entry.weight} ${unit}` : 'Bodyweight'}
                       <Box component="span" sx={{ color: 'text.secondary', fontWeight: 400 }}>
                         {' '}× {entry.reps} reps × {entry.sets} sets
                       </Box>
@@ -512,7 +538,6 @@ export default function Progress() {
           </>
         )}
 
-        {/* NEW LOG DIALOG (Progress Page) */}
         <Dialog open={logModalOpen} onClose={() => setLogModalOpen(false)} PaperProps={{ sx: { bgcolor: '#16171a', borderRadius: 4, border: '1px solid rgba(255,255,255,0.1)', width: '100%', maxWidth: 400 } }}>
           <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
             <Typography sx={{ fontWeight: 800, color: '#00d4ff' }}>Log Completed Set</Typography>
@@ -536,13 +561,13 @@ export default function Progress() {
                   <MenuItem value="Bodyweight">Bodyweight</MenuItem>
                   <MenuItem value="Barbell">Barbell</MenuItem>
                   <MenuItem value="Dumbbell">Dumbbell</MenuItem>
-                  <MenuItem value="Machine">Machine</MenuItem>
-                  <MenuItem value="Cable">Cable</MenuItem>
+                  <MenuItem value="Smith">Smith</MenuItem>
+                  <MenuItem value="Machine/Cable">Machine/Cable</MenuItem>
                 </Select>
               </FormControl>
             </Box>
             <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-              <TextField fullWidth type="number" label="Weight (lbs)" value={logWeight} onChange={(e) => setLogWeight(e.target.value)} InputProps={{ inputProps: { min: 0 } }} />
+              <TextField fullWidth type="number" label={`Weight (${unit})`} value={logWeight} onChange={(e) => setLogWeight(e.target.value)} InputProps={{ inputProps: { min: 0 } }} />
               <TextField fullWidth type="number" label="Reps" value={logReps} onChange={(e) => setLogReps(e.target.value)} InputProps={{ inputProps: { min: 0 } }} />
               <TextField fullWidth type="number" label="Sets" value={logSets} onChange={(e) => setLogSets(e.target.value)} InputProps={{ inputProps: { min: 1 } }} />
             </Box>
@@ -554,7 +579,6 @@ export default function Progress() {
           </DialogActions>
         </Dialog>
 
-        {/* FULL EDIT DIALOG */}
         <Dialog open={!!editSet} onClose={() => setEditSet(null)} fullWidth maxWidth="sm">
           <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
             <Typography variant="h6" sx={{ fontWeight: 800 }}>Edit Entry</Typography>
@@ -590,10 +614,10 @@ export default function Progress() {
             </Box>
 
             <TextField 
-              label={editSet?.equipmentType === 'Dumbbell' ? "Weight Per Side (lbs)" : "Weight (lbs)"} 
+              label={editSet?.equipmentType === 'Dumbbell' ? `Weight Per Side (${unit})` : `Weight (${unit})`} 
               type="number" size="small" fullWidth 
-              value={editSet?.weight ?? ''} 
-              onChange={e => setEditSet({...editSet, weight: e.target.value})} 
+              value={editSet?.weight ? toDisplay(editSet.weight) : ''} 
+              onChange={e => setEditSet({...editSet, weight: toDB(parseFloat(e.target.value))})} 
             />
             
             <Box sx={{ display: 'flex', gap: 1.5 }}>

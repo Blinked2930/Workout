@@ -5,10 +5,10 @@ import { useAction, useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import SearchIcon from '@mui/icons-material/Search';
-import AddTaskIcon from '@mui/icons-material/AddTask';
-import CloseIcon from '@mui/icons-material/Close';
-import HistoryIcon from '@mui/icons-material/History';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz'; 
+import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -48,9 +48,9 @@ export default function Coach() {
     return saved ? JSON.parse(saved) : null;
   });
 
-  // SWAP STATES
   const [swapTarget, setSwapTarget] = useState<{ section: 'warmup' | 'main' | 'cooldown', index: number } | null>(null);
   const [swapSearch, setSwapSearch] = useState('');
+  const [draggedItem, setDraggedItem] = useState<{ section: string, index: number } | null>(null);
   
   const [completedExercises, setCompletedExercises] = useState<Record<string, boolean>>({});
   const [loggedExercises, setLoggedExercises] = useState<Record<string, boolean>>({});
@@ -104,7 +104,6 @@ export default function Coach() {
     } finally { setIsProcessing(false); }
   };
 
-  // SWAP FUNCTION
   const handleSwapExercise = (newName: string) => {
     if (!workoutData || !swapTarget) return;
     const newWorkout = { ...workoutData };
@@ -115,6 +114,55 @@ export default function Coach() {
     setSwapTarget(null);
     setSwapSearch('');
   };
+
+  // REORDER LOGIC
+  const moveExercise = (section: 'warmup'|'main'|'cooldown', index: number, direction: 'up'|'down') => {
+    if (!workoutData) return;
+    const newWorkout = { ...workoutData };
+    let list: any;
+    if (section === 'main') list = newWorkout.mainBlock;
+    else if (section === 'warmup') list = newWorkout.warmup;
+    else if (section === 'cooldown') list = newWorkout.cooldown;
+    if (!list) return;
+
+    if (direction === 'up' && index > 0) {
+      const temp = list[index];
+      list[index] = list[index - 1];
+      list[index - 1] = temp;
+    } else if (direction === 'down' && index < list.length - 1) {
+      const temp = list[index];
+      list[index] = list[index + 1];
+      list[index + 1] = temp;
+    }
+    setWorkoutData(newWorkout);
+  };
+
+  const handleDragStart = (e: React.DragEvent, section: string, index: number) => {
+    setDraggedItem({ section, index });
+  };
+
+  const handleDragEnter = (e: React.DragEvent, section: string, index: number) => {
+    e.preventDefault();
+    if (!draggedItem || !workoutData) return;
+    if (draggedItem.section !== section || draggedItem.index === index) return;
+
+    const newWorkout = { ...workoutData };
+    let list: any;
+    if (section === 'main') list = newWorkout.mainBlock;
+    else if (section === 'warmup') list = newWorkout.warmup;
+    else if (section === 'cooldown') list = newWorkout.cooldown;
+    if (!list) return;
+
+    const item = list[draggedItem.index];
+    list.splice(draggedItem.index, 1);
+    list.splice(index, 0, item);
+
+    setWorkoutData(newWorkout);
+    setDraggedItem({ section, index });
+  };
+
+  const handleDragOver = (e: React.DragEvent) => e.preventDefault();
+  const handleDragEnd = () => setDraggedItem(null);
 
   const clearSession = () => {
     setWorkoutData(null);
@@ -133,8 +181,11 @@ export default function Coach() {
     const dbMatch = exercisesDB?.find(ex => String(ex?.name || '').toLowerCase() === exerciseName.toLowerCase());
     const lastLift = allLiftsDB.filter(l => String(l?.exerciseName || '').toLowerCase() === exerciseName.toLowerCase()).sort((a,b) => b.timestamp - a.timestamp)[0];
 
+    let eq = lastLift?.equipmentType || 'Bodyweight';
+    if (eq === 'Machine' || eq === 'Cable') eq = 'Machine/Cable';
+
     setLogCategory(dbMatch?.category || 'Custom');
-    setLogEquipment(lastLift?.equipmentType || 'Bodyweight');
+    setLogEquipment(eq);
     setLogWeight(suggestedWeight !== undefined && suggestedWeight !== '' ? suggestedWeight : (lastLift?.weight ? toDisplay(lastLift.weight) : ''));
     setLogReps(suggestedReps !== undefined ? suggestedReps : (lastLift?.reps || ''));
     setLogSets(suggestedSets !== undefined ? suggestedSets : 1);
@@ -179,7 +230,7 @@ export default function Coach() {
       <Box sx={{ bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, p: 1.5, mt: 1 }}>
         {history.map((lift, i) => (
           <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
-            <Typography variant="body2" sx={{ color: i === 0 ? '#00d4ff' : '#d2a8ff' }}>{displayWeight(lift.weight)} × {lift.reps} reps ({lift.sets} sets)</Typography>
+            <Typography variant="body2" sx={{ color: i === 0 ? '#b06aff' : '#d2a8ff' }}>{displayWeight(lift.weight)} × {lift.reps} reps</Typography>
             <Typography variant="body2" sx={{ color: '#8a8a9a' }}>{new Date(lift.timestamp).toLocaleDateString()}</Typography>
           </Box>
         ))}
@@ -241,18 +292,28 @@ export default function Coach() {
         {phase === 'WORKOUT' && workoutData && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             {workoutData.warmup.map((ex, idx) => (
-              <Paper key={idx} sx={{ p: 2, opacity: completedExercises[ex.name] ? 0.6 : 1 }}>
+              <Paper 
+                key={ex.name} 
+                draggable onDragStart={(e) => handleDragStart(e, 'warmup', idx)} onDragEnter={(e) => handleDragEnter(e, 'warmup', idx)} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
+                onClick={() => toggleCellExpand(ex.name)} 
+                sx={{ p: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(176, 106, 255, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'warmup' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
+              >
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                    <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, !!completedExercises[ex.name], 0, ex.reps, 1)} sx={{ p: 0, mt: 0.5 }} />
-                    <Box onClick={() => toggleCellExpand(ex.name)} sx={{ cursor: 'pointer' }}>
-                      <Typography sx={{ fontWeight: 700 }}>{ex.name}</Typography>
+                    <DragIndicatorIcon sx={{ color: 'rgba(255,255,255,0.2)', mt: 1, cursor: 'grab', display: { xs: 'none', sm: 'block' } }} />
+                    <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, !!completedExercises[ex.name], 0, ex.reps, 1)} sx={{ p: 0, mt: 0.8 }} />
+                    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                      <Typography sx={{ fontWeight: 700, textDecoration: completedExercises[ex.name] ? 'line-through' : 'none' }}>{ex.name}</Typography>
                       <Typography variant="body2" sx={{ color: '#00d4ff' }}>Target: {ex.reps}</Typography>
                     </Box>
                   </Box>
-                  <IconButton onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'warmup', index: idx }); }}><SwapHorizIcon /></IconButton>
+                  <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('warmup', idx, 'up'); }} disabled={idx === 0}><KeyboardArrowUpIcon fontSize="small" /></IconButton>
+                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('warmup', idx, 'down'); }} disabled={idx === workoutData.warmup.length - 1}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
+                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'warmup', index: idx }); }}><SwapHorizIcon fontSize="small" /></IconButton>
+                  </Box>
                 </Box>
-                <Collapse in={expandedCells[ex.name]}>{renderLiftHistory(ex.name)}</Collapse>
+                <Collapse in={expandedCells[ex.name]}><Box sx={{ pl: { xs: 4, sm: 5 }, mt: 2 }}>{renderLiftHistory(ex.name)}</Box></Collapse>
               </Paper>
             ))}
 
@@ -265,18 +326,28 @@ export default function Coach() {
                const overloaded = hist?.weight ? Math.round((hist.weight * 1.05)/5)*5 : null;
 
                return (
-                <Paper key={idx} sx={{ p: 2, opacity: completedExercises[ex.name] ? 0.6 : 1 }}>
+                <Paper 
+                  key={ex.name} 
+                  draggable onDragStart={(e) => handleDragStart(e, 'main', idx)} onDragEnter={(e) => handleDragEnter(e, 'main', idx)} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
+                  onClick={() => toggleCellExpand(ex.name)} 
+                  sx={{ p: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(176, 106, 255, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'main' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
+                >
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                      <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, !!completedExercises[ex.name], overloaded || '', repsMax, sets)} sx={{ p: 0, mt: 0.5 }} />
-                      <Box onClick={() => toggleCellExpand(ex.name)} sx={{ cursor: 'pointer' }}>
-                        <Typography sx={{ fontWeight: 700 }}>{ex.name}</Typography>
-                        <Typography variant="body2" sx={{ color: '#00d4ff' }}>{sets} Sets | {ex.repsMin}-{repsMax} Reps | Load: {overloaded ? displayWeight(overloaded) : 'Baseline'}</Typography>
+                      <DragIndicatorIcon sx={{ color: 'rgba(255,255,255,0.2)', mt: 1, cursor: 'grab', display: { xs: 'none', sm: 'block' } }} />
+                      <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, !!completedExercises[ex.name], overloaded || '', repsMax, sets)} sx={{ p: 0, mt: 0.8 }} />
+                      <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                        <Typography sx={{ fontWeight: 700, textDecoration: completedExercises[ex.name] ? 'line-through' : 'none' }}>{ex.name} {loggedExercises[ex.name] && <Typography component="span" sx={{ fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(176, 106, 255, 0.2)', color: '#b06aff', px: 1, py: 0.3, borderRadius: 2, ml: 1 }}>Logged</Typography>}</Typography>
+                        <Typography variant="caption" sx={{ color: '#00d4ff', mt: 0.5, display: 'block' }}>{sets} Sets | {ex.repsMin}-{repsMax} Reps | Load: {overloaded ? displayWeight(overloaded) : 'Baseline'}</Typography>
                       </Box>
                     </Box>
-                    <IconButton onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'main', index: idx }); }}><SwapHorizIcon /></IconButton>
+                    <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                      <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('main', idx, 'up'); }} disabled={idx === 0}><KeyboardArrowUpIcon fontSize="small" /></IconButton>
+                      <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('main', idx, 'down'); }} disabled={idx === workoutData.mainBlock.length - 1}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
+                      <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'main', index: idx }); }}><SwapHorizIcon fontSize="small" /></IconButton>
+                    </Box>
                   </Box>
-                  <Collapse in={expandedCells[ex.name]}>{renderLiftHistory(ex.name, ex.repsMin, repsMax)}</Collapse>
+                  <Collapse in={expandedCells[ex.name]}><Box sx={{ pl: { xs: 4, sm: 5 }, mt: 2 }}>{renderLiftHistory(ex.name, ex.repsMin, repsMax)}</Box></Collapse>
                 </Paper>
                )
             })}
@@ -284,18 +355,28 @@ export default function Coach() {
             <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.1)' }} />
 
             {workoutData.cooldown.map((ex, idx) => (
-              <Paper key={idx} sx={{ p: 2, opacity: completedExercises[ex.name] ? 0.6 : 1 }}>
+              <Paper 
+                key={ex.name} 
+                draggable onDragStart={(e) => handleDragStart(e, 'cooldown', idx)} onDragEnter={(e) => handleDragEnter(e, 'cooldown', idx)} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
+                onClick={() => toggleCellExpand(ex.name)} 
+                sx={{ p: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(176, 106, 255, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'cooldown' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
+              >
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                    <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, !!completedExercises[ex.name], 0, ex.reps, 1)} sx={{ p: 0, mt: 0.5 }} />
-                    <Box onClick={() => toggleCellExpand(ex.name)} sx={{ cursor: 'pointer' }}>
-                      <Typography sx={{ fontWeight: 700 }}>{ex.name}</Typography>
+                    <DragIndicatorIcon sx={{ color: 'rgba(255,255,255,0.2)', mt: 1, cursor: 'grab', display: { xs: 'none', sm: 'block' } }} />
+                    <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, !!completedExercises[ex.name], 0, ex.reps, 1)} sx={{ p: 0, mt: 0.8 }} />
+                    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                      <Typography sx={{ fontWeight: 700, textDecoration: completedExercises[ex.name] ? 'line-through' : 'none' }}>{ex.name}</Typography>
                       <Typography variant="body2" sx={{ color: '#00d4ff' }}>Target: {ex.reps}</Typography>
                     </Box>
                   </Box>
-                  <IconButton onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'cooldown', index: idx }); }}><SwapHorizIcon /></IconButton>
+                  <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('cooldown', idx, 'up'); }} disabled={idx === 0}><KeyboardArrowUpIcon fontSize="small" /></IconButton>
+                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('cooldown', idx, 'down'); }} disabled={idx === workoutData.cooldown.length - 1}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
+                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'cooldown', index: idx }); }}><SwapHorizIcon fontSize="small" /></IconButton>
+                  </Box>
                 </Box>
-                <Collapse in={expandedCells[ex.name]}>{renderLiftHistory(ex.name)}</Collapse>
+                <Collapse in={expandedCells[ex.name]}><Box sx={{ pl: { xs: 4, sm: 5 }, mt: 2 }}>{renderLiftHistory(ex.name)}</Box></Collapse>
               </Paper>
             ))}
           </Box>
@@ -303,9 +384,9 @@ export default function Coach() {
 
         {/* SWAP DIALOG */}
         <Dialog open={!!swapTarget} onClose={() => setSwapTarget(null)} fullWidth maxWidth="xs">
-          <DialogTitle sx={{ fontWeight: 800 }}>Swap Exercise</DialogTitle>
+          <DialogTitle>Swap Exercise</DialogTitle>
           <DialogContent>
-            <TextField fullWidth size="small" placeholder="Search..." value={swapSearch} onChange={e => setSwapSearch(e.target.value)} sx={{ mt: 1, mb: 2 }} />
+            <TextField fullWidth placeholder="Search..." value={swapSearch} onChange={e => setSwapSearch(e.target.value)} sx={{ my: 2 }} />
             <Box sx={{ maxHeight: 300, overflowY: 'auto' }}>
               {filteredSwapExercises.map(ex => (
                 <MenuItem key={ex.name} onClick={() => handleSwapExercise(String(ex.name))}>
@@ -320,25 +401,24 @@ export default function Coach() {
         </Dialog>
 
         {/* LOG MODAL */}
-        <Dialog open={logModalOpen} onClose={() => setLogModalOpen(false)} PaperProps={{ sx: { bgcolor: '#16171a', borderRadius: 4 }}}>
-          <DialogTitle sx={{ fontWeight: 800, color: '#00d4ff' }}>Log Set</DialogTitle>
+        <Dialog open={logModalOpen} onClose={() => setLogModalOpen(false)}>
+          <DialogTitle sx={{ fontWeight: 800 }}>Log Set: {activeLoggingExercise}</DialogTitle>
           <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-             <Typography variant="h5" sx={{ fontWeight: 900 }}>{activeLoggingExercise}</Typography>
-             <DateTimePicker label="Time" value={new Date(logTimestamp)} onChange={(v) => v && setLogTimestamp(v.getTime())} slotProps={{ textField: { size: 'small', fullWidth: true } }} />
-             <FormControl fullWidth size="small">
-                <InputLabel>Equipment</InputLabel>
-                <Select value={logEquipment} onChange={(e) => setLogEquipment(e.target.value)} label="Equipment">
-                  <MenuItem value="Bodyweight">Bodyweight</MenuItem><MenuItem value="Barbell">Barbell</MenuItem><MenuItem value="Dumbbell">Dumbbell</MenuItem><MenuItem value="Machine">Machine</MenuItem><MenuItem value="Cable">Cable</MenuItem>
-                </Select>
-             </FormControl>
-             <Box sx={{ display: 'flex', gap: 1 }}>
-                <TextField fullWidth type="number" label={`Weight (${unit})`} value={logWeight} onChange={e => setLogWeight(e.target.value)} />
-                <TextField fullWidth type="number" label="Reps" value={logReps} onChange={e => setLogReps(e.target.value)} />
-                <TextField fullWidth type="number" label="Sets" value={logSets} onChange={e => setLogSets(e.target.value)} />
-             </Box>
+            <DateTimePicker label="Time" value={new Date(logTimestamp)} onChange={(v) => v && setLogTimestamp(v.getTime())} slotProps={{ textField: { size: 'small', fullWidth: true } }} />
+            <FormControl fullWidth size="small">
+              <InputLabel>Equipment</InputLabel>
+              <Select value={logEquipment} onChange={(e) => setLogEquipment(e.target.value)} label="Equipment">
+                <MenuItem value="Bodyweight">Bodyweight</MenuItem><MenuItem value="Barbell">Barbell</MenuItem><MenuItem value="Dumbbell">Dumbbell</MenuItem><MenuItem value="Smith">Smith</MenuItem><MenuItem value="Machine/Cable">Machine/Cable</MenuItem>
+              </Select>
+            </FormControl>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <TextField fullWidth type="number" label={`Weight (${unit})`} value={logWeight} onChange={e => setLogWeight(e.target.value)} />
+              <TextField fullWidth type="number" label="Reps" value={logReps} onChange={e => setLogReps(e.target.value)} />
+              <TextField fullWidth type="number" label="Sets" value={logSets} onChange={e => setLogSets(e.target.value)} />
+            </Box>
           </DialogContent>
           <DialogActions sx={{ p: 2 }}>
-             <Button fullWidth variant="contained" onClick={handleSaveLogToDB} disabled={isProcessing}>{isProcessing ? <CircularProgress size={24} sx={{ color: '#000' }} /> : 'Save Log'}</Button>
+            <Button fullWidth variant="contained" onClick={handleSaveLogToDB} disabled={isProcessing}>Save</Button>
           </DialogActions>
         </Dialog>
       </Box>

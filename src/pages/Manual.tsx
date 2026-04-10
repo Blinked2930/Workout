@@ -1,5 +1,5 @@
 // src/pages/Manual.tsx
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Box, Typography, Paper, Button, Select, MenuItem, FormControl, InputLabel, Checkbox, Divider, TextField, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Collapse, CircularProgress, Chip } from '@mui/material';
 import { useAction, useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
@@ -7,7 +7,10 @@ import ConstructionIcon from '@mui/icons-material/Construction';
 import AddTaskIcon from '@mui/icons-material/AddTask';
 import CloseIcon from '@mui/icons-material/Close';
 import HistoryIcon from '@mui/icons-material/History';
-import SwapHorizIcon from '@mui/icons-material/SwapHoriz'; // Swap Icon
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz'; 
+import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -35,24 +38,29 @@ const parseAIJSON = (rawStr: string) => {
 export default function Manual() {
   const { unit, displayWeight, toDisplay, toDB } = useUnit(); 
   
-  const [phase, setPhase] = useState<'SETUP' | 'WORKOUT'>('SETUP');
+  // PERSISTENT MEMORY STATES
+  const [phase, setPhase] = useState<'SETUP' | 'WORKOUT'>(() => (localStorage.getItem('manual_phase') as any) || 'SETUP');
+  const [selectedExercisesList, setSelectedExercisesList] = useState<string[]>(() => {
+    const saved = localStorage.getItem('manual_selected');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [workoutData, setWorkoutData] = useState<WorkoutJSON | null>(() => {
+    const saved = localStorage.getItem('manual_workout');
+    return saved ? JSON.parse(saved) : null;
+  });
   
   const [equipment, setEquipment] = useState<string>('Full Gym Access');
   const [style, setStyle] = useState<string>('Hypertrophy (8-12 reps)'); 
-  
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [activeSubcategory, setActiveSubcategory] = useState<string>('All');
-  
-  const [selectedExercisesList, setSelectedExercisesList] = useState<string[]>([]);
-  const [workoutData, setWorkoutData] = useState<WorkoutJSON | null>(null);
-  
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // Swap State
+  // SWAP & DRAG STATES
   const [swapTarget, setSwapTarget] = useState<{ section: 'warmup' | 'main' | 'cooldown', index: number } | null>(null);
   const [swapSearch, setSwapSearch] = useState('');
+  const [draggedItem, setDraggedItem] = useState<{ section: string, index: number } | null>(null);
 
-  // Logging States
+  // LOGGING STATES
   const [completedExercises, setCompletedExercises] = useState<Record<string, boolean>>({});
   const [loggedExercises, setLoggedExercises] = useState<Record<string, boolean>>({});
   const [expandedCells, setExpandedCells] = useState<Record<string, boolean>>({});
@@ -71,6 +79,14 @@ export default function Manual() {
   const exercisesDB = useQuery(api.exercises.getExercises, { category: "" });
   const allLiftsDB = useQuery(api.lifts.getLifts, {}) || [];
 
+  // SYNC MEMORY EFFECTS
+  useEffect(() => { localStorage.setItem('manual_phase', phase); }, [phase]);
+  useEffect(() => { localStorage.setItem('manual_selected', JSON.stringify(selectedExercisesList)); }, [selectedExercisesList]);
+  useEffect(() => {
+    if (workoutData) localStorage.setItem('manual_workout', JSON.stringify(workoutData));
+    else localStorage.removeItem('manual_workout');
+  }, [workoutData]);
+
   const categories = useMemo(() => {
     try {
       if (!Array.isArray(exercisesDB)) return [];
@@ -83,9 +99,7 @@ export default function Manual() {
     try {
       if (!Array.isArray(exercisesDB)) return [];
       let source = exercisesDB;
-      if (activeCategory !== 'All') {
-        source = source.filter(ex => String(ex?.category || '') === activeCategory);
-      }
+      if (activeCategory !== 'All') source = source.filter(ex => String(ex?.category || '') === activeCategory);
       const subcats = source.map(ex => String(ex?.subcategory || '')).filter(c => c.trim() !== '');
       return Array.from(new Set(subcats)).sort();
     } catch (e) { return []; }
@@ -114,77 +128,91 @@ export default function Manual() {
   };
 
   const handleToggleExerciseSelection = (name: string) => {
-    setSelectedExercisesList(prev => 
-      prev.includes(name) ? prev.filter(e => e !== name) : [...prev, name]
-    );
+    setSelectedExercisesList(prev => prev.includes(name) ? prev.filter(e => e !== name) : [...prev, name]);
   };
 
   const handleStartWorkout = async (useAI: boolean) => {
     if (selectedExercisesList.length === 0) return;
-    
     const isStrength = style.includes('Strength');
     const repsMin = isStrength ? 4 : 8;
     const repsMax = isStrength ? 8 : 12;
     const rest = isStrength ? '120s' : '90s';
 
-    const mainBlock = selectedExercisesList.map(name => ({
-      name, sets: 3, repsMin, repsMax, rest, notes: "Manual selection"
-    }));
+    const mainBlock = selectedExercisesList.map(name => ({ name, sets: 3, repsMin, repsMax, rest, notes: "Manual selection" }));
 
     if (!useAI) {
-      setWorkoutData({
-        title: "Custom Built Protocol",
-        focus: style,
-        warmup: [],
-        mainBlock,
-        cooldown: []
-      });
+      setWorkoutData({ title: "Custom Built Protocol", focus: style, warmup: [], mainBlock, cooldown: [] });
       setPhase('WORKOUT');
       return;
     }
 
     setIsGenerating(true);
     try {
-      const aiResponse = await generateWarmupCooldown({
-        equipment,
-        style,
-        mainBlock: selectedExercisesList
-      });
-
+      const aiResponse = await generateWarmupCooldown({ equipment, style, mainBlock: selectedExercisesList });
       const parsed = parseAIJSON(aiResponse);
-
-      setWorkoutData({
-        title: "Custom Built Protocol",
-        focus: style,
-        warmup: parsed.warmup || [],
-        mainBlock,
-        cooldown: parsed.cooldown || []
-      });
+      setWorkoutData({ title: "Custom Built Protocol", focus: style, warmup: parsed.warmup || [], mainBlock, cooldown: parsed.cooldown || [] });
       setPhase('WORKOUT');
-    } catch (err) {
-      console.error(err);
-      alert("AI Warmup Generation failed. Check console.");
-    } finally {
-      setIsGenerating(false);
-    }
+    } catch (err) { alert("AI Warmup Generation failed. Check console."); } 
+    finally { setIsGenerating(false); }
   };
 
   const handleSwapExercise = (newName: string) => {
     if (!workoutData || !swapTarget) return;
     const newWorkout = { ...workoutData };
-    
-    if (swapTarget.section === 'main') {
-      newWorkout.mainBlock[swapTarget.index].name = newName;
-    } else if (swapTarget.section === 'warmup' && newWorkout.warmup) {
-      newWorkout.warmup[swapTarget.index].name = newName;
-    } else if (swapTarget.section === 'cooldown' && newWorkout.cooldown) {
-      newWorkout.cooldown[swapTarget.index].name = newName;
-    }
-    
+    if (swapTarget.section === 'main') newWorkout.mainBlock[swapTarget.index].name = newName;
+    else if (swapTarget.section === 'warmup' && newWorkout.warmup) newWorkout.warmup[swapTarget.index].name = newName;
+    else if (swapTarget.section === 'cooldown' && newWorkout.cooldown) newWorkout.cooldown[swapTarget.index].name = newName;
     setWorkoutData(newWorkout);
     setSwapTarget(null);
     setSwapSearch('');
   };
+
+  // REORDER LOGIC
+  const moveExercise = (section: 'warmup'|'main'|'cooldown', index: number, direction: 'up'|'down') => {
+    if (!workoutData) return;
+    const newWorkout = { ...workoutData };
+    let list: any;
+    if (section === 'main') list = newWorkout.mainBlock;
+    else if (section === 'warmup') list = newWorkout.warmup;
+    else if (section === 'cooldown') list = newWorkout.cooldown;
+    if (!list) return;
+
+    if (direction === 'up' && index > 0) {
+      const temp = list[index];
+      list[index] = list[index - 1];
+      list[index - 1] = temp;
+    } else if (direction === 'down' && index < list.length - 1) {
+      const temp = list[index];
+      list[index] = list[index + 1];
+      list[index + 1] = temp;
+    }
+    setWorkoutData(newWorkout);
+  };
+
+  const handleDragStart = (e: React.DragEvent, section: string, index: number) => setDraggedItem({ section, index });
+
+  const handleDragEnter = (e: React.DragEvent, section: string, index: number) => {
+    e.preventDefault();
+    if (!draggedItem || !workoutData) return;
+    if (draggedItem.section !== section || draggedItem.index === index) return;
+
+    const newWorkout = { ...workoutData };
+    let list: any;
+    if (section === 'main') list = newWorkout.mainBlock;
+    else if (section === 'warmup') list = newWorkout.warmup;
+    else if (section === 'cooldown') list = newWorkout.cooldown;
+    if (!list) return;
+
+    const item = list[draggedItem.index];
+    list.splice(draggedItem.index, 1);
+    list.splice(index, 0, item);
+
+    setWorkoutData(newWorkout);
+    setDraggedItem({ section, index });
+  };
+
+  const handleDragOver = (e: React.DragEvent) => e.preventDefault();
+  const handleDragEnd = () => setDraggedItem(null);
 
   const clearSession = () => {
     setWorkoutData(null);
@@ -202,20 +230,16 @@ export default function Manual() {
   const openLogger = (exerciseName: string, suggestedWeight?: number | string, suggestedReps?: number | string, suggestedSets?: number | string) => {
     setActiveLoggingExercise(exerciseName);
     setLogTimestamp(Date.now());
-    
     const dbMatch = exercisesDB?.find(ex => String(ex?.name || '').toLowerCase() === exerciseName.toLowerCase());
-    const resolvedCategory = dbMatch?.category || 'Custom';
-    
-    const previousLifts = allLiftsDB.filter(l => String(l?.exerciseName || '').toLowerCase() === exerciseName.toLowerCase()).sort((a,b) => b.timestamp - a.timestamp);
-    const lastLift = previousLifts.length > 0 ? previousLifts[0] : null;
+    const lastLift = allLiftsDB.filter(l => String(l?.exerciseName || '').toLowerCase() === exerciseName.toLowerCase()).sort((a,b) => b.timestamp - a.timestamp)[0];
+    let eq = lastLift?.equipmentType || 'Barbell';
+    if (eq === 'Machine' || eq === 'Cable') eq = 'Machine/Cable';
 
-    setLogCategory(resolvedCategory);
-    setLogEquipment(lastLift?.equipmentType || 'Barbell');
-    
+    setLogCategory(dbMatch?.category || 'Custom');
+    setLogEquipment(eq);
     setLogWeight(suggestedWeight !== undefined && suggestedWeight !== '' ? suggestedWeight : (lastLift?.weight ? toDisplay(lastLift.weight) : ''));
     setLogReps(suggestedReps !== undefined ? suggestedReps : (lastLift?.reps || ''));
     setLogSets(suggestedSets !== undefined ? suggestedSets : 3);
-    
     setLogModalOpen(true);
   };
 
@@ -223,9 +247,8 @@ export default function Manual() {
 
   const handleCheckboxClick = (e: React.MouseEvent, exerciseName: string, isCurrentlyDone: boolean, targetWeight?: number | string, targetReps?: number | string, targetSets?: number | string) => {
     e.stopPropagation(); 
-    if (isCurrentlyDone) {
-      setCompletedExercises(prev => ({ ...prev, [exerciseName]: false }));
-    } else {
+    if (isCurrentlyDone) setCompletedExercises(prev => ({ ...prev, [exerciseName]: false }));
+    else {
       setCompletedExercises(prev => ({ ...prev, [exerciseName]: true }));
       openLogger(exerciseName, targetWeight, targetReps, targetSets);
     }
@@ -234,51 +257,27 @@ export default function Manual() {
   const handleSaveLogToDB = async () => {
     setIsSavingLog(true);
     try {
-      const inputWeight = parseFloat(String(logWeight)) || 0;
-      const dbWeight = toDB(inputWeight);
-
       await logSet({
-        exerciseName: activeLoggingExercise,
-        category: logCategory, 
-        equipmentType: logEquipment,
-        weight: dbWeight,
-        reps: parseInt(String(logReps)) || 0,
-        sets: parseInt(String(logSets)) || 1,
-        timestamp: logTimestamp,
+        exerciseName: activeLoggingExercise, category: logCategory, equipmentType: logEquipment,
+        weight: toDB(parseFloat(String(logWeight)) || 0), reps: parseInt(String(logReps)) || 0, sets: parseInt(String(logSets)) || 1, timestamp: logTimestamp,
       });
       setLoggedExercises(prev => ({ ...prev, [activeLoggingExercise]: true }));
       setCompletedExercises(prev => ({ ...prev, [activeLoggingExercise]: true })); 
       setLogModalOpen(false);
-    } finally {
-      setIsSavingLog(false);
-    }
+    } finally { setIsSavingLog(false); }
   };
 
   const renderLiftHistory = (exerciseName: string, minReps?: number, maxReps?: number) => {
-    let history = allLiftsDB
-      .filter(l => String(l?.exerciseName || '').toLowerCase() === exerciseName.toLowerCase())
-      .sort((a,b) => b.timestamp - a.timestamp);
-
-    if (minReps !== undefined && maxReps !== undefined) {
-      history = history.filter(l => l.reps >= minReps && l.reps <= maxReps);
-    }
+    let history = allLiftsDB.filter(l => String(l?.exerciseName || '').toLowerCase() === exerciseName.toLowerCase()).sort((a,b) => b.timestamp - a.timestamp);
+    if (minReps !== undefined && maxReps !== undefined) history = history.filter(l => l.reps >= minReps && l.reps <= maxReps);
     history = history.slice(0, 3);
-    
-    if (history.length === 0) return (
-      <Typography variant="body2" sx={{ color: '#8a8a9a', fontStyle: 'italic', p: 2, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2 }}>No previous logs found matching this rep range.</Typography>
-    );
-
+    if (history.length === 0) return <Typography variant="body2" sx={{ color: '#8a8a9a', fontStyle: 'italic', p: 2 }}>No previous logs found matching this rep range.</Typography>;
     return (
       <Box sx={{ bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, p: 1.5, mt: 1 }}>
-        <Typography sx={{ fontSize: '0.75rem', fontWeight: 800, color: '#00e096', textTransform: 'uppercase', mb: 1, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          <HistoryIcon sx={{ fontSize: '1rem' }}/> Relevant Performance
-        </Typography>
         {history.map((lift, i) => (
-          <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: i < history.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none', py: 0.5 }}>
-            <Typography variant="body2" sx={{ color: i === 0 ? '#00e096' : '#d2a8ff', fontWeight: i === 0 ? 700 : 400 }}>
-              {displayWeight(lift.weight)} × {lift.reps} reps ({lift.sets} sets)
-            </Typography>
-            <Typography variant="body2" sx={{ color: '#8a8a9a', fontSize: '0.8rem' }}>{new Date(lift.timestamp).toLocaleDateString()}</Typography>
+          <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
+            <Typography variant="body2" sx={{ color: i === 0 ? '#00e096' : '#d2a8ff' }}>{displayWeight(lift.weight)} × {lift.reps} reps</Typography>
+            <Typography variant="body2" sx={{ color: '#8a8a9a' }}>{new Date(lift.timestamp).toLocaleDateString()}</Typography>
           </Box>
         ))}
       </Box>
@@ -291,244 +290,194 @@ export default function Manual() {
         
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
           <Box>
-            <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#00e096', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 0.5 }}>Self Select</Typography>
+            <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#00e096', textTransform: 'uppercase', mb: 0.5 }}>Self Select</Typography>
             <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1.1, display: 'flex', alignItems: 'center', gap: 1 }}>
               Builder <ConstructionIcon sx={{ color: '#00e096', fontSize: '2rem' }} />
             </Typography>
           </Box>
-          {phase === 'WORKOUT' && <Button size="small" sx={{ color: '#ff4d6d' }} onClick={clearSession}>End Session</Button>}
+          {phase === 'WORKOUT' && <Button size="small" color="error" onClick={clearSession}>End Session</Button>}
         </Box>
 
         {phase === 'SETUP' && (
-          <Paper sx={{ p: 3, borderRadius: 4, bgcolor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: 3 }}>
-            
+          <Paper sx={{ p: 3, borderRadius: 4, display: 'flex', flexDirection: 'column', gap: 3 }}>
             <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
-              <FormControl fullWidth size="small">
-                <InputLabel sx={{ color: 'rgba(255,255,255,0.5)' }}>Environment</InputLabel>
-                <Select value={equipment} label="Environment" onChange={(e) => setEquipment(e.target.value)} sx={{ borderRadius: 2 }}>
-                  <MenuItem value="Floor Mode (Bodyweight Only)">Floor Mode (No Gear)</MenuItem>
-                  <MenuItem value="Bar Mode (Pull-up & Dip Bars)">Bar Mode (Pull/Dip Bars)</MenuItem>
-                  <MenuItem value="Full Gym Access">Full Gym Access</MenuItem>
-                </Select>
-              </FormControl>
-              <FormControl fullWidth size="small">
-                <InputLabel sx={{ color: 'rgba(255,255,255,0.5)' }}>Workout Style</InputLabel>
-                <Select value={style} label="Workout Style" onChange={(e) => setStyle(e.target.value)} sx={{ borderRadius: 2 }}>
-                  <MenuItem value="Hypertrophy (8-12 reps)">Hypertrophy (8-12 reps)</MenuItem>
-                  <MenuItem value="Strength (4-8 reps)">Strength (4-8 reps)</MenuItem>
-                </Select>
-              </FormControl>
+              <FormControl fullWidth size="small"><InputLabel>Environment</InputLabel><Select value={equipment} label="Environment" onChange={(e) => setEquipment(e.target.value)}><MenuItem value="Floor Mode (Bodyweight Only)">Floor Mode</MenuItem><MenuItem value="Bar Mode (Pull-up & Dip Bars)">Bar Mode</MenuItem><MenuItem value="Full Gym Access">Full Gym Access</MenuItem></Select></FormControl>
+              <FormControl fullWidth size="small"><InputLabel>Style</InputLabel><Select value={style} label="Style" onChange={(e) => setStyle(e.target.value)}><MenuItem value="Hypertrophy (8-12 reps)">Hypertrophy</MenuItem><MenuItem value="Strength (4-8 reps)">Strength</MenuItem></Select></FormControl>
             </Box>
 
-            <Divider sx={{ borderColor: 'rgba(255,255,255,0.05)' }} />
+            <Divider />
 
-            <Box>
-              <Typography sx={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)', mb: 1, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>1. Movement Pattern</Typography>
-              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                <Chip label="All Patterns" onClick={() => handleCategoryChange('All')} sx={{ fontWeight: 700, px: 1, py: 2.5, borderRadius: 3, bgcolor: activeCategory === 'All' ? 'rgba(0, 224, 150, 0.15)' : 'rgba(255,255,255,0.03)', color: activeCategory === 'All' ? '#00e096' : 'text.secondary', border: activeCategory === 'All' ? '1px solid rgba(0, 224, 150, 0.4)' : '1px solid rgba(255,255,255,0.08)' }} />
-                {categories.map(cat => (
-                  <Chip key={cat} label={cat} onClick={() => handleCategoryChange(cat)} sx={{ fontWeight: 700, px: 1, py: 2.5, borderRadius: 3, bgcolor: activeCategory === cat ? 'rgba(0, 224, 150, 0.15)' : 'rgba(255,255,255,0.03)', color: activeCategory === cat ? '#00e096' : 'text.secondary', border: activeCategory === cat ? '1px solid rgba(0, 224, 150, 0.4)' : '1px solid rgba(255,255,255,0.08)' }} />
-                ))}
-              </Box>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              <Chip label="All Patterns" onClick={() => { setActiveCategory('All'); setActiveSubcategory('All'); }} sx={{ fontWeight: 700, bgcolor: activeCategory === 'All' ? 'rgba(0, 224, 150, 0.2)' : 'transparent' }} />
+              {categories.map(cat => <Chip key={cat} label={cat} onClick={() => { setActiveCategory(cat); setActiveSubcategory('All'); }} sx={{ fontWeight: 700, bgcolor: activeCategory === cat ? 'rgba(0, 224, 150, 0.2)' : 'transparent' }} />)}
             </Box>
 
             {subcategories.length > 0 && (
-              <Box sx={{ mt: 1 }}>
-                <Typography sx={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)', mb: 1, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>2. Target Muscle</Typography>
-                <Box sx={{ display: 'flex', gap: 1, overflowX: 'auto', pb: 1.5, '&::-webkit-scrollbar': { height: 6 }, '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(255,255,255,0.1)', borderRadius: 4 } }}>
-                  <Chip size="small" label="All Muscles" onClick={() => setActiveSubcategory('All')} sx={{ fontWeight: 600, py: 1.5, bgcolor: activeSubcategory === 'All' ? 'rgba(0, 212, 255, 0.15)' : 'rgba(255,255,255,0.03)', color: activeSubcategory === 'All' ? '#00d4ff' : 'text.secondary', border: activeSubcategory === 'All' ? '1px solid rgba(0, 212, 255, 0.4)' : '1px solid rgba(255,255,255,0.05)' }} />
-                  {subcategories.map(sub => (
-                    <Chip key={sub} size="small" label={sub} onClick={() => setActiveSubcategory(sub)} sx={{ fontWeight: 600, py: 1.5, bgcolor: activeSubcategory === sub ? 'rgba(0, 212, 255, 0.15)' : 'rgba(255,255,255,0.03)', color: activeSubcategory === sub ? '#00d4ff' : 'text.secondary', border: activeSubcategory === sub ? '1px solid rgba(0, 212, 255, 0.4)' : '1px solid rgba(255,255,255,0.05)' }} />
-                  ))}
-                </Box>
+              <Box sx={{ display: 'flex', gap: 1, overflowX: 'auto', pb: 1.5 }}>
+                <Chip size="small" label="All Muscles" onClick={() => setActiveSubcategory('All')} sx={{ fontWeight: 600, py: 1.5, bgcolor: activeSubcategory === 'All' ? 'rgba(0, 212, 255, 0.15)' : 'rgba(255,255,255,0.03)' }} />
+                {subcategories.map(sub => <Chip key={sub} size="small" label={sub} onClick={() => setActiveSubcategory(sub)} sx={{ fontWeight: 600, py: 1.5, bgcolor: activeSubcategory === sub ? 'rgba(0, 212, 255, 0.15)' : 'rgba(255,255,255,0.03)' }} />)}
               </Box>
             )}
 
-            <Box sx={{ maxHeight: 320, overflowY: 'auto', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 2, bgcolor: 'rgba(0,0,0,0.2)', mt: 1 }}>
-              {displayedExercises.length === 0 ? <Typography sx={{ p: 3, textAlign: 'center', color: 'text.secondary', fontStyle: 'italic', fontSize: '0.85rem' }}>No exercises match this combination.</Typography> : displayedExercises.map((ex, idx) => {
-                const safeName = String(ex?.name || 'Unnamed Exercise');
-                return (
-                  <Box key={ex?._id || idx} onClick={() => handleToggleExerciseSelection(safeName)} sx={{ display: 'flex', alignItems: 'center', p: 1, borderBottom: '1px solid rgba(255,255,255,0.03)', cursor: 'pointer', transition: 'background 0.2s', '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' } }}>
-                    <Checkbox checked={selectedExercisesList.includes(safeName)} sx={{ color: '#00e096', '&.Mui-checked': { color: '#00e096' }, p: 1.5 }} />
-                    <Box>
-                      <Typography sx={{ fontWeight: 600, fontSize: '0.95rem' }}>{safeName}</Typography>
-                      <Typography sx={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)' }}>{String(ex?.category || '')} {ex?.subcategory ? `· ${String(ex.subcategory)}` : ''}</Typography>
+            <Box sx={{ mt: 1 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                <Typography sx={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)', textTransform: 'uppercase', fontWeight: 700 }}>3. Select Exercises</Typography>
+                {selectedExercisesList.length > 0 && <Chip size="small" label={`${selectedExercisesList.length} Selected`} sx={{ bgcolor: 'rgba(0, 224, 150, 0.2)', color: '#00e096', fontWeight: 800 }} />}
+              </Box>
+
+              <Box sx={{ maxHeight: 320, overflowY: 'auto', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 2 }}>
+                {displayedExercises.map((ex, idx) => {
+                  const safeName = String(ex?.name || 'Unnamed Exercise');
+                  return (
+                    <Box key={ex?._id || idx} onClick={() => handleToggleExerciseSelection(safeName)} sx={{ display: 'flex', alignItems: 'center', p: 1, cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                      <Checkbox checked={selectedExercisesList.includes(safeName)} sx={{ color: '#00e096' }} />
+                      <Box><Typography sx={{ fontWeight: 600 }}>{safeName}</Typography></Box>
                     </Box>
-                  </Box>
-                )
-              })}
+                  )
+                })}
+              </Box>
             </Box>
 
             <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
-              <Button fullWidth variant="outlined" onClick={() => handleStartWorkout(false)} disabled={selectedExercisesList.length === 0 || isGenerating} sx={{ py: 1.5, borderRadius: 3, fontWeight: 700, borderColor: 'rgba(0, 224, 150, 0.5)', color: selectedExercisesList.length > 0 ? '#00e096' : 'rgba(255,255,255,0.3)' }}>Quick Start</Button>
-              <Button fullWidth variant="contained" onClick={() => handleStartWorkout(true)} disabled={selectedExercisesList.length === 0 || isGenerating} sx={{ py: 1.5, borderRadius: 3, fontWeight: 800, background: selectedExercisesList.length > 0 ? 'linear-gradient(135deg, #00e096 0%, #0099cc 100%)' : 'rgba(255,255,255,0.1)', color: selectedExercisesList.length > 0 ? '#000' : 'rgba(255,255,255,0.3)' }}>{isGenerating ? <CircularProgress size={24} sx={{ color: '#000' }} /> : '+ AI Warmup'}</Button>
+              <Button fullWidth variant="outlined" onClick={() => handleStartWorkout(false)} disabled={selectedExercisesList.length === 0 || isGenerating} sx={{ color: '#00e096' }}>Quick Start</Button>
+              <Button fullWidth variant="contained" onClick={() => handleStartWorkout(true)} disabled={selectedExercisesList.length === 0 || isGenerating} sx={{ bgcolor: '#00e096', color: '#000' }}>{isGenerating ? <CircularProgress size={24} /> : '+ AI Warmup'}</Button>
             </Box>
           </Paper>
         )}
 
         {phase === 'WORKOUT' && workoutData && (
-          <Paper sx={{ p: 0, borderRadius: 4, bgcolor: 'rgba(0, 224, 150, 0.05)', border: '1px solid rgba(0, 224, 150, 0.2)', overflow: 'hidden' }}>
-            <Box sx={{ p: 3, bgcolor: 'rgba(0, 224, 150, 0.1)' }}>
-              <Typography variant="h5" sx={{ fontWeight: 900, color: '#00e096', mb: 1 }}>{workoutData.title}</Typography>
-              <Typography variant="body2" sx={{ color: '#8a8a9a' }}>Style: {workoutData.focus}</Typography>
-            </Box>
-
-            <Box sx={{ p: 3 }}>
-              {/* WARMUP */}
-              {workoutData.warmup && workoutData.warmup.length > 0 && (
-                <>
-                  <Typography variant="h6" sx={{ fontWeight: 800, color: '#00e096', mb: 1.5 }}>1. Warm-up (AI Generated)</Typography>
-                  {workoutData.warmup.map((ex, idx) => {
-                    const isDone = completedExercises[ex.name] || false;
-                    const isLogged = loggedExercises[ex.name] || false;
-                    const isExpanded = expandedCells[ex.name] || false;
-                    
-                    return (
-                      <Paper key={idx} onClick={() => toggleCellExpand(ex.name)} sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: isDone ? 'rgba(0, 224, 150, 0.05)' : 'rgba(255,255,255,0.03)', border: isDone ? '1px solid rgba(0, 224, 150, 0.3)' : '1px solid rgba(255,255,255,0.05)', opacity: isDone ? 0.6 : 1 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: isExpanded ? 1 : 0 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                            <Checkbox checked={isDone} onClick={(e) => handleCheckboxClick(e, ex.name, isDone, 0, ex.reps, 1)} sx={{ color: '#00e096', '&.Mui-checked': { color: '#00e096' }, p: 0, mt: 0.5 }} />
-                            <Box onClick={(e) => { if(isDone) { e.stopPropagation(); openLogger(ex.name, 0, ex.reps, 1); } }} sx={{ display: 'flex', flexDirection: 'column' }}>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Typography sx={{ fontWeight: 700, fontSize: '1.1rem', textDecoration: isDone ? 'line-through' : 'none' }}>{ex.name}</Typography>
-                                {isLogged && <Typography component="span" sx={{ fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(0, 224, 150, 0.2)', color: '#00e096', px: 1, py: 0.3, borderRadius: 2, textTransform: 'uppercase' }}>Logged</Typography>}
-                              </Box>
-                              <Typography variant="body2" sx={{ color: '#00e096', fontWeight: 600, fontSize: '0.85rem', mt: 0.5 }}>Target: {ex.reps}</Typography>
-                            </Box>
-                          </Box>
-                          <IconButton onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'warmup', index: idx }); }} sx={{ color: 'rgba(255,255,255,0.5)' }}><SwapHorizIcon /></IconButton>
-                        </Box>
-                        <Collapse in={isExpanded}><Box sx={{ pl: 4, mt: 2 }}>{renderLiftHistory(ex.name)}</Box></Collapse>
-                      </Paper>
-                    );
-                  })}
-                  <Divider sx={{ my: 3, borderColor: 'rgba(255,255,255,0.1)' }} />
-                </>
-              )}
-
-              {/* MAIN BLOCK */}
-              <Typography variant="h6" sx={{ fontWeight: 800, color: '#00e096', mb: 2 }}>{workoutData.warmup && workoutData.warmup.length > 0 ? '2.' : '1.'} Main Block</Typography>
-              {workoutData.mainBlock.map((ex, idx) => {
-                const isDone = completedExercises[ex.name] || false;
-                const isLogged = loggedExercises[ex.name] || false;
-                const isExpanded = expandedCells[ex.name] || false;
-                
-                const relevantHistory = allLiftsDB.filter(l => String(l?.exerciseName || '').toLowerCase() === ex.name.toLowerCase() && l.reps >= ex.repsMin && l.reps <= ex.repsMax).sort((a,b) => b.timestamp - a.timestamp);
-                const lastLift = relevantHistory.length > 0 ? relevantHistory[0] : null;
-
-                let targetWeightLabel = 'Baseline / Bodyweight';
-                let suggestedWeightForLogger: number | string = '';
-                
-                if (lastLift && lastLift.weight > 0) {
-                    const overloadedWeightLbs = Math.round((lastLift.weight * 1.05) / 5) * 5;
-                    targetWeightLabel = displayWeight(overloadedWeightLbs);
-                    suggestedWeightForLogger = toDisplay(overloadedWeightLbs);
-                }
-
-                return (
-                  <Paper key={idx} onClick={() => toggleCellExpand(ex.name)} sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: isDone ? 'rgba(0, 224, 150, 0.05)' : 'rgba(255,255,255,0.03)', border: isDone ? '1px solid rgba(0, 224, 150, 0.3)' : '1px solid rgba(255,255,255,0.05)', opacity: isDone ? 0.6 : 1 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: isExpanded ? 1 : 0 }}>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            
+            {workoutData.warmup && workoutData.warmup.length > 0 && (
+              <Box>
+                <Typography variant="h6" sx={{ fontWeight: 800, color: '#00e096', mb: 1 }}>1. Warm-up (AI)</Typography>
+                {workoutData.warmup.map((ex, idx) => (
+                  <Paper 
+                    key={ex.name} 
+                    draggable onDragStart={(e) => handleDragStart(e, 'warmup', idx)} onDragEnter={(e) => handleDragEnter(e, 'warmup', idx)} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
+                    onClick={() => toggleCellExpand(ex.name)} 
+                    sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(0, 224, 150, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'warmup' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                        <Checkbox checked={isDone} onClick={(e) => handleCheckboxClick(e, ex.name, isDone, suggestedWeightForLogger, ex.repsMax, ex.sets)} sx={{ color: '#00e096', '&.Mui-checked': { color: '#00e096' }, p: 0, mt: 0.5 }} />
-                        <Box onClick={(e) => { if(isDone) { e.stopPropagation(); openLogger(ex.name, suggestedWeightForLogger, ex.repsMax, ex.sets); } }} sx={{ display: 'flex', flexDirection: 'column' }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography sx={{ fontWeight: 700, fontSize: '1.1rem', textDecoration: isDone ? 'line-through' : 'none' }}>{ex.name}</Typography>
-                            {isLogged && <Typography component="span" sx={{ fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(0, 224, 150, 0.2)', color: '#00e096', px: 1, py: 0.3, borderRadius: 2, textTransform: 'uppercase' }}>Logged</Typography>}
-                          </Box>
-                          <Typography variant="body2" sx={{ color: '#00e096', fontWeight: 600, fontSize: '0.85rem', mt: 0.5, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
-                            <span><strong style={{color: '#fff'}}>Sets:</strong> {ex.sets}</span> |
-                            <span><strong style={{color: '#fff'}}>Reps:</strong> {ex.repsMin}-{ex.repsMax}</span> |
-                            <span><strong style={{color: '#fff'}}>Load:</strong> {targetWeightLabel}</span> |
-                            <span><strong style={{color: '#fff'}}>Rest:</strong> {ex.rest}</span>
-                          </Typography>
+                        <DragIndicatorIcon sx={{ color: 'rgba(255,255,255,0.2)', mt: 1, cursor: 'grab', display: { xs: 'none', sm: 'block' } }} />
+                        <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, !!completedExercises[ex.name], 0, ex.reps, 1)} sx={{ color: '#00e096', p: 0, mt: 0.8 }} />
+                        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                          <Typography sx={{ fontWeight: 700, textDecoration: completedExercises[ex.name] ? 'line-through' : 'none' }}>{ex.name}</Typography>
+                          <Typography variant="body2" sx={{ color: '#00e096' }}>Target: {ex.reps}</Typography>
                         </Box>
                       </Box>
-                      <IconButton onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'main', index: idx }); }} sx={{ color: 'rgba(255,255,255,0.5)' }}><SwapHorizIcon /></IconButton>
+                      <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('warmup', idx, 'up'); }} disabled={idx === 0}><KeyboardArrowUpIcon fontSize="small" /></IconButton>
+                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('warmup', idx, 'down'); }} disabled={idx === workoutData.warmup!.length - 1}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
+                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'warmup', index: idx }); }}><SwapHorizIcon fontSize="small" /></IconButton>
+                      </Box>
                     </Box>
-                    <Collapse in={isExpanded}><Box sx={{ pl: 4, mt: 2 }}>{renderLiftHistory(ex.name, ex.repsMin, ex.repsMax)}</Box></Collapse>
+                    <Collapse in={expandedCells[ex.name]}><Box sx={{ pl: { xs: 4, sm: 5 }, mt: 2 }}>{renderLiftHistory(ex.name)}</Box></Collapse>
+                  </Paper>
+                ))}
+                <Divider sx={{ my: 2 }} />
+              </Box>
+            )}
+
+            <Box>
+              <Typography variant="h6" sx={{ fontWeight: 800, color: '#00e096', mb: 1 }}>{workoutData.warmup && workoutData.warmup.length > 0 ? '2.' : '1.'} Main Block</Typography>
+              {workoutData.mainBlock.map((ex, idx) => {
+                const hist = allLiftsDB.filter(l => l.exerciseName === ex.name && l.reps >= ex.repsMin && l.reps <= ex.repsMax).sort((a,b)=>b.timestamp-a.timestamp)[0];
+                const overloaded = hist?.weight ? Math.round((hist.weight * 1.05)/5)*5 : null;
+                
+                return (
+                  <Paper 
+                    key={ex.name} 
+                    draggable onDragStart={(e) => handleDragStart(e, 'main', idx)} onDragEnter={(e) => handleDragEnter(e, 'main', idx)} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
+                    onClick={() => toggleCellExpand(ex.name)} 
+                    sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(0, 224, 150, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'main' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                        <DragIndicatorIcon sx={{ color: 'rgba(255,255,255,0.2)', mt: 1, cursor: 'grab', display: { xs: 'none', sm: 'block' } }} />
+                        <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, !!completedExercises[ex.name], overloaded || '', ex.repsMax, ex.sets)} sx={{ color: '#00e096', p: 0, mt: 0.8 }} />
+                        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                          <Typography sx={{ fontWeight: 700, textDecoration: completedExercises[ex.name] ? 'line-through' : 'none' }}>{ex.name} {loggedExercises[ex.name] && <Typography component="span" sx={{ fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(0, 224, 150, 0.2)', color: '#00e096', px: 1, py: 0.3, borderRadius: 2, ml: 1 }}>Logged</Typography>}</Typography>
+                          <Typography variant="caption" sx={{ color: '#00d4ff', mt: 0.5, display: 'block' }}>{ex.sets} Sets | {ex.repsMin}-{ex.repsMax} Reps | Load: {overloaded ? displayWeight(overloaded) : 'Baseline'}</Typography>
+                        </Box>
+                      </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center', ml: 1, flexShrink: 0 }}>
+                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('main', idx, 'up'); }} disabled={idx === 0} sx={{ color: 'rgba(255,255,255,0.5)' }}><KeyboardArrowUpIcon fontSize="small" /></IconButton>
+                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('main', idx, 'down'); }} disabled={idx === workoutData.mainBlock.length - 1} sx={{ color: 'rgba(255,255,255,0.5)' }}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
+                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'main', index: idx }); }} sx={{ color: 'rgba(255,255,255,0.5)' }}><SwapHorizIcon fontSize="small" /></IconButton>
+                      </Box>
+                    </Box>
+                    <Collapse in={expandedCells[ex.name]}><Box sx={{ pl: { xs: 4, sm: 5 }, mt: 2 }}>{renderLiftHistory(ex.name, ex.repsMin, ex.repsMax)}</Box></Collapse>
                   </Paper>
                 );
               })}
-
-              {/* COOLDOWN */}
-              {workoutData.cooldown && workoutData.cooldown.length > 0 && (
-                <>
-                  <Divider sx={{ my: 3, borderColor: 'rgba(255,255,255,0.1)' }} />
-                  <Typography variant="h6" sx={{ fontWeight: 800, color: '#00e096', mb: 1.5 }}>3. Cooldown (AI Generated)</Typography>
-                  {workoutData.cooldown.map((ex, idx) => {
-                    const isDone = completedExercises[ex.name] || false;
-                    const isLogged = loggedExercises[ex.name] || false;
-                    const isExpanded = expandedCells[ex.name] || false;
-                    return (
-                      <Paper key={idx} onClick={() => toggleCellExpand(ex.name)} sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: isDone ? 'rgba(0, 224, 150, 0.05)' : 'rgba(255,255,255,0.03)', border: isDone ? '1px solid rgba(0, 224, 150, 0.3)' : '1px solid rgba(255,255,255,0.05)', opacity: isDone ? 0.6 : 1 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: isExpanded ? 1 : 0 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                            <Checkbox checked={isDone} onClick={(e) => handleCheckboxClick(e, ex.name, isDone, 0, ex.reps, 1)} sx={{ color: '#00e096', '&.Mui-checked': { color: '#00e096' }, p: 0, mt: 0.5 }} />
-                            <Box onClick={(e) => { if(isDone) { e.stopPropagation(); openLogger(ex.name, 0, ex.reps, 1); } }} sx={{ display: 'flex', flexDirection: 'column' }}>
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                <Typography sx={{ fontWeight: 700, fontSize: '1.1rem', textDecoration: isDone ? 'line-through' : 'none' }}>{ex.name}</Typography>
-                                {isLogged && <Typography component="span" sx={{ fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(0, 224, 150, 0.2)', color: '#00e096', px: 1, py: 0.3, borderRadius: 2, textTransform: 'uppercase' }}>Logged</Typography>}
-                              </Box>
-                              <Typography variant="body2" sx={{ color: '#00e096', fontWeight: 600, fontSize: '0.85rem', mt: 0.5 }}>Target: {ex.reps}</Typography>
-                            </Box>
-                          </Box>
-                          <IconButton onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'cooldown', index: idx }); }} sx={{ color: 'rgba(255,255,255,0.5)' }}><SwapHorizIcon /></IconButton>
-                        </Box>
-                        <Collapse in={isExpanded}><Box sx={{ pl: 4, mt: 2 }}>{renderLiftHistory(ex.name)}</Box></Collapse>
-                      </Paper>
-                    );
-                  })}
-                </>
-              )}
             </Box>
-          </Paper>
+
+            {workoutData.cooldown && workoutData.cooldown.length > 0 && (
+              <Box>
+                <Divider sx={{ my: 2 }} />
+                <Typography variant="h6" sx={{ fontWeight: 800, color: '#00e096', mb: 1 }}>3. Cooldown (AI)</Typography>
+                {workoutData.cooldown.map((ex, idx) => (
+                  <Paper 
+                    key={ex.name} 
+                    draggable onDragStart={(e) => handleDragStart(e, 'cooldown', idx)} onDragEnter={(e) => handleDragEnter(e, 'cooldown', idx)} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
+                    onClick={() => toggleCellExpand(ex.name)} 
+                    sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(0, 224, 150, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'cooldown' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                        <DragIndicatorIcon sx={{ color: 'rgba(255,255,255,0.2)', mt: 1, cursor: 'grab', display: { xs: 'none', sm: 'block' } }} />
+                        <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, !!completedExercises[ex.name], 0, ex.reps, 1)} sx={{ color: '#00e096', p: 0, mt: 0.8 }} />
+                        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                          <Typography sx={{ fontWeight: 700, textDecoration: completedExercises[ex.name] ? 'line-through' : 'none' }}>{ex.name}</Typography>
+                          <Typography variant="body2" sx={{ color: '#00e096' }}>Target: {ex.reps}</Typography>
+                        </Box>
+                      </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('cooldown', idx, 'up'); }} disabled={idx === 0}><KeyboardArrowUpIcon fontSize="small" /></IconButton>
+                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('cooldown', idx, 'down'); }} disabled={idx === workoutData.cooldown!.length - 1}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
+                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'cooldown', index: idx }); }} sx={{ color: 'rgba(255,255,255,0.5)' }}><SwapHorizIcon fontSize="small" /></IconButton>
+                      </Box>
+                    </Box>
+                    <Collapse in={expandedCells[ex.name]}><Box sx={{ pl: { xs: 4, sm: 5 }, mt: 2 }}>{renderLiftHistory(ex.name)}</Box></Collapse>
+                  </Paper>
+                ))}
+              </Box>
+            )}
+          </Box>
         )}
 
-        {/* SWAP DIALOG */}
         <Dialog open={!!swapTarget} onClose={() => setSwapTarget(null)} fullWidth maxWidth="xs">
-          <DialogTitle sx={{ fontWeight: 800 }}>Swap Exercise</DialogTitle>
+          <DialogTitle>Swap Exercise</DialogTitle>
           <DialogContent>
-            <TextField fullWidth size="small" placeholder="Search to swap..." value={swapSearch} onChange={e => setSwapSearch(e.target.value)} sx={{ mt: 1, mb: 2 }} />
+            <TextField fullWidth placeholder="Search..." value={swapSearch} onChange={e => setSwapSearch(e.target.value)} sx={{ my: 2 }} />
             <Box sx={{ maxHeight: 300, overflowY: 'auto' }}>
               {filteredSwapExercises.map(ex => (
-                <MenuItem key={ex.name} onClick={() => handleSwapExercise(String(ex.name))}>
-                  <Box>
-                    <Typography sx={{ fontWeight: 600 }}>{ex.name}</Typography>
-                    <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>{ex.category}</Typography>
-                  </Box>
-                </MenuItem>
+                <MenuItem key={ex.name} onClick={() => handleSwapExercise(String(ex.name))}>{ex.name}</MenuItem>
               ))}
             </Box>
           </DialogContent>
         </Dialog>
 
-        {/* LOG DIALOG */}
-        <Dialog open={logModalOpen} onClose={handleCloseModal} PaperProps={{ sx: { bgcolor: '#16171a', borderRadius: 4, border: '1px solid rgba(255,255,255,0.1)', width: '100%', maxWidth: 400 } }}>
-          <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
-            <Typography sx={{ fontWeight: 800, color: '#00e096' }}>Log Completed Set</Typography>
-            <IconButton onClick={handleCloseModal} size="small" sx={{ color: '#8a8a9a' }}><CloseIcon /></IconButton>
-          </DialogTitle>
-          <DialogContent>
-            <Typography variant="h5" sx={{ fontWeight: 900, mb: 2 }}>{activeLoggingExercise}</Typography>
-            <DateTimePicker label="Date & Time" value={new Date(logTimestamp)} onChange={(v) => v && setLogTimestamp(v.getTime())} format="MMM d, yyyy '·' h:mm a" slotProps={{ textField: { size: 'small', fullWidth: true, sx: { mb: 2 } } }} />
-            <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-              <FormControl fullWidth size="small">
-                <InputLabel sx={{ color: 'rgba(255,255,255,0.5)' }}>Equipment</InputLabel>
-                <Select value={logEquipment} onChange={(e) => setLogEquipment(e.target.value)} label="Equipment" sx={{ borderRadius: 2 }}>
-                  <MenuItem value="Bodyweight">Bodyweight</MenuItem><MenuItem value="Barbell">Barbell</MenuItem><MenuItem value="Dumbbell">Dumbbell</MenuItem><MenuItem value="Machine">Machine</MenuItem><MenuItem value="Cable">Cable</MenuItem>
-                </Select>
-              </FormControl>
-            </Box>
-            <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-              <TextField fullWidth type="number" label={`Weight (${unit})`} value={logWeight} onChange={(e) => setLogWeight(e.target.value)} InputProps={{ inputProps: { min: 0 } }} />
-              <TextField fullWidth type="number" label="Reps" value={logReps} onChange={(e) => setLogReps(e.target.value)} InputProps={{ inputProps: { min: 0 } }} />
-              <TextField fullWidth type="number" label="Sets" value={logSets} onChange={(e) => setLogSets(e.target.value)} InputProps={{ inputProps: { min: 1 } }} />
+        <Dialog open={logModalOpen} onClose={() => setLogModalOpen(false)}>
+          <DialogTitle sx={{ fontWeight: 800 }}>Log Set: {activeLoggingExercise}</DialogTitle>
+          <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+            <DateTimePicker label="Time" value={new Date(logTimestamp)} onChange={(v) => v && setLogTimestamp(v.getTime())} slotProps={{ textField: { size: 'small', fullWidth: true } }} />
+            <FormControl fullWidth size="small">
+              <InputLabel>Equipment</InputLabel>
+              <Select value={logEquipment} onChange={(e) => setLogEquipment(e.target.value)} label="Equipment">
+                <MenuItem value="Bodyweight">Bodyweight</MenuItem><MenuItem value="Barbell">Barbell</MenuItem><MenuItem value="Dumbbell">Dumbbell</MenuItem><MenuItem value="Smith">Smith</MenuItem><MenuItem value="Machine/Cable">Machine/Cable</MenuItem>
+              </Select>
+            </FormControl>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <TextField fullWidth type="number" label={`Weight (${unit})`} value={logWeight} onChange={e => setLogWeight(e.target.value)} />
+              <TextField fullWidth type="number" label="Reps" value={logReps} onChange={e => setLogReps(e.target.value)} />
+              <TextField fullWidth type="number" label="Sets" value={logSets} onChange={e => setLogSets(e.target.value)} />
             </Box>
           </DialogContent>
-          <DialogActions sx={{ p: 3, pt: 0 }}>
-            <Button fullWidth variant="contained" onClick={handleSaveLogToDB} disabled={isSavingLog} sx={{ py: 1.5, borderRadius: 3, fontWeight: 800, background: 'linear-gradient(135deg, #00e096 0%, #0099cc 100%)', color: '#000' }}>
-              {isSavingLog ? <CircularProgress size={24} sx={{ color: '#000' }} /> : <><AddTaskIcon sx={{ mr: 1 }} /> Save Log</>}
-            </Button>
+          <DialogActions sx={{ p: 2 }}>
+            <Button fullWidth variant="contained" onClick={handleSaveLogToDB} disabled={isSavingLog}>Save</Button>
           </DialogActions>
         </Dialog>
 
