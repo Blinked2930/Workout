@@ -278,3 +278,52 @@ export const generateWorkout = action({
     return result.response.text();
   },
 });
+
+// ---------------------------------------------------------
+// ACTION 3: Generate Warmup/Cooldown for Manual Builder
+// ---------------------------------------------------------
+export const generateWarmupCooldown = action({
+  args: {
+    equipment: v.string(),
+    style: v.string(),
+    mainBlock: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) throw new Error("GEMINI_API_KEY environment variable not set.");
+
+    const equipmentContext = equipmentRules[args.equipment] || "Standard rules apply.";
+
+    const systemInstruction = `
+    You are an elite Strength Coach. The user has manually built their workout block. 
+    Generate ONLY a Warm-up and Cooldown tailored to these specific exercises.
+    
+    ENVIRONMENT LIMITS: ${args.equipment} -> ${equipmentContext}
+    WORKOUT STYLE: ${args.style}
+    MAIN EXERCISES: ${args.mainBlock.join(', ')}
+
+    RULES:
+    1. Output ONLY valid JSON. No markdown.
+    2. WARM-UP: 2-3 exercises. Joint prep and mobility for the muscles used in the Main Exercises.
+    3. COOLDOWN: 2-3 exercises. Stretching and down-regulation for the muscles used.
+    4. STRICT ENVIRONMENT: Exclude any exercise that violates the physical constraints.
+
+    JSON SCHEMA:
+    {
+      "warmup": [ { "name": "Exercise", "reps": "Target" } ],
+      "cooldown": [ { "name": "Exercise", "reps": "Target" } ]
+    }
+    `;
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-3.1-flash-lite-preview", 
+      systemInstruction: systemInstruction,
+      generationConfig: { responseMimeType: "application/json" } 
+    });
+
+    const prompt = `Generate warmup and cooldown.`;
+    const result = await fetchWithRetry(model, prompt);
+    return result.response.text();
+  },
+});

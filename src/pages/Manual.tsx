@@ -1,7 +1,7 @@
 // src/pages/Manual.tsx
 import React, { useState, useMemo } from 'react';
 import { Box, Typography, Paper, Button, Select, MenuItem, FormControl, InputLabel, Checkbox, Divider, TextField, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Collapse, CircularProgress, Chip } from '@mui/material';
-import { useMutation, useQuery } from 'convex/react';
+import { useAction, useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import ConstructionIcon from '@mui/icons-material/Construction';
 import AddTaskIcon from '@mui/icons-material/AddTask';
@@ -11,25 +11,42 @@ import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { enGB } from 'date-fns/locale';
+import { useUnit } from '../context/UnitContext'; 
 
 interface WorkoutJSON { 
   title: string; 
   focus: string; 
+  warmup?: { name: string; reps: string }[]; 
   mainBlock: { name: string; sets: number; repsMin: number; repsMax: number; rest: string; notes: string }[]; 
+  cooldown?: { name: string; reps: string }[]; 
 }
 
+const parseAIJSON = (rawStr: string) => {
+  try {
+    const cleaned = rawStr.replace(/```json\n?/gi, '').replace(/```\n?/g, '').trim();
+    return JSON.parse(cleaned);
+  } catch (error) {
+    console.error("JSON Parsing Error. Raw string:", rawStr);
+    return { warmup: [], cooldown: [] };
+  }
+};
+
 export default function Manual() {
+  const { unit, displayWeight, toDisplay, toDB } = useUnit(); 
+  
   const [phase, setPhase] = useState<'SETUP' | 'WORKOUT'>('SETUP');
   
+  const [equipment, setEquipment] = useState<string>('Full Gym Access');
   const [style, setStyle] = useState<string>('Hypertrophy (8-12 reps)'); 
   
-  // NEW: Split filters for Pattern vs Muscle
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [activeSubcategory, setActiveSubcategory] = useState<string>('All');
   
   const [selectedExercisesList, setSelectedExercisesList] = useState<string[]>([]);
   const [workoutData, setWorkoutData] = useState<WorkoutJSON | null>(null);
   
+  const [isGenerating, setIsGenerating] = useState(false);
+
   // Logging States
   const [completedExercises, setCompletedExercises] = useState<Record<string, boolean>>({});
   const [loggedExercises, setLoggedExercises] = useState<Record<string, boolean>>({});
@@ -44,11 +61,11 @@ export default function Manual() {
   const [logTimestamp, setLogTimestamp] = useState<number>(Date.now());
   const [isSavingLog, setIsSavingLog] = useState(false);
 
+  const generateWarmupCooldown = useAction(api.ai.generateWarmupCooldown);
   const logSet = useMutation(api.lifts.logSet);
   const exercisesDB = useQuery(api.exercises.getExercises, { category: "" });
   const allLiftsDB = useQuery(api.lifts.getLifts, {}) || [];
 
-  // SETUP: Extract unique Patterns (Categories)
   const categories = useMemo(() => {
     try {
       if (!Array.isArray(exercisesDB)) return [];
@@ -57,7 +74,6 @@ export default function Manual() {
     } catch (e) { return []; }
   }, [exercisesDB]);
 
-  // SETUP: Extract unique Muscles (Subcategories) dependent on the active Category
   const subcategories = useMemo(() => {
     try {
       if (!Array.isArray(exercisesDB)) return [];
@@ -70,7 +86,6 @@ export default function Manual() {
     } catch (e) { return []; }
   }, [exercisesDB, activeCategory]);
 
-  // SETUP: Final filtered list for display
   const displayedExercises = useMemo(() => {
     try {
       if (!Array.isArray(exercisesDB)) return [];
@@ -84,7 +99,7 @@ export default function Manual() {
 
   const handleCategoryChange = (newCat: string) => {
     setActiveCategory(newCat);
-    setActiveSubcategory('All'); // Smart reset: If you switch from Push to Pull, it clears the 'Chest' filter
+    setActiveSubcategory('All');
   };
 
   const handleToggleExerciseSelection = (name: string) => {
@@ -93,7 +108,8 @@ export default function Manual() {
     );
   };
 
-  const handleGenerateManualWorkout = () => {
+  // NEW DUAL-LOGIC START WORKOUT FUNCTION
+  const handleStartWorkout = async (useAI: boolean) => {
     if (selectedExercisesList.length === 0) return;
     
     const isStrength = style.includes('Strength');
@@ -102,20 +118,47 @@ export default function Manual() {
     const rest = isStrength ? '120s' : '90s';
 
     const mainBlock = selectedExercisesList.map(name => ({
-      name,
-      sets: 3, // Defaults to 3 sets
-      repsMin,
-      repsMax,
-      rest,
-      notes: "Manual selection"
+      name, sets: 3, repsMin, repsMax, rest, notes: "Manual selection"
     }));
 
-    setWorkoutData({
-      title: "Custom Built Protocol",
-      focus: style,
-      mainBlock
-    });
-    setPhase('WORKOUT');
+    if (!useAI) {
+      // Instant skip: Go straight to the workout without calling the API
+      setWorkoutData({
+        title: "Custom Built Protocol",
+        focus: style,
+        warmup: [],
+        mainBlock,
+        cooldown: []
+      });
+      setPhase('WORKOUT');
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      // Call Gemini API for warmups
+      const aiResponse = await generateWarmupCooldown({
+        equipment,
+        style,
+        mainBlock: selectedExercisesList
+      });
+
+      const parsed = parseAIJSON(aiResponse);
+
+      setWorkoutData({
+        title: "Custom Built Protocol",
+        focus: style,
+        warmup: parsed.warmup || [],
+        mainBlock,
+        cooldown: parsed.cooldown || []
+      });
+      setPhase('WORKOUT');
+    } catch (err) {
+      console.error(err);
+      alert("AI Warmup Generation failed. Check console.");
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const clearSession = () => {
@@ -127,7 +170,6 @@ export default function Manual() {
     setPhase('SETUP');
   };
 
-  // WORKOUT LOGIC
   const toggleCellExpand = (exerciseName: string) => {
     setExpandedCells(prev => ({ ...prev, [exerciseName]: !prev[exerciseName] }));
   };
@@ -144,16 +186,15 @@ export default function Manual() {
 
     setLogCategory(resolvedCategory);
     setLogEquipment(lastLift?.equipmentType || 'Barbell');
-    setLogWeight(suggestedWeight !== undefined && suggestedWeight !== '' ? suggestedWeight : (lastLift?.weight || ''));
+    
+    setLogWeight(suggestedWeight !== undefined && suggestedWeight !== '' ? suggestedWeight : (lastLift?.weight ? toDisplay(lastLift.weight) : ''));
     setLogReps(suggestedReps !== undefined ? suggestedReps : (lastLift?.reps || ''));
     setLogSets(suggestedSets !== undefined ? suggestedSets : 3);
     
     setLogModalOpen(true);
   };
 
-  const handleCloseModal = () => {
-    setLogModalOpen(false);
-  };
+  const handleCloseModal = () => setLogModalOpen(false);
 
   const handleCheckboxClick = (e: React.MouseEvent, exerciseName: string, isCurrentlyDone: boolean, targetWeight?: number | string, targetReps?: number | string, targetSets?: number | string) => {
     e.stopPropagation(); 
@@ -168,11 +209,14 @@ export default function Manual() {
   const handleSaveLogToDB = async () => {
     setIsSavingLog(true);
     try {
+      const inputWeight = parseFloat(String(logWeight)) || 0;
+      const dbWeight = toDB(inputWeight);
+
       await logSet({
         exerciseName: activeLoggingExercise,
         category: logCategory, 
         equipmentType: logEquipment,
-        weight: parseFloat(String(logWeight)) || 0,
+        weight: dbWeight,
         reps: parseInt(String(logReps)) || 0,
         sets: parseInt(String(logSets)) || 1,
         timestamp: logTimestamp,
@@ -185,19 +229,19 @@ export default function Manual() {
     }
   };
 
-  const renderLiftHistory = (exerciseName: string, minReps: number, maxReps: number) => {
+  const renderLiftHistory = (exerciseName: string, minReps?: number, maxReps?: number) => {
     let history = allLiftsDB
-      .filter(l => String(l?.exerciseName || '').toLowerCase() === exerciseName.toLowerCase() && l.reps >= minReps && l.reps <= maxReps)
-      .sort((a,b) => b.timestamp - a.timestamp)
-      .slice(0, 3);
-    
-    if (history.length === 0) {
-      return (
-        <Typography variant="body2" sx={{ color: '#8a8a9a', fontStyle: 'italic', p: 2, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2 }}>
-          No previous logs found matching this rep range.
-        </Typography>
-      );
+      .filter(l => String(l?.exerciseName || '').toLowerCase() === exerciseName.toLowerCase())
+      .sort((a,b) => b.timestamp - a.timestamp);
+
+    if (minReps !== undefined && maxReps !== undefined) {
+      history = history.filter(l => l.reps >= minReps && l.reps <= maxReps);
     }
+    history = history.slice(0, 3);
+    
+    if (history.length === 0) return (
+      <Typography variant="body2" sx={{ color: '#8a8a9a', fontStyle: 'italic', p: 2, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2 }}>No previous logs found matching this rep range.</Typography>
+    );
 
     return (
       <Box sx={{ bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, p: 1.5, mt: 1 }}>
@@ -207,11 +251,9 @@ export default function Manual() {
         {history.map((lift, i) => (
           <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', borderBottom: i < history.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none', py: 0.5 }}>
             <Typography variant="body2" sx={{ color: i === 0 ? '#00e096' : '#d2a8ff', fontWeight: i === 0 ? 700 : 400 }}>
-              {lift.weight > 0 ? `${lift.weight} lbs` : 'Bodyweight'} × {lift.reps} reps ({lift.sets} sets)
+              {displayWeight(lift.weight)} × {lift.reps} reps ({lift.sets} sets)
             </Typography>
-            <Typography variant="body2" sx={{ color: '#8a8a9a', fontSize: '0.8rem' }}>
-              {new Date(lift.timestamp).toLocaleDateString()}
-            </Typography>
+            <Typography variant="body2" sx={{ color: '#8a8a9a', fontSize: '0.8rem' }}>{new Date(lift.timestamp).toLocaleDateString()}</Typography>
           </Box>
         ))}
       </Box>
@@ -224,130 +266,95 @@ export default function Manual() {
         
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
           <Box>
-            <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#00e096', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 0.5 }}>
-              Self Select
-            </Typography>
+            <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#00e096', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 0.5 }}>Self Select</Typography>
             <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1.1, display: 'flex', alignItems: 'center', gap: 1 }}>
               Builder <ConstructionIcon sx={{ color: '#00e096', fontSize: '2rem' }} />
             </Typography>
           </Box>
-          {phase === 'WORKOUT' && (
-            <Button size="small" sx={{ color: '#ff4d6d' }} onClick={clearSession}>End Session</Button>
-          )}
+          {phase === 'WORKOUT' && <Button size="small" sx={{ color: '#ff4d6d' }} onClick={clearSession}>End Session</Button>}
         </Box>
 
         {phase === 'SETUP' && (
           <Paper sx={{ p: 3, borderRadius: 4, bgcolor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column', gap: 3 }}>
             
-            <FormControl fullWidth size="small">
-              <InputLabel id="manual-style-label" sx={{ color: 'rgba(255,255,255,0.5)' }}>Workout Style</InputLabel>
-              <Select labelId="manual-style-label" value={style} label="Workout Style" onChange={(e) => setStyle(e.target.value)} sx={{ borderRadius: 2 }}>
-                <MenuItem value="Hypertrophy (8-12 reps)">Hypertrophy (8-12 reps)</MenuItem>
-                <MenuItem value="Strength (4-8 reps)">Strength (4-8 reps)</MenuItem>
-              </Select>
-            </FormControl>
+            <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
+              <FormControl fullWidth size="small">
+                <InputLabel sx={{ color: 'rgba(255,255,255,0.5)' }}>Environment</InputLabel>
+                <Select value={equipment} label="Environment" onChange={(e) => setEquipment(e.target.value)} sx={{ borderRadius: 2 }}>
+                  <MenuItem value="Floor Mode (Bodyweight Only)">Floor Mode (No Gear)</MenuItem>
+                  <MenuItem value="Bar Mode (Pull-up & Dip Bars)">Bar Mode (Pull/Dip Bars)</MenuItem>
+                  <MenuItem value="Full Gym Access">Full Gym Access</MenuItem>
+                </Select>
+              </FormControl>
+              <FormControl fullWidth size="small">
+                <InputLabel sx={{ color: 'rgba(255,255,255,0.5)' }}>Workout Style</InputLabel>
+                <Select value={style} label="Workout Style" onChange={(e) => setStyle(e.target.value)} sx={{ borderRadius: 2 }}>
+                  <MenuItem value="Hypertrophy (8-12 reps)">Hypertrophy (8-12 reps)</MenuItem>
+                  <MenuItem value="Strength (4-8 reps)">Strength (4-8 reps)</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
 
             <Divider sx={{ borderColor: 'rgba(255,255,255,0.05)' }} />
 
-            {/* ROW 1: Broad Movement Patterns */}
             <Box>
-              <Typography sx={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)', mb: 1, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
-                1. Movement Pattern
-              </Typography>
+              <Typography sx={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)', mb: 1, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>1. Movement Pattern</Typography>
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                <Chip 
-                  label="All Patterns" 
-                  onClick={() => handleCategoryChange('All')}
-                  sx={{ 
-                    fontWeight: 700, px: 1, py: 2.5, borderRadius: 3,
-                    bgcolor: activeCategory === 'All' ? 'rgba(0, 224, 150, 0.15)' : 'rgba(255,255,255,0.03)', 
-                    color: activeCategory === 'All' ? '#00e096' : 'text.secondary', 
-                    border: activeCategory === 'All' ? '1px solid rgba(0, 224, 150, 0.4)' : '1px solid rgba(255,255,255,0.08)' 
-                  }} 
-                />
+                <Chip label="All Patterns" onClick={() => handleCategoryChange('All')} sx={{ fontWeight: 700, px: 1, py: 2.5, borderRadius: 3, bgcolor: activeCategory === 'All' ? 'rgba(0, 224, 150, 0.15)' : 'rgba(255,255,255,0.03)', color: activeCategory === 'All' ? '#00e096' : 'text.secondary', border: activeCategory === 'All' ? '1px solid rgba(0, 224, 150, 0.4)' : '1px solid rgba(255,255,255,0.08)' }} />
                 {categories.map(cat => (
-                  <Chip 
-                    key={cat} 
-                    label={cat} 
-                    onClick={() => handleCategoryChange(cat)}
-                    sx={{ 
-                      fontWeight: 700, px: 1, py: 2.5, borderRadius: 3,
-                      bgcolor: activeCategory === cat ? 'rgba(0, 224, 150, 0.15)' : 'rgba(255,255,255,0.03)', 
-                      color: activeCategory === cat ? '#00e096' : 'text.secondary', 
-                      border: activeCategory === cat ? '1px solid rgba(0, 224, 150, 0.4)' : '1px solid rgba(255,255,255,0.08)' 
-                    }} 
-                  />
+                  <Chip key={cat} label={cat} onClick={() => handleCategoryChange(cat)} sx={{ fontWeight: 700, px: 1, py: 2.5, borderRadius: 3, bgcolor: activeCategory === cat ? 'rgba(0, 224, 150, 0.15)' : 'rgba(255,255,255,0.03)', color: activeCategory === cat ? '#00e096' : 'text.secondary', border: activeCategory === cat ? '1px solid rgba(0, 224, 150, 0.4)' : '1px solid rgba(255,255,255,0.08)' }} />
                 ))}
               </Box>
             </Box>
 
-            {/* ROW 2: Specific Target Muscle (Scrollable) */}
             {subcategories.length > 0 && (
               <Box sx={{ mt: 1 }}>
-                <Typography sx={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)', mb: 1, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
-                  2. Target Muscle
-                </Typography>
-                <Box sx={{ 
-                  display: 'flex', gap: 1, overflowX: 'auto', pb: 1.5,
-                  '&::-webkit-scrollbar': { height: 6 },
-                  '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(255,255,255,0.1)', borderRadius: 4 }
-                }}>
-                  <Chip 
-                    size="small"
-                    label="All Muscles" 
-                    onClick={() => setActiveSubcategory('All')}
-                    sx={{ 
-                      fontWeight: 600, py: 1.5,
-                      bgcolor: activeSubcategory === 'All' ? 'rgba(0, 212, 255, 0.15)' : 'rgba(255,255,255,0.03)', 
-                      color: activeSubcategory === 'All' ? '#00d4ff' : 'text.secondary', 
-                      border: activeSubcategory === 'All' ? '1px solid rgba(0, 212, 255, 0.4)' : '1px solid rgba(255,255,255,0.05)' 
-                    }} 
-                  />
+                <Typography sx={{ fontSize: '0.72rem', color: 'rgba(255,255,255,0.5)', mb: 1, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>2. Target Muscle</Typography>
+                <Box sx={{ display: 'flex', gap: 1, overflowX: 'auto', pb: 1.5, '&::-webkit-scrollbar': { height: 6 }, '&::-webkit-scrollbar-thumb': { bgcolor: 'rgba(255,255,255,0.1)', borderRadius: 4 } }}>
+                  <Chip size="small" label="All Muscles" onClick={() => setActiveSubcategory('All')} sx={{ fontWeight: 600, py: 1.5, bgcolor: activeSubcategory === 'All' ? 'rgba(0, 212, 255, 0.15)' : 'rgba(255,255,255,0.03)', color: activeSubcategory === 'All' ? '#00d4ff' : 'text.secondary', border: activeSubcategory === 'All' ? '1px solid rgba(0, 212, 255, 0.4)' : '1px solid rgba(255,255,255,0.05)' }} />
                   {subcategories.map(sub => (
-                    <Chip 
-                      key={sub} 
-                      size="small"
-                      label={sub} 
-                      onClick={() => setActiveSubcategory(sub)}
-                      sx={{ 
-                        fontWeight: 600, py: 1.5,
-                        bgcolor: activeSubcategory === sub ? 'rgba(0, 212, 255, 0.15)' : 'rgba(255,255,255,0.03)', 
-                        color: activeSubcategory === sub ? '#00d4ff' : 'text.secondary', 
-                        border: activeSubcategory === sub ? '1px solid rgba(0, 212, 255, 0.4)' : '1px solid rgba(255,255,255,0.05)' 
-                      }} 
-                    />
+                    <Chip key={sub} size="small" label={sub} onClick={() => setActiveSubcategory(sub)} sx={{ fontWeight: 600, py: 1.5, bgcolor: activeSubcategory === sub ? 'rgba(0, 212, 255, 0.15)' : 'rgba(255,255,255,0.03)', color: activeSubcategory === sub ? '#00d4ff' : 'text.secondary', border: activeSubcategory === sub ? '1px solid rgba(0, 212, 255, 0.4)' : '1px solid rgba(255,255,255,0.05)' }} />
                   ))}
                 </Box>
               </Box>
             )}
 
-            {/* EXERCISE SELECTION LIST */}
             <Box sx={{ maxHeight: 320, overflowY: 'auto', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 2, bgcolor: 'rgba(0,0,0,0.2)', mt: 1 }}>
-              {displayedExercises.length === 0 ? (
-                <Typography sx={{ p: 3, textAlign: 'center', color: 'text.secondary', fontStyle: 'italic', fontSize: '0.85rem' }}>
-                  No exercises match this combination.
-                </Typography>
-              ) : (
-                displayedExercises.map((ex, idx) => {
-                  const safeName = String(ex?.name || 'Unnamed Exercise');
-                  return (
-                    <Box key={ex?._id || idx} onClick={() => handleToggleExerciseSelection(safeName)} sx={{ display: 'flex', alignItems: 'center', p: 1, borderBottom: '1px solid rgba(255,255,255,0.03)', cursor: 'pointer', transition: 'background 0.2s', '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' } }}>
-                      <Checkbox checked={selectedExercisesList.includes(safeName)} sx={{ color: '#00e096', '&.Mui-checked': { color: '#00e096' }, p: 1.5 }} />
-                      <Box>
-                        <Typography sx={{ fontWeight: 600, fontSize: '0.95rem' }}>{safeName}</Typography>
-                        <Typography sx={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)' }}>
-                          {String(ex?.category || '')} {ex?.subcategory ? `· ${String(ex.subcategory)}` : ''}
-                        </Typography>
-                      </Box>
+              {displayedExercises.length === 0 ? <Typography sx={{ p: 3, textAlign: 'center', color: 'text.secondary', fontStyle: 'italic', fontSize: '0.85rem' }}>No exercises match this combination.</Typography> : displayedExercises.map((ex, idx) => {
+                const safeName = String(ex?.name || 'Unnamed Exercise');
+                return (
+                  <Box key={ex?._id || idx} onClick={() => handleToggleExerciseSelection(safeName)} sx={{ display: 'flex', alignItems: 'center', p: 1, borderBottom: '1px solid rgba(255,255,255,0.03)', cursor: 'pointer', transition: 'background 0.2s', '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' } }}>
+                    <Checkbox checked={selectedExercisesList.includes(safeName)} sx={{ color: '#00e096', '&.Mui-checked': { color: '#00e096' }, p: 1.5 }} />
+                    <Box>
+                      <Typography sx={{ fontWeight: 600, fontSize: '0.95rem' }}>{safeName}</Typography>
+                      <Typography sx={{ fontSize: '0.7rem', color: 'rgba(255,255,255,0.4)' }}>{String(ex?.category || '')} {ex?.subcategory ? `· ${String(ex.subcategory)}` : ''}</Typography>
                     </Box>
-                  )
-                })
-              )}
+                  </Box>
+                )
+              })}
             </Box>
 
-            <Button variant="contained" onClick={handleGenerateManualWorkout} disabled={selectedExercisesList.length === 0} sx={{ py: 2, mt: 1, borderRadius: 3, fontSize: '1.1rem', fontWeight: 800, background: selectedExercisesList.length > 0 ? 'linear-gradient(135deg, #00e096 0%, #0099cc 100%)' : 'rgba(255,255,255,0.1)', color: selectedExercisesList.length > 0 ? '#000' : 'rgba(255,255,255,0.3)' }}>
-              Start Workout ({selectedExercisesList.length} Selected)
-            </Button>
+            {/* NEW: Split Buttons */}
+            <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
+              <Button 
+                fullWidth 
+                variant="outlined" 
+                onClick={() => handleStartWorkout(false)} 
+                disabled={selectedExercisesList.length === 0 || isGenerating}
+                sx={{ py: 1.5, borderRadius: 3, fontWeight: 700, borderColor: 'rgba(0, 224, 150, 0.5)', color: selectedExercisesList.length > 0 ? '#00e096' : 'rgba(255,255,255,0.3)' }}
+              >
+                Quick Start
+              </Button>
+              <Button 
+                fullWidth 
+                variant="contained" 
+                onClick={() => handleStartWorkout(true)} 
+                disabled={selectedExercisesList.length === 0 || isGenerating}
+                sx={{ py: 1.5, borderRadius: 3, fontWeight: 800, background: selectedExercisesList.length > 0 ? 'linear-gradient(135deg, #00e096 0%, #0099cc 100%)' : 'rgba(255,255,255,0.1)', color: selectedExercisesList.length > 0 ? '#000' : 'rgba(255,255,255,0.3)' }}
+              >
+                {isGenerating ? <CircularProgress size={24} sx={{ color: '#000' }} /> : '+ AI Warmup'}
+              </Button>
+            </Box>
           </Paper>
         )}
 
@@ -359,42 +366,63 @@ export default function Manual() {
             </Box>
 
             <Box sx={{ p: 3 }}>
+              {/* WARMUP */}
+              {workoutData.warmup && workoutData.warmup.length > 0 && (
+                <>
+                  <Typography variant="h6" sx={{ fontWeight: 800, color: '#00e096', mb: 1.5 }}>1. Warm-up (AI Generated)</Typography>
+                  {workoutData.warmup.map((ex, idx) => {
+                    const isDone = completedExercises[ex.name] || false;
+                    const isLogged = loggedExercises[ex.name] || false;
+                    const isExpanded = expandedCells[ex.name] || false;
+                    return (
+                      <Paper key={idx} onClick={() => toggleCellExpand(ex.name)} sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: isDone ? 'rgba(0, 224, 150, 0.05)' : 'rgba(255,255,255,0.03)', border: isDone ? '1px solid rgba(0, 224, 150, 0.3)' : '1px solid rgba(255,255,255,0.05)', opacity: isDone ? 0.6 : 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: isExpanded ? 1 : 0 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                            <Checkbox checked={isDone} onClick={(e) => handleCheckboxClick(e, ex.name, isDone, 0, ex.reps, 1)} sx={{ color: '#00e096', '&.Mui-checked': { color: '#00e096' }, p: 0, mt: 0.5 }} />
+                            <Box onClick={(e) => { if(isDone) { e.stopPropagation(); openLogger(ex.name, 0, ex.reps, 1); } }} sx={{ display: 'flex', flexDirection: 'column' }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Typography sx={{ fontWeight: 700, fontSize: '1.1rem', textDecoration: isDone ? 'line-through' : 'none' }}>{ex.name}</Typography>
+                                {isLogged && <Typography component="span" sx={{ fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(0, 224, 150, 0.2)', color: '#00e096', px: 1, py: 0.3, borderRadius: 2, textTransform: 'uppercase' }}>Logged</Typography>}
+                              </Box>
+                              <Typography variant="body2" sx={{ color: '#00e096', fontWeight: 600, fontSize: '0.85rem', mt: 0.5 }}>Target: {ex.reps}</Typography>
+                            </Box>
+                          </Box>
+                        </Box>
+                        <Collapse in={isExpanded}><Box sx={{ pl: 4, mt: 2 }}>{renderLiftHistory(ex.name)}</Box></Collapse>
+                      </Paper>
+                    );
+                  })}
+                  <Divider sx={{ my: 3, borderColor: 'rgba(255,255,255,0.1)' }} />
+                </>
+              )}
+
+              {/* MAIN BLOCK */}
+              <Typography variant="h6" sx={{ fontWeight: 800, color: '#00e096', mb: 2 }}>{workoutData.warmup && workoutData.warmup.length > 0 ? '2.' : '1.'} Main Block</Typography>
               {workoutData.mainBlock.map((ex, idx) => {
                 const isDone = completedExercises[ex.name] || false;
                 const isLogged = loggedExercises[ex.name] || false;
                 const isExpanded = expandedCells[ex.name] || false;
                 
-                const relevantHistory = allLiftsDB
-                  .filter(l => String(l?.exerciseName || '').toLowerCase() === ex.name.toLowerCase() && l.reps >= ex.repsMin && l.reps <= ex.repsMax)
-                  .sort((a,b) => b.timestamp - a.timestamp);
-                
+                const relevantHistory = allLiftsDB.filter(l => String(l?.exerciseName || '').toLowerCase() === ex.name.toLowerCase() && l.reps >= ex.repsMin && l.reps <= ex.repsMax).sort((a,b) => b.timestamp - a.timestamp);
                 const lastLift = relevantHistory.length > 0 ? relevantHistory[0] : null;
 
                 let targetWeightLabel = 'Baseline / Bodyweight';
                 let suggestedWeightForLogger: number | string = '';
                 
                 if (lastLift && lastLift.weight > 0) {
-                    const overloadedWeight = Math.round((lastLift.weight * 1.05) / 5) * 5;
-                    targetWeightLabel = `${overloadedWeight} lbs`;
-                    suggestedWeightForLogger = overloadedWeight;
+                    const overloadedWeightLbs = Math.round((lastLift.weight * 1.05) / 5) * 5;
+                    targetWeightLabel = displayWeight(overloadedWeightLbs);
+                    suggestedWeightForLogger = toDisplay(overloadedWeightLbs);
                 }
 
                 return (
-                  <Paper key={idx} onClick={() => toggleCellExpand(ex.name)} sx={{ 
-                    p: 2, mb: 2, borderRadius: 3, cursor: 'pointer',
-                    bgcolor: isDone ? 'rgba(0, 224, 150, 0.05)' : 'rgba(255,255,255,0.03)', 
-                    border: isDone ? '1px solid rgba(0, 224, 150, 0.3)' : '1px solid rgba(255,255,255,0.05)',
-                    opacity: isDone ? 0.6 : 1, transition: 'all 0.2s ease', '&:hover': { bgcolor: 'rgba(255,255,255,0.08)' }
-                  }}>
+                  <Paper key={idx} onClick={() => toggleCellExpand(ex.name)} sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: isDone ? 'rgba(0, 224, 150, 0.05)' : 'rgba(255,255,255,0.03)', border: isDone ? '1px solid rgba(0, 224, 150, 0.3)' : '1px solid rgba(255,255,255,0.05)', opacity: isDone ? 0.6 : 1 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: isExpanded ? 1 : 0 }}>
                       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
                         <Checkbox checked={isDone} onClick={(e) => handleCheckboxClick(e, ex.name, isDone, suggestedWeightForLogger, ex.repsMax, ex.sets)} sx={{ color: '#00e096', '&.Mui-checked': { color: '#00e096' }, p: 0, mt: 0.5 }} />
-                        
-                        <Box onClick={(e) => { if(isDone) { e.stopPropagation(); openLogger(ex.name, suggestedWeightForLogger, ex.repsMax, ex.sets); } }} sx={{ display: 'flex', flexDirection: 'column', cursor: isDone ? 'pointer' : 'default', '&:hover': { opacity: isDone ? 0.8 : 1 } }}>
+                        <Box onClick={(e) => { if(isDone) { e.stopPropagation(); openLogger(ex.name, suggestedWeightForLogger, ex.repsMax, ex.sets); } }} sx={{ display: 'flex', flexDirection: 'column' }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Typography sx={{ fontWeight: 700, fontSize: '1.1rem', textDecoration: isDone ? 'line-through' : 'none' }}>
-                              {ex.name}
-                            </Typography>
+                            <Typography sx={{ fontWeight: 700, fontSize: '1.1rem', textDecoration: isDone ? 'line-through' : 'none' }}>{ex.name}</Typography>
                             {isLogged && <Typography component="span" sx={{ fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(0, 224, 150, 0.2)', color: '#00e096', px: 1, py: 0.3, borderRadius: 2, textTransform: 'uppercase' }}>Logged</Typography>}
                           </Box>
                           <Typography variant="body2" sx={{ color: '#00e096', fontWeight: 600, fontSize: '0.85rem', mt: 0.5, display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
@@ -406,19 +434,44 @@ export default function Manual() {
                         </Box>
                       </Box>
                     </Box>
-                    <Collapse in={isExpanded}>
-                      <Box sx={{ pl: 4, mt: 2 }}>
-                        {renderLiftHistory(ex.name, ex.repsMin, ex.repsMax)}
-                      </Box>
-                    </Collapse>
+                    <Collapse in={isExpanded}><Box sx={{ pl: 4, mt: 2 }}>{renderLiftHistory(ex.name, ex.repsMin, ex.repsMax)}</Box></Collapse>
                   </Paper>
                 );
               })}
+
+              {/* COOLDOWN */}
+              {workoutData.cooldown && workoutData.cooldown.length > 0 && (
+                <>
+                  <Divider sx={{ my: 3, borderColor: 'rgba(255,255,255,0.1)' }} />
+                  <Typography variant="h6" sx={{ fontWeight: 800, color: '#00e096', mb: 1.5 }}>3. Cooldown (AI Generated)</Typography>
+                  {workoutData.cooldown.map((ex, idx) => {
+                    const isDone = completedExercises[ex.name] || false;
+                    const isLogged = loggedExercises[ex.name] || false;
+                    const isExpanded = expandedCells[ex.name] || false;
+                    return (
+                      <Paper key={idx} onClick={() => toggleCellExpand(ex.name)} sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: isDone ? 'rgba(0, 224, 150, 0.05)' : 'rgba(255,255,255,0.03)', border: isDone ? '1px solid rgba(0, 224, 150, 0.3)' : '1px solid rgba(255,255,255,0.05)', opacity: isDone ? 0.6 : 1 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: isExpanded ? 1 : 0 }}>
+                          <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                            <Checkbox checked={isDone} onClick={(e) => handleCheckboxClick(e, ex.name, isDone, 0, ex.reps, 1)} sx={{ color: '#00e096', '&.Mui-checked': { color: '#00e096' }, p: 0, mt: 0.5 }} />
+                            <Box onClick={(e) => { if(isDone) { e.stopPropagation(); openLogger(ex.name, 0, ex.reps, 1); } }} sx={{ display: 'flex', flexDirection: 'column' }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                <Typography sx={{ fontWeight: 700, fontSize: '1.1rem', textDecoration: isDone ? 'line-through' : 'none' }}>{ex.name}</Typography>
+                                {isLogged && <Typography component="span" sx={{ fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(0, 224, 150, 0.2)', color: '#00e096', px: 1, py: 0.3, borderRadius: 2, textTransform: 'uppercase' }}>Logged</Typography>}
+                              </Box>
+                              <Typography variant="body2" sx={{ color: '#00e096', fontWeight: 600, fontSize: '0.85rem', mt: 0.5 }}>Target: {ex.reps}</Typography>
+                            </Box>
+                          </Box>
+                        </Box>
+                        <Collapse in={isExpanded}><Box sx={{ pl: 4, mt: 2 }}>{renderLiftHistory(ex.name)}</Box></Collapse>
+                      </Paper>
+                    );
+                  })}
+                </>
+              )}
             </Box>
           </Paper>
         )}
 
-        {/* LOG DIALOG */}
         <Dialog open={logModalOpen} onClose={handleCloseModal} PaperProps={{ sx: { bgcolor: '#16171a', borderRadius: 4, border: '1px solid rgba(255,255,255,0.1)', width: '100%', maxWidth: 400 } }}>
           <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
             <Typography sx={{ fontWeight: 800, color: '#00e096' }}>Log Completed Set</Typography>
@@ -426,30 +479,17 @@ export default function Manual() {
           </DialogTitle>
           <DialogContent>
             <Typography variant="h5" sx={{ fontWeight: 900, mb: 2 }}>{activeLoggingExercise}</Typography>
-            
-            <DateTimePicker 
-              label="Date & Time (Defaults to Now)" 
-              value={new Date(logTimestamp)} 
-              onChange={(v) => v && setLogTimestamp(v.getTime())} 
-              format="MMM d, yyyy '·' h:mm a" 
-              slotProps={{ textField: { size: 'small', fullWidth: true, sx: { mb: 2 } } }} 
-            />
-
+            <DateTimePicker label="Date & Time" value={new Date(logTimestamp)} onChange={(v) => v && setLogTimestamp(v.getTime())} format="MMM d, yyyy '·' h:mm a" slotProps={{ textField: { size: 'small', fullWidth: true, sx: { mb: 2 } } }} />
             <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
               <FormControl fullWidth size="small">
                 <InputLabel sx={{ color: 'rgba(255,255,255,0.5)' }}>Equipment</InputLabel>
                 <Select value={logEquipment} onChange={(e) => setLogEquipment(e.target.value)} label="Equipment" sx={{ borderRadius: 2 }}>
-                  <MenuItem value="Bodyweight">Bodyweight</MenuItem>
-                  <MenuItem value="Barbell">Barbell</MenuItem>
-                  <MenuItem value="Dumbbell">Dumbbell</MenuItem>
-                  <MenuItem value="Machine">Machine</MenuItem>
-                  <MenuItem value="Cable">Cable</MenuItem>
+                  <MenuItem value="Bodyweight">Bodyweight</MenuItem><MenuItem value="Barbell">Barbell</MenuItem><MenuItem value="Dumbbell">Dumbbell</MenuItem><MenuItem value="Machine">Machine</MenuItem><MenuItem value="Cable">Cable</MenuItem>
                 </Select>
               </FormControl>
             </Box>
-
             <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-              <TextField fullWidth type="number" label="Weight (lbs)" value={logWeight} onChange={(e) => setLogWeight(e.target.value)} InputProps={{ inputProps: { min: 0 } }} />
+              <TextField fullWidth type="number" label={`Weight (${unit})`} value={logWeight} onChange={(e) => setLogWeight(e.target.value)} InputProps={{ inputProps: { min: 0 } }} />
               <TextField fullWidth type="number" label="Reps" value={logReps} onChange={(e) => setLogReps(e.target.value)} InputProps={{ inputProps: { min: 0 } }} />
               <TextField fullWidth type="number" label="Sets" value={logSets} onChange={(e) => setLogSets(e.target.value)} InputProps={{ inputProps: { min: 1 } }} />
             </Box>

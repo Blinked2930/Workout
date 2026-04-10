@@ -1,15 +1,17 @@
 // src/App.tsx
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
-import { ThemeProvider, createTheme, CssBaseline, Box, BottomNavigation, BottomNavigationAction, Paper, Typography, TextField, Button, Alert } from '@mui/material';
+import { ThemeProvider, createTheme, CssBaseline, Box, BottomNavigation, BottomNavigationAction, Paper, Typography, TextField, Button, Alert, IconButton, Dialog, DialogTitle, DialogContent } from '@mui/material';
+import SettingsIcon from '@mui/icons-material/Settings';
 import Home from './pages/Home';
 import Volume from './pages/Volume';
 import Progress from './pages/Progress';
 import Cardio from './pages/Cardio';
 import Coach from './pages/Coach';
-import Manual from './pages/Manual'; // NEW MANUAL IMPORT
+import Manual from './pages/Manual'; 
 import ExerciseManager from './pages/ExerciseManager';
 import { ConvexProvider, ConvexReactClient } from 'convex/react';
+import { UnitProvider, useUnit } from './context/UnitContext'; // <-- THE GLOBAL BRAIN
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
 
@@ -123,7 +125,7 @@ const NAV_ITEMS = [
   { label: 'Progress', emoji: '📈', path: '/progress' },
   { label: 'Cardio', emoji: '🏃', path: '/cardio' },
   { label: 'Coach', emoji: '🧠', path: '/coach' },
-  { label: 'Builder', emoji: '🏗️', path: '/manual' }, // NEW MANUAL BUILDER TAB
+  { label: 'Builder', emoji: '🏗️', path: '/manual' }, 
   { label: 'Exercises', emoji: '🗂️', path: '/exercises' },
 ];
 
@@ -132,12 +134,37 @@ function AppShell() {
   const navigate = useNavigate();
   const currentTab = NAV_ITEMS.findIndex(item => item.path === location.pathname);
 
+  // Settings State & Unit Context
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const { unit, toggleUnit } = useUnit();
+
   return (
     <Box sx={{
       display: 'flex', flexDirection: 'column', minHeight: '100vh',
       background: 'radial-gradient(ellipse at top, #12141a 0%, #0d0d0f 60%)',
     }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@700;800;900&display=swap');`}</style>
+
+      {/* Global Settings Button */}
+      <IconButton 
+        onClick={() => setSettingsOpen(true)}
+        sx={{ position: 'fixed', top: 16, right: 16, zIndex: 100, bgcolor: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(10px)' }}
+      >
+        <SettingsIcon sx={{ color: '#fff' }} />
+      </IconButton>
+
+      {/* Settings Modal */}
+      <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} PaperProps={{ sx: { maxWidth: 350, width: '100%', p: 2 } }}>
+        <DialogTitle sx={{ fontWeight: 800, textAlign: 'center' }}>Global Settings</DialogTitle>
+        <DialogContent>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2, p: 2, bgcolor: 'rgba(255,255,255,0.03)', borderRadius: 3 }}>
+            <Typography sx={{ fontWeight: 600 }}>Weight Unit</Typography>
+            <Button variant="contained" onClick={toggleUnit} sx={{ bgcolor: '#00d4ff', color: '#000', minWidth: 80 }}>
+              {unit.toUpperCase()}
+            </Button>
+          </Box>
+        </DialogContent>
+      </Dialog>
 
       <Box sx={{ flex: 1, overflowY: 'auto', pb: '80px' }}>
         <Routes>
@@ -146,7 +173,7 @@ function AppShell() {
           <Route path="/progress" element={<Progress />} />
           <Route path="/cardio" element={<Cardio />} />
           <Route path="/coach" element={<Coach />} />
-          <Route path="/manual" element={<Manual />} /> {/* NEW ROUTE */}
+          <Route path="/manual" element={<Manual />} />
           <Route path="/exercises" element={<ExerciseManager />} />
         </Routes>
       </Box>
@@ -273,11 +300,13 @@ function App() {
     <ConvexProvider client={convex}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <AuthGate>
-          <Router>
-            <AppShell />
-          </Router>
-        </AuthGate>
+        <UnitProvider> {/* <-- THIS WAS MISSING! IT PLUGS IN THE CONVERTER */}
+          <AuthGate>
+            <Router>
+              <AppShell />
+            </Router>
+          </AuthGate>
+        </UnitProvider>
       </ThemeProvider>
     </ConvexProvider>
   );
