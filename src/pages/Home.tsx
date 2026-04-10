@@ -16,14 +16,14 @@ import { enGB } from 'date-fns/locale';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { useUnit } from '../context/UnitContext'; // <-- GLOBAL BRAIN IMPORTED
+import { useUnit } from '../context/UnitContext'; 
 
 const CATEGORIES = ['Push', 'Pull', 'Legs', 'Extra'];
 const CATEGORY_EMOJI: Record<string, string> = { Push: '🫸', Pull: '🫷', Legs: '🦵', Extra: '⚡' };
 const EQUIPMENT_TYPES = [
   { value: 'Barbell', emoji: '🏋️' },
   { value: 'Dumbbell', emoji: '🫳' },
-  { value: 'Smith', emoji: '🦾' }, // NEW SMITH ADDED
+  { value: 'Smith', emoji: '🦾' }, 
   { value: 'Machine/Cable', emoji: '⚙️' },
   { value: 'Bodyweight', emoji: '🤸' },
   { value: 'Other', emoji: '⚡' },
@@ -50,7 +50,7 @@ function StatCard({ label, value, sub, color = '#00d4ff' }: { label: string; val
 }
 
 export default function Home() {
-  const { unit, toDisplay, toDB, displayWeight } = useUnit(); // Inject Converter
+  const { unit, toDisplay, toDB, displayWeight } = useUnit();
 
   const [open, setOpen] = useState(false);
   const [filterCat, setFilterCat] = useState('');
@@ -90,7 +90,6 @@ export default function Home() {
 
   const totalSets = thisWeeksLifts?.reduce((a, l) => a + l.sets, 0) ?? 0;
   
-  // Mathematically convert weekly volume payload
   const totalVolumeLbs = thisWeeksLifts?.reduce((a, l) => a + l.volume, 0) ?? 0;
   const totalVolumeDisplay = totalVolumeLbs > 0 ? (toDisplay(totalVolumeLbs) as number) : 0;
   
@@ -143,7 +142,7 @@ export default function Home() {
     setExerciseSubcat(lift.subcategory ?? '');
     setExerciseSearch(lift.exerciseName);
     setEquipment(lift.equipmentType || 'Barbell');
-    setWeight(lift.weight > 0 ? toDisplay(lift.weight).toString() : ''); // CONVERT FOR EDIT FORM
+    setWeight(lift.weight > 0 ? toDisplay(lift.weight).toString() : ''); 
     setReps(lift.reps.toString());
     setSets(lift.sets.toString());
     setRir(lift.rir?.toString() ?? '');
@@ -158,7 +157,6 @@ export default function Home() {
       await deleteSetMutation({ id: deleteConfirmId as any });
       setSuccessMsg('Set deleted! 🗑️');
     } catch (err) {
-      console.error(err);
       setErrorMsg('Failed to delete set.');
     } finally {
       setDeleteConfirmId(null);
@@ -177,7 +175,7 @@ export default function Home() {
     
     try {
       const parsedWeight = parseFloat(weight) || 0;
-      const dbWeight = toDB(parsedWeight); // CONVERT BACK TO DB FORMAT (LBS)
+      const dbWeight = toDB(parsedWeight); 
       
       const parsedReps = parseInt(reps) || 0;
       const parsedSets = parseInt(sets) || 1;
@@ -213,13 +211,13 @@ export default function Home() {
       }
       setOpen(false);
     } catch (err) {
-      console.error(err);
       setErrorMsg('Failed to save set. Please check your inputs.');
     }
   };
 
   return (
-    <Box sx={{ px: 2, pt: 3, pb: 2, maxWidth: 480, mx: 'auto' }}>
+    // DESKTOP WIDE LAYOUT
+    <Box sx={{ px: { xs: 2, md: 4 }, pt: { xs: 3, md: 5 }, pb: 2, maxWidth: { xs: 480, md: 900 }, mx: 'auto' }}>
       <Box sx={{ mb: 3 }}>
         <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#00d4ff', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 0.5 }}>LiftLog</Typography>
         <Typography variant="h4" sx={{ fontWeight: 800, lineHeight: 1.1 }}>Let's get<br /><Box component="span" sx={{ color: '#00d4ff' }}>to work 💪</Box></Typography>
@@ -236,11 +234,11 @@ export default function Home() {
         <StatCard label="Exercises" value={uniqueCount} color="#ffb800" />
       </Box>
 
-      {/* DAILY WORKOUT CARDS */}
       {groupedLifts.length > 0 ? (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        // DESKTOP GRID FOR DAYS
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}>
           {groupedLifts.map(day => (
-            <Paper key={day.label} sx={{ borderRadius: 3, overflow: 'hidden', bgcolor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <Paper key={day.label} sx={{ borderRadius: 3, overflow: 'hidden', bgcolor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', alignSelf: 'start' }}>
               <Box sx={{ p: 2, bgcolor: 'rgba(0,0,0,0.2)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography sx={{ fontWeight: 800, fontSize: '1rem' }}>{day.label}</Typography>
                 <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontWeight: 600 }}>
@@ -270,7 +268,7 @@ export default function Home() {
                               {lift.sets} × {lift.reps}
                             </Typography>
                             <Typography sx={{ fontSize: '0.85rem', color: 'text.secondary' }}>
-                              @ {lift.weight > 0 ? `${toDisplay(lift.weight)} ${unit}` : 'BW'}
+                              @ {lift.weight > 0 ? displayWeight(lift.weight) : 'BW'}
                             </Typography>
                             {lift.rir !== undefined && (
                               <Chip label={`RIR ${lift.rir}`} size="small" sx={{ height: 18, fontSize: '0.65rem', fontWeight: 700, bgcolor: 'rgba(255,255,255,0.1)', color: 'text.secondary' }} />
@@ -352,7 +350,7 @@ export default function Home() {
                     ))}
                   </Box>
                 </Box>
-                <TextField label={`Weight (${unit})`} type="number" size="small" fullWidth placeholder="0 = pure bodyweight" value={weight} onChange={e => setWeight(e.target.value)} helperText={equipment === 'Dumbbell' ? "Enter weight of ONE dumbbell (app calculates total volume automatically)." : "Enter total weight. Leave blank for bodyweight."} />
+                <TextField label={`Weight (${unit})`} type="number" size="small" fullWidth placeholder="0 = pure bodyweight" value={weight} onChange={e => setWeight(e.target.value)} helperText={equipment === 'Dumbbell' ? `Enter weight of ONE dumbbell.` : "Enter total weight. Leave blank for bodyweight."} />
                 <Box sx={{ display: 'flex', gap: 1.5 }}>
                   <TextField label="Reps *" type="number" size="small" fullWidth value={reps} onChange={e => setReps(e.target.value)} />
                   <TextField label="Sets" type="number" size="small" fullWidth value={sets} onChange={e => setSets(e.target.value)} />

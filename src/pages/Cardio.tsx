@@ -59,7 +59,6 @@ function CardioForm({
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-      
       <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={enGB}>
         <DateTimePicker
           label="Date & Time"
@@ -89,7 +88,6 @@ function CardioForm({
         />
       </LocalizationProvider>
 
-      {/* Zone */}
       <Box>
         <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: 'text.secondary', mb: 1, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
           Zone <Box component="span" sx={{ color: '#00d4ff' }}>*</Box>
@@ -116,7 +114,6 @@ function CardioForm({
         </Box>
       </Box>
 
-      {/* Activity type */}
       <Box>
         <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: 'text.secondary', mb: 1, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
           Activity <Box component="span" sx={{ color: '#00d4ff' }}>*</Box>
@@ -138,7 +135,6 @@ function CardioForm({
         </Box>
       </Box>
 
-      {/* Duration — required */}
       <TextField
         label="Duration (minutes)"
         type="number" size="small" fullWidth
@@ -150,7 +146,6 @@ function CardioForm({
         FormHelperTextProps={{ sx: { color: '#00d4ff', fontWeight: 700 } }}
       />
 
-      {/* Distance + RPE — optional */}
       <Box sx={{ display: 'flex', gap: 1.5 }}>
         <TextField
           label="Distance (mi)" type="number" size="small" fullWidth
@@ -166,7 +161,6 @@ function CardioForm({
         />
       </Box>
 
-      {/* Notes */}
       <TextField
         label="Notes" size="small" fullWidth multiline rows={2}
         value={form.notes} onChange={e => set('notes', e.target.value)}
@@ -298,7 +292,8 @@ export default function Cardio() {
   };
 
   return (
-    <Box sx={{ px: 2, pt: 3, pb: 2, maxWidth: 480, mx: 'auto' }}>
+    // DESKTOP LAYOUT EXPANDED
+    <Box sx={{ px: { xs: 2, md: 4 }, pt: { xs: 3, md: 5 }, pb: 2, maxWidth: { xs: 480, md: 900 }, mx: 'auto' }}>
       <Box sx={{ mb: 3 }}>
         <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#00d4ff', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 0.5 }}>
           Cardio
@@ -313,7 +308,7 @@ export default function Cardio() {
         fullWidth variant="contained" size="large" onClick={handleOpen}
         startIcon={<AddIcon />}
         sx={{
-          py: 2, fontSize: '1.1rem', fontWeight: 800, borderRadius: 4, mb: 3,
+          py: 2, fontSize: '1.1rem', fontWeight: 800, borderRadius: 4, mb: 4,
           background: 'linear-gradient(135deg, #00e096 0%, #00a860 100%)',
           color: '#0d0d0f', boxShadow: '0 8px 32px rgba(0,224,150,0.3)',
         }}
@@ -331,7 +326,8 @@ export default function Cardio() {
         </IconButton>
       </Box>
 
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mb: 3 }}>
+      {/* Grid splits to side-by-side on desktop */}
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2, mb: 4 }}>
         {[
           { label: 'Zone 2', emoji: '💚', minutes: zone2Minutes, goal: zone2Goal, color: '#00e096' },
           { label: 'Anaerobic', emoji: '🔴', minutes: anaerobicMinutes, goal: anaerobicGoal, color: '#ff4d6d' },
@@ -375,7 +371,8 @@ export default function Cardio() {
           <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>No cardio logged yet. Get moving!</Typography>
         </Paper>
       ) : (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+        // Grid splits to 2 columns on desktop
+        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 1.5 }}>
           {sessions?.slice(0, 20).map(session => {
             const mt = MOVEMENT_TYPES.find(m => m.value === session.movementType);
             return (
@@ -471,18 +468,13 @@ export default function Cardio() {
         onSave={(z2, an) => { setZone2Goal(z2); setAnaerobicGoal(an); setEditGoalsOpen(false); }}
       />
 
-      {/* ─── Delete Confirmation Dialog ─────────────────────────────────── */}
       <Dialog 
         open={!!deleteConfirmId} 
         onClose={() => setDeleteConfirmId(null)}
         PaperProps={{
           sx: {
-            borderRadius: 4,
-            p: 1,
-            background: 'linear-gradient(180deg, #1a1b1f 0%, #12141a 100%)',
-            border: '1px solid rgba(255, 77, 109, 0.3)',
-            maxWidth: 320,
-            textAlign: 'center',
+            borderRadius: 4, p: 1, background: 'linear-gradient(180deg, #1a1b1f 0%, #12141a 100%)',
+            border: '1px solid rgba(255, 77, 109, 0.3)', maxWidth: 320, textAlign: 'center',
             boxShadow: '0 8px 32px rgba(255, 77, 109, 0.2)'
           }
         }}
@@ -496,41 +488,22 @@ export default function Cardio() {
           </Typography>
         </DialogContent>
         <DialogActions sx={{ justifyContent: 'center', gap: 1.5, pb: 2, px: 3 }}>
-          <Button 
-            onClick={() => setDeleteConfirmId(null)} 
-            sx={{ color: 'text.secondary', fontWeight: 700, flex: 1 }}
-          >
+          <Button onClick={() => setDeleteConfirmId(null)} sx={{ color: 'text.secondary', fontWeight: 700, flex: 1 }}>
             Cancel
           </Button>
           <Button 
-            variant="contained" 
-            color="error"
-            onClick={confirmDelete}
-            sx={{ 
-              flex: 1,
-              fontWeight: 800,
-              borderRadius: 2,
-              background: '#ff4d6d',
-              color: '#fff',
-              boxShadow: '0 4px 12px rgba(255, 77, 109, 0.3)',
-              '&:hover': { background: '#e63950' }
-            }}
+            variant="contained" color="error" onClick={confirmDelete}
+            sx={{ flex: 1, fontWeight: 800, borderRadius: 2, background: '#ff4d6d', color: '#fff', '&:hover': { background: '#e63950' } }}
           >
             Delete 🗑️
           </Button>
         </DialogActions>
       </Dialog>
 
-      <Snackbar open={!!successMsg} autoHideDuration={2500} onClose={() => setSuccessMsg('')}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-        sx={{ bottom: '80px !important' }}
-      >
+      <Snackbar open={!!successMsg} autoHideDuration={2500} onClose={() => setSuccessMsg('')} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }} sx={{ bottom: '80px !important' }}>
         <Alert severity="success" sx={{ borderRadius: 3, fontWeight: 700 }}>{successMsg}</Alert>
       </Snackbar>
-      <Snackbar open={!!errorMsg} autoHideDuration={3000} onClose={() => setErrorMsg('')}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-        sx={{ bottom: '80px !important' }}
-      >
+      <Snackbar open={!!errorMsg} autoHideDuration={3000} onClose={() => setErrorMsg('')} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }} sx={{ bottom: '80px !important' }}>
         <Alert severity="error" sx={{ borderRadius: 3, fontWeight: 700 }}>{errorMsg}</Alert>
       </Snackbar>
     </Box>

@@ -69,7 +69,6 @@ function GoalEditDialog({ goal, open, onClose, onSave }: {
         <IconButton size="small" onClick={onClose}><CloseIcon /></IconButton>
       </DialogTitle>
       <DialogContent sx={{ display: 'flex', gap: 2, pt: 1 }}>
-        {/* Added mt: 1 to push the text fields down so the label isn't cut off */}
         <TextField sx={{ mt: 1 }} label="Min sets/week" type="number" size="small" fullWidth value={low} onChange={e => setLow(e.target.value)} inputProps={{ min: 0 }} />
         <TextField sx={{ mt: 1 }} label="Max sets/week" type="number" size="small" fullWidth value={high} onChange={e => setHigh(e.target.value)} inputProps={{ min: 0 }} />
       </DialogContent>
@@ -104,6 +103,7 @@ function MuscleTile({ muscle, sets, low, high, onEdit }: {
         alignItems: 'center',
         textAlign: 'center',
         transition: 'transform 0.1s ease, border-color 0.3s ease',
+        '&:hover': { bgcolor: 'rgba(255,255,255,0.04)' },
         '&:active': { transform: 'scale(0.96)' }
       }}
     >
@@ -172,7 +172,12 @@ export default function Volume() {
 
   const totalSets = thisWeeksLifts?.reduce((a, l) => a + l.sets, 0) ?? 0;
   const musclesHit = Object.values(muscleSetMap).filter(v => v > 0).length;
-  const atGoal = weeklyGoals?.filter(g => (muscleSetMap[g.muscleGroup] ?? 0) >= g.lowGoal).length ?? 0;
+  
+  // FIX: Only counts as "At Goal" if you actually did > 0 sets. (Prevents Neck 0/0 counting as a win)
+  const atGoal = weeklyGoals?.filter(g => {
+    const setsDone = muscleSetMap[g.muscleGroup] ?? 0;
+    return setsDone > 0 && setsDone >= g.lowGoal;
+  }).length ?? 0;
 
   const handleSaveGoal = async (low: number, high: number) => {
     if (!editGoal) return;
@@ -181,7 +186,8 @@ export default function Volume() {
   };
 
   return (
-    <Box sx={{ px: 2, pt: 3, pb: 2, maxWidth: 480, mx: 'auto' }}>
+    // DESKTOP LAYOUT WIDENED TO 900
+    <Box sx={{ px: { xs: 2, md: 4 }, pt: { xs: 3, md: 5 }, pb: 2, maxWidth: { xs: 480, md: 900 }, mx: 'auto' }}>
       <Box sx={{ mb: 3 }}>
         <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#00d4ff', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 0.5 }}>
           This Week
@@ -192,22 +198,24 @@ export default function Volume() {
         </Typography>
       </Box>
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 1.5, mb: 3 }}>
+      {/* Top Stats - Responsive sizing */}
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: { xs: 1.5, md: 3 }, mb: { xs: 3, md: 4 } }}>
         {[
           { label: 'Total Sets', value: totalSets, color: '#00d4ff' },
           { label: 'Muscles Hit', value: musclesHit, color: '#00e096' },
           { label: 'At Goal', value: atGoal, color: '#ffb800' },
         ].map(s => (
-          <Paper key={s.label} sx={{ px: 1.5, py: 1.5, borderRadius: 3, textAlign: 'center', minWidth: 0 }}>
-            <Typography sx={{ fontSize: '1.5rem', fontWeight: 800, color: s.color, lineHeight: 1 }}>{s.value}</Typography>
-            <Typography sx={{ fontSize: '0.6rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', mt: 0.25, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <Paper key={s.label} sx={{ px: 1.5, py: { xs: 1.5, md: 2.5 }, borderRadius: 3, textAlign: 'center', minWidth: 0 }}>
+            <Typography sx={{ fontSize: { xs: '1.5rem', md: '2rem' }, fontWeight: 800, color: s.color, lineHeight: 1 }}>{s.value}</Typography>
+            <Typography sx={{ fontSize: { xs: '0.6rem', md: '0.75rem' }, color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', mt: { xs: 0.25, md: 0.5 }, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {s.label}
             </Typography>
           </Paper>
         ))}
       </Box>
 
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 1.5 }}>
+      {/* Tiles - Expands to 5 columns on desktop */}
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(3,1fr)', sm: 'repeat(4,1fr)', md: 'repeat(5,1fr)' }, gap: { xs: 1.5, md: 2 } }}>
         {weeklyGoals?.map(goal => (
           <MuscleTile
             key={goal.muscleGroup}

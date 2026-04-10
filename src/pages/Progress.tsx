@@ -282,7 +282,8 @@ export default function Progress() {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={enGB}>
-      <Box sx={{ px: 2, pt: 3, pb: 2, maxWidth: 480, mx: 'auto' }}>
+      {/* DESKTOP LAYOUT APPLIED HERE: maxWidth expanded to 900 */}
+      <Box sx={{ px: { xs: 2, md: 4 }, pt: { xs: 3, md: 5 }, pb: 10, maxWidth: { xs: 480, md: 900 }, mx: 'auto' }}>
         <Box sx={{ mb: 3 }}>
           <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#00d4ff', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 0.5 }}>
             Over Time
@@ -333,6 +334,7 @@ export default function Progress() {
           )}
         </Box>
 
+        {/* Dynamic Equipment Toggle & Quick Log Button */}
         {selectedExercise && (
           <Box sx={{ mb: 2.5, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 2 }}>
             <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -435,55 +437,105 @@ export default function Progress() {
           </Box>
         )}
 
-        {/* Metric selector */}
+        {/* SPLIT LAYOUT FOR DESKTOP: Chart on left, History on right */}
         {selectedExercise && (
-          <Box sx={{ display: 'flex', gap: 1, mb: 2.5, flexWrap: 'wrap' }}>
-            {currentMetricsList.map(m => (
-              <Chip key={m.value} label={m.label} onClick={() => setMetric(m.value)}
-                sx={{ cursor: 'pointer', fontWeight: 700,
-                  bgcolor: metric === m.value ? `${m.color}22` : 'rgba(255,255,255,0.05)',
-                  color: metric === m.value ? m.color : 'text.secondary',
-                  border: metric === m.value ? `1px solid ${m.color}55` : '1px solid transparent' }} />
-            ))}
+          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '3fr 2fr' }, gap: { xs: 0, md: 4 }, alignItems: 'start' }}>
+            
+            {/* LEFT COLUMN: Chart */}
+            <Box>
+              <Box sx={{ display: 'flex', gap: 1, mb: 2.5, flexWrap: 'wrap' }}>
+                {currentMetricsList.map(m => (
+                  <Chip key={m.value} label={m.label} onClick={() => setMetric(m.value)}
+                    sx={{ cursor: 'pointer', fontWeight: 700,
+                      bgcolor: metric === m.value ? `${m.color}22` : 'rgba(255,255,255,0.05)',
+                      color: metric === m.value ? m.color : 'text.secondary',
+                      border: metric === m.value ? `1px solid ${m.color}55` : '1px solid transparent' }} />
+                ))}
+              </Box>
+
+              {chartData.length > 1 && (
+                <Paper sx={{ p: 2, borderRadius: 3, mb: 3 }}>
+                  <Typography sx={{ fontWeight: 700, mb: 2, fontSize: '0.82rem', color: 'text.secondary' }}>
+                    {selectedMetric.label} Trend
+                  </Typography>
+                  <ResponsiveContainer width="100%" height={250}>
+                    <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
+                      <defs>
+                        <linearGradient id="metricGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%"  stopColor={selectedMetric.color} stopOpacity={0.35} />
+                          <stop offset="95%" stopColor={selectedMetric.color} stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                      <XAxis dataKey="date" tick={{ fill: '#555566', fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: '#555566', fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <Tooltip content={<CustomTooltip isBW={isBW} unit={unit} />} />
+                      <Area type="monotone" dataKey={metric} name={metric}
+                        stroke={selectedMetric.color} strokeWidth={2.5}
+                        fill="url(#metricGrad)"
+                        dot={{ fill: selectedMetric.color, r: 3, strokeWidth: 0 }}
+                        activeDot={{ r: 5, strokeWidth: 0 }}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </Paper>
+              )}
+
+              {chartData.length === 1 && (
+                <Paper sx={{ p: 3, borderRadius: 3, textAlign: 'center', mb: 3 }}>
+                  <Typography sx={{ fontSize: '1.5rem', mb: 1 }}>📍</Typography>
+                  <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>
+                    One session logged — keep going to see your trend!
+                  </Typography>
+                </Paper>
+              )}
+            </Box>
+
+            {/* RIGHT COLUMN: History */}
+            <Box>
+              {chartData.length > 0 && (
+                <>
+                  <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.1em', mb: 1.5 }}>
+                    Session History (Tap to Edit)
+                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                    {[...chartData].reverse().map((entry, i) => (
+                      <Paper 
+                        key={i} 
+                        onClick={() => setEditSet(entry.rawSet)}
+                        sx={{ px: 2, py: 1.5, borderRadius: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', '&:hover': { bgcolor: 'rgba(255,255,255,0.03)' } }}
+                      >
+                        <Box>
+                          <Typography sx={{ fontWeight: 700, fontSize: '0.9rem' }}>
+                            {entry.weight > 0 ? `${entry.weight} ${unit}` : 'Bodyweight'}
+                            <Box component="span" sx={{ color: 'text.secondary', fontWeight: 400 }}>
+                              {' '}× {entry.reps} reps × {entry.sets} sets
+                            </Box>
+                          </Typography>
+                          <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>{entry.date}</Typography>
+                        </Box>
+                        <Box sx={{ textAlign: 'right' }}>
+                          {isBW ? (
+                            <>
+                              <Typography sx={{ fontWeight: 800, fontSize: '0.9rem', color: '#00d4ff' }}>{entry.totalReps}</Typography>
+                              <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>Total Reps</Typography>
+                            </>
+                          ) : (
+                            <>
+                              <Typography sx={{ fontWeight: 800, fontSize: '0.9rem', color: '#00d4ff' }}>
+                                {entry.e1rm > 0 ? entry.e1rm.toFixed(0) : '—'}
+                              </Typography>
+                              <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>e1RM</Typography>
+                            </>
+                          )}
+                        </Box>
+                      </Paper>
+                    ))}
+                  </Box>
+                </>
+              )}
+            </Box>
           </Box>
-        )}
-
-        {/* Chart */}
-        {selectedExercise && chartData.length > 1 && (
-          <Paper sx={{ p: 2, borderRadius: 3, mb: 3 }}>
-            <Typography sx={{ fontWeight: 700, mb: 2, fontSize: '0.82rem', color: 'text.secondary' }}>
-              {selectedMetric.label} Trend
-            </Typography>
-            <ResponsiveContainer width="100%" height={200}>
-              <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
-                <defs>
-                  <linearGradient id="metricGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%"  stopColor={selectedMetric.color} stopOpacity={0.35} />
-                    <stop offset="95%" stopColor={selectedMetric.color} stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                <XAxis dataKey="date" tick={{ fill: '#555566', fontSize: 10 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: '#555566', fontSize: 10 }} axisLine={false} tickLine={false} />
-                <Tooltip content={<CustomTooltip isBW={isBW} unit={unit} />} />
-                <Area type="monotone" dataKey={metric} name={metric}
-                  stroke={selectedMetric.color} strokeWidth={2.5}
-                  fill="url(#metricGrad)"
-                  dot={{ fill: selectedMetric.color, r: 3, strokeWidth: 0 }}
-                  activeDot={{ r: 5, strokeWidth: 0 }}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </Paper>
-        )}
-
-        {selectedExercise && chartData.length === 1 && (
-          <Paper sx={{ p: 3, borderRadius: 3, textAlign: 'center', mb: 3 }}>
-            <Typography sx={{ fontSize: '1.5rem', mb: 1 }}>📍</Typography>
-            <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>
-              One session logged — keep going to see your trend!
-            </Typography>
-          </Paper>
         )}
 
         {!selectedExercise && (
@@ -495,49 +547,7 @@ export default function Progress() {
           </Paper>
         )}
 
-        {/* History list with Edit feature */}
-        {selectedExercise && chartData.length > 0 && (
-          <>
-            <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.1em', mb: 1.5 }}>
-              Session History (Tap to Edit)
-            </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              {[...chartData].reverse().map((entry, i) => (
-                <Paper 
-                  key={i} 
-                  onClick={() => setEditSet(entry.rawSet)}
-                  sx={{ px: 2, py: 1.5, borderRadius: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', '&:hover': { bgcolor: 'rgba(255,255,255,0.03)' } }}
-                >
-                  <Box>
-                    <Typography sx={{ fontWeight: 700, fontSize: '0.9rem' }}>
-                      {entry.weight > 0 ? `${entry.weight} ${unit}` : 'Bodyweight'}
-                      <Box component="span" sx={{ color: 'text.secondary', fontWeight: 400 }}>
-                        {' '}× {entry.reps} reps × {entry.sets} sets
-                      </Box>
-                    </Typography>
-                    <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>{entry.date}</Typography>
-                  </Box>
-                  <Box sx={{ textAlign: 'right' }}>
-                    {isBW ? (
-                      <>
-                        <Typography sx={{ fontWeight: 800, fontSize: '0.9rem', color: '#00d4ff' }}>{entry.totalReps}</Typography>
-                        <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>Total Reps</Typography>
-                      </>
-                    ) : (
-                      <>
-                        <Typography sx={{ fontWeight: 800, fontSize: '0.9rem', color: '#00d4ff' }}>
-                          {entry.e1rm > 0 ? entry.e1rm.toFixed(0) : '—'}
-                        </Typography>
-                        <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>e1RM</Typography>
-                      </>
-                    )}
-                  </Box>
-                </Paper>
-              ))}
-            </Box>
-          </>
-        )}
-
+        {/* LOG DIALOG */}
         <Dialog open={logModalOpen} onClose={() => setLogModalOpen(false)} PaperProps={{ sx: { bgcolor: '#16171a', borderRadius: 4, border: '1px solid rgba(255,255,255,0.1)', width: '100%', maxWidth: 400 } }}>
           <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
             <Typography sx={{ fontWeight: 800, color: '#00d4ff' }}>Log Completed Set</Typography>
@@ -579,6 +589,7 @@ export default function Progress() {
           </DialogActions>
         </Dialog>
 
+        {/* FULL EDIT DIALOG */}
         <Dialog open={!!editSet} onClose={() => setEditSet(null)} fullWidth maxWidth="sm">
           <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
             <Typography variant="h6" sx={{ fontWeight: 800 }}>Edit Entry</Typography>

@@ -49,8 +49,9 @@ export default function Manual() {
     return saved ? JSON.parse(saved) : null;
   });
   
-  const [equipment, setEquipment] = useState<string>('Full Gym Access');
+  const equipment = 'Full Gym Access'; // Removed from UI, kept for API logic
   const [style, setStyle] = useState<string>('Hypertrophy (8-12 reps)'); 
+  
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [activeSubcategory, setActiveSubcategory] = useState<string>('All');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -276,7 +277,7 @@ export default function Manual() {
       <Box sx={{ bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, p: 1.5, mt: 1 }}>
         {history.map((lift, i) => (
           <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
-            <Typography variant="body2" sx={{ color: i === 0 ? '#00e096' : '#d2a8ff' }}>{displayWeight(lift.weight)} × {lift.reps} reps</Typography>
+            <Typography variant="body2" sx={{ color: i === 0 ? '#00e096' : '#d2a8ff' }}>{displayWeight(lift.weight)} × {lift.reps} reps ({lift.sets} sets)</Typography>
             <Typography variant="body2" sx={{ color: '#8a8a9a' }}>{new Date(lift.timestamp).toLocaleDateString()}</Typography>
           </Box>
         ))}
@@ -286,11 +287,12 @@ export default function Manual() {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={enGB}>
-      <Box sx={{ px: 2, pt: 3, pb: 10, maxWidth: 800, mx: 'auto', display: 'flex', flexDirection: 'column', gap: 3 }}>
+      {/* DESKTOP WIDE LAYOUT */}
+      <Box sx={{ px: { xs: 2, md: 4 }, pt: { xs: 3, md: 5 }, pb: 10, maxWidth: { xs: 480, md: 900 }, mx: 'auto', display: 'flex', flexDirection: 'column', gap: 3 }}>
         
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
           <Box>
-            <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#00e096', textTransform: 'uppercase', mb: 0.5 }}>Self Select</Typography>
+            <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#00e096', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 0.5 }}>Self Select</Typography>
             <Typography variant="h3" sx={{ fontWeight: 800, lineHeight: 1.1, display: 'flex', alignItems: 'center', gap: 1 }}>
               Builder <ConstructionIcon sx={{ color: '#00e096', fontSize: '2rem' }} />
             </Typography>
@@ -301,8 +303,13 @@ export default function Manual() {
         {phase === 'SETUP' && (
           <Paper sx={{ p: 3, borderRadius: 4, display: 'flex', flexDirection: 'column', gap: 3 }}>
             <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', sm: 'row' } }}>
-              <FormControl fullWidth size="small"><InputLabel>Environment</InputLabel><Select value={equipment} label="Environment" onChange={(e) => setEquipment(e.target.value)}><MenuItem value="Floor Mode (Bodyweight Only)">Floor Mode</MenuItem><MenuItem value="Bar Mode (Pull-up & Dip Bars)">Bar Mode</MenuItem><MenuItem value="Full Gym Access">Full Gym Access</MenuItem></Select></FormControl>
-              <FormControl fullWidth size="small"><InputLabel>Style</InputLabel><Select value={style} label="Style" onChange={(e) => setStyle(e.target.value)}><MenuItem value="Hypertrophy (8-12 reps)">Hypertrophy</MenuItem><MenuItem value="Strength (4-8 reps)">Strength</MenuItem></Select></FormControl>
+              <FormControl fullWidth size="small">
+                <InputLabel>Style</InputLabel>
+                <Select value={style} label="Style" onChange={(e) => setStyle(e.target.value)}>
+                  <MenuItem value="Hypertrophy (8-12 reps)">Hypertrophy</MenuItem>
+                  <MenuItem value="Strength (4-8 reps)">Strength</MenuItem>
+                </Select>
+              </FormControl>
             </Box>
 
             <Divider />
@@ -326,7 +333,7 @@ export default function Manual() {
               </Box>
 
               <Box sx={{ maxHeight: 320, overflowY: 'auto', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 2 }}>
-                {displayedExercises.map((ex, idx) => {
+                {displayedExercises.length === 0 ? <Typography sx={{ p: 3, textAlign: 'center', color: 'text.secondary', fontStyle: 'italic', fontSize: '0.85rem' }}>No exercises match this combination.</Typography> : displayedExercises.map((ex, idx) => {
                   const safeName = String(ex?.name || 'Unnamed Exercise');
                   return (
                     <Box key={ex?._id || idx} onClick={() => handleToggleExerciseSelection(safeName)} sx={{ display: 'flex', alignItems: 'center', p: 1, cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
@@ -402,10 +409,10 @@ export default function Manual() {
                           <Typography variant="caption" sx={{ color: '#00d4ff', mt: 0.5, display: 'block' }}>{ex.sets} Sets | {ex.repsMin}-{ex.repsMax} Reps | Load: {overloaded ? displayWeight(overloaded) : 'Baseline'}</Typography>
                         </Box>
                       </Box>
-                      <Box sx={{ display: 'flex', alignItems: 'center', ml: 1, flexShrink: 0 }}>
-                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('main', idx, 'up'); }} disabled={idx === 0} sx={{ color: 'rgba(255,255,255,0.5)' }}><KeyboardArrowUpIcon fontSize="small" /></IconButton>
-                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('main', idx, 'down'); }} disabled={idx === workoutData.mainBlock.length - 1} sx={{ color: 'rgba(255,255,255,0.5)' }}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
-                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'main', index: idx }); }} sx={{ color: 'rgba(255,255,255,0.5)' }}><SwapHorizIcon fontSize="small" /></IconButton>
+                      <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('main', idx, 'up'); }} disabled={idx === 0}><KeyboardArrowUpIcon fontSize="small" /></IconButton>
+                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('main', idx, 'down'); }} disabled={idx === workoutData.mainBlock.length - 1}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
+                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'main', index: idx }); }}><SwapHorizIcon fontSize="small" /></IconButton>
                       </Box>
                     </Box>
                     <Collapse in={expandedCells[ex.name]}><Box sx={{ pl: { xs: 4, sm: 5 }, mt: 2 }}>{renderLiftHistory(ex.name, ex.repsMin, ex.repsMax)}</Box></Collapse>
@@ -431,13 +438,13 @@ export default function Manual() {
                         <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, !!completedExercises[ex.name], 0, ex.reps, 1)} sx={{ color: '#00e096', p: 0, mt: 0.8 }} />
                         <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                           <Typography sx={{ fontWeight: 700, textDecoration: completedExercises[ex.name] ? 'line-through' : 'none' }}>{ex.name}</Typography>
-                          <Typography variant="body2" sx={{ color: '#00e096' }}>Target: {ex.reps}</Typography>
+                          <Typography variant="body2" sx={{ color: '#00d4ff' }}>Target: {ex.reps}</Typography>
                         </Box>
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
                         <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('cooldown', idx, 'up'); }} disabled={idx === 0}><KeyboardArrowUpIcon fontSize="small" /></IconButton>
                         <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('cooldown', idx, 'down'); }} disabled={idx === workoutData.cooldown!.length - 1}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
-                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'cooldown', index: idx }); }} sx={{ color: 'rgba(255,255,255,0.5)' }}><SwapHorizIcon fontSize="small" /></IconButton>
+                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'cooldown', index: idx }); }}><SwapHorizIcon fontSize="small" /></IconButton>
                       </Box>
                     </Box>
                     <Collapse in={expandedCells[ex.name]}><Box sx={{ pl: { xs: 4, sm: 5 }, mt: 2 }}>{renderLiftHistory(ex.name)}</Box></Collapse>
@@ -480,7 +487,6 @@ export default function Manual() {
             <Button fullWidth variant="contained" onClick={handleSaveLogToDB} disabled={isSavingLog}>Save</Button>
           </DialogActions>
         </Dialog>
-
       </Box>
     </LocalizationProvider>
   );

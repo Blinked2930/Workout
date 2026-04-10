@@ -5,13 +5,12 @@ import { useAction, useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import SearchIcon from '@mui/icons-material/Search';
-import AddTaskIcon from '@mui/icons-material/AddTask';
-import CloseIcon from '@mui/icons-material/Close';
-import HistoryIcon from '@mui/icons-material/History';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz'; 
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import TerminalIcon from '@mui/icons-material/Terminal';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -26,6 +25,7 @@ interface WorkoutJSON {
   mainBlock: { name: string; sets?: number; repsMin?: number; repsMax?: number; setsReps?: string; rest: string; notes: string }[]; 
   cooldown: { name: string; reps: string }[]; 
 }
+interface DebugData { yesterdayBanned: string; weeklyMuscle: string; dateMath: string; aiPrompt: string; }
 
 const parseAIJSON = (rawStr: string) => {
   try {
@@ -45,13 +45,17 @@ export default function Coach() {
   const [style, setStyle] = useState<string>('Hypertrophy (8-12 reps)'); 
   const [customInput, setCustomInput] = useState<string>('');
   
+  // RESTORED: TWEAKS AND DEBUG DATA
   const [suggestion, setSuggestion] = useState<SuggestionJSON | null>(null);
+  const [debugData, setDebugData] = useState<DebugData | null>(null); 
+  const [showDebug, setShowDebug] = useState(false); 
+  const [tweaks, setTweaks] = useState<string>('');
+
   const [workoutData, setWorkoutData] = useState<WorkoutJSON | null>(() => {
     const saved = localStorage.getItem('liftlog_active_ai_workout');
     return saved ? JSON.parse(saved) : null;
   });
 
-  // SWAP & DRAG STATES
   const [swapTarget, setSwapTarget] = useState<{ section: 'warmup' | 'main' | 'cooldown', index: number } | null>(null);
   const [swapSearch, setSwapSearch] = useState('');
   const [draggedItem, setDraggedItem] = useState<{ section: string, index: number } | null>(null);
@@ -91,9 +95,11 @@ export default function Coach() {
 
   const handleGetSuggestion = async () => {
     setIsProcessing(true);
+    setShowDebug(false);
     try {
       const response: any = await suggestWorkoutFocus({ timeAvailable: time, equipment, style, customRequest: customInput, localTime: new Date().toISOString(), timezoneOffset: new Date().getTimezoneOffset() });
       setSuggestion(parseAIJSON(response.suggestionText));
+      setDebugData(response.debugData); // RESTORED AUDIT CATCH
       setPhase('REVIEW');
     } finally { setIsProcessing(false); }
   };
@@ -101,14 +107,13 @@ export default function Coach() {
   const handleFinalizeWorkout = async () => {
     setIsProcessing(true);
     try {
-      const result = await generateWorkout({ timeAvailable: time, equipment, style, localTime: new Date().toISOString(), approvedFocus: suggestion?.focusTitle || "" });
+      const result = await generateWorkout({ timeAvailable: time, equipment, style, localTime: new Date().toISOString(), approvedFocus: suggestion?.focusTitle || "", userTweaks: tweaks });
       const parsed = parseAIJSON(result as string);
       setWorkoutData(parsed);
       setPhase('WORKOUT');
     } finally { setIsProcessing(false); }
   };
 
-  // SWAP FUNCTION
   const handleSwapExercise = (newName: string) => {
     if (!workoutData || !swapTarget) return;
     const newWorkout = { ...workoutData };
@@ -120,7 +125,6 @@ export default function Coach() {
     setSwapSearch('');
   };
 
-  // REORDER LOGIC
   const moveExercise = (section: 'warmup'|'main'|'cooldown', index: number, direction: 'up'|'down') => {
     if (!workoutData) return;
     const newWorkout = { ...workoutData };
@@ -142,30 +146,23 @@ export default function Coach() {
     setWorkoutData(newWorkout);
   };
 
-  const handleDragStart = (e: React.DragEvent, section: string, index: number) => {
-    setDraggedItem({ section, index });
-  };
-
+  const handleDragStart = (e: React.DragEvent, section: string, index: number) => setDraggedItem({ section, index });
   const handleDragEnter = (e: React.DragEvent, section: string, index: number) => {
     e.preventDefault();
     if (!draggedItem || !workoutData) return;
     if (draggedItem.section !== section || draggedItem.index === index) return;
-
     const newWorkout = { ...workoutData };
     let list: any;
     if (section === 'main') list = newWorkout.mainBlock;
     else if (section === 'warmup') list = newWorkout.warmup;
     else if (section === 'cooldown') list = newWorkout.cooldown;
     if (!list) return;
-
     const item = list[draggedItem.index];
     list.splice(draggedItem.index, 1);
     list.splice(index, 0, item);
-
     setWorkoutData(newWorkout);
     setDraggedItem({ section, index });
   };
-
   const handleDragOver = (e: React.DragEvent) => e.preventDefault();
   const handleDragEnd = () => setDraggedItem(null);
 
@@ -174,6 +171,7 @@ export default function Coach() {
     setCompletedExercises({});
     setLoggedExercises({});
     setExpandedCells({});
+    setTweaks('');
     setPhase('SETUP');
   };
 
@@ -182,14 +180,10 @@ export default function Coach() {
   const openLogger = (exerciseName: string, suggestedWeight?: number | string, suggestedReps?: number | string, suggestedSets?: number | string) => {
     setActiveLoggingExercise(exerciseName);
     setLogTimestamp(Date.now());
-    
     const dbMatch = exercisesDB?.find(ex => String(ex?.name || '').toLowerCase() === exerciseName.toLowerCase());
     const lastLift = allLiftsDB.filter(l => String(l?.exerciseName || '').toLowerCase() === exerciseName.toLowerCase()).sort((a,b) => b.timestamp - a.timestamp)[0];
-
-    // Standardize 'Machine' or 'Cable' to 'Machine/Cable'
     let eq = lastLift?.equipmentType || 'Bodyweight';
     if (eq === 'Machine' || eq === 'Cable') eq = 'Machine/Cable';
-
     setLogCategory(dbMatch?.category || 'Custom');
     setLogEquipment(eq);
     setLogWeight(suggestedWeight !== undefined && suggestedWeight !== '' ? suggestedWeight : (lastLift?.weight ? toDisplay(lastLift.weight) : ''));
@@ -211,13 +205,8 @@ export default function Coach() {
     setIsProcessing(true);
     try {
       await logSet({
-        exerciseName: activeLoggingExercise,
-        category: logCategory, 
-        equipmentType: logEquipment,
-        weight: toDB(parseFloat(String(logWeight)) || 0),
-        reps: parseInt(String(logReps)) || 0,
-        sets: parseInt(String(logSets)) || 1,
-        timestamp: logTimestamp,
+        exerciseName: activeLoggingExercise, category: logCategory, equipmentType: logEquipment,
+        weight: toDB(parseFloat(String(logWeight)) || 0), reps: parseInt(String(logReps)) || 0, sets: parseInt(String(logSets)) || 1, timestamp: logTimestamp,
       });
       setLoggedExercises(prev => ({ ...prev, [activeLoggingExercise]: true }));
       setCompletedExercises(prev => ({ ...prev, [activeLoggingExercise]: true })); 
@@ -229,9 +218,7 @@ export default function Coach() {
     let history = allLiftsDB.filter(l => String(l?.exerciseName || '').toLowerCase() === exerciseName.toLowerCase()).sort((a,b) => b.timestamp - a.timestamp);
     if (minReps !== undefined && maxReps !== undefined) history = history.filter(l => l.reps >= minReps && l.reps <= maxReps);
     history = history.slice(0, 3);
-    
     if (history.length === 0) return <Typography variant="body2" sx={{ color: '#8a8a9a', fontStyle: 'italic', p: 2 }}>No history found matching this rep range.</Typography>;
-
     return (
       <Box sx={{ bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, p: 1.5, mt: 1 }}>
         {history.map((lift, i) => (
@@ -246,7 +233,8 @@ export default function Coach() {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={enGB}>
-      <Box sx={{ px: 2, pt: 3, pb: 10, maxWidth: 800, mx: 'auto', display: 'flex', flexDirection: 'column', gap: 3 }}>
+      {/* DESKTOP WIDE LAYOUT */}
+      <Box sx={{ px: { xs: 2, md: 4 }, pt: { xs: 3, md: 5 }, pb: 10, maxWidth: { xs: 480, md: 900 }, mx: 'auto', display: 'flex', flexDirection: 'column', gap: 3 }}>
         
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
           <Box>
@@ -274,9 +262,8 @@ export default function Coach() {
               <FormControl fullWidth size="small">
                 <InputLabel>Workout Style</InputLabel>
                 <Select value={style} label="Workout Style" onChange={(e) => setStyle(e.target.value)}>
-                  <MenuItem value="Hypertrophy (8-12 reps)">Hypertrophy (8-12 reps)</MenuItem>
-                  <MenuItem value="Strength (4-10 reps)">Strength (4-10 reps)</MenuItem>
-                  {/* RESTORED HIIT & RECOVERY OPTIONS */}
+                  <MenuItem value="Hypertrophy (8-12 reps)">Hypertrophy</MenuItem>
+                  <MenuItem value="Strength (4-10 reps)">Strength</MenuItem>
                   <MenuItem value="High Intensity Interval Training (HIIT)">High Intensity Interval Training (HIIT)</MenuItem>
                   <MenuItem value="Active Recovery & Mobility">Active Recovery & Mobility</MenuItem>
                 </Select>
@@ -287,10 +274,40 @@ export default function Coach() {
           </Paper>
         )}
 
+        {/* RESTORED REVIEW PHASE UI */}
         {phase === 'REVIEW' && suggestion && (
           <Paper sx={{ p: 3, borderRadius: 4, border: '1px solid #b06aff' }}>
             <Typography variant="h5" sx={{ fontWeight: 900, mb: 1 }}>{suggestion.focusTitle}</Typography>
             <Typography sx={{ color: '#d2a8ff', mb: 3 }}>{suggestion.reasoning}</Typography>
+
+            {debugData && (
+              <Box sx={{ mt: 1, mb: 1 }}>
+                <Button size="small" onClick={() => setShowDebug(!showDebug)} sx={{ color: '#8a8a9a', textTransform: 'none', display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <TerminalIcon sx={{ fontSize: '1rem' }} /> {showDebug ? "Hide System Audit" : "View Data Sent to AI"} <ExpandMoreIcon sx={{ transform: showDebug ? 'rotate(180deg)' : 'none', transition: '0.2s' }} />
+                </Button>
+                <Collapse in={showDebug}>
+                  <Paper sx={{ p: 2, mt: 1, bgcolor: '#0d0e12', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 2, fontFamily: 'monospace', fontSize: '0.8rem', color: '#00d4ff', maxHeight: '400px', overflowY: 'auto' }}>
+                    <Typography variant="caption" sx={{ color: '#ffb800', display: 'block', mb: 1 }}>// Diagnostics: Timezone & Date Math</Typography>
+                    <Box sx={{ mb: 2, pl: 1, color: '#ff4d6d' }}>{debugData.dateMath}</Box>
+                    <Typography variant="caption" sx={{ color: '#ffb800', display: 'block', mb: 1 }}>// Yesterday's Banned Modalities</Typography>
+                    <Box sx={{ mb: 2, pl: 1 }}>{debugData.yesterdayBanned}</Box>
+                    <Typography variant="caption" sx={{ color: '#ffb800', display: 'block', mb: 1 }}>// This Week's Specific Muscle Sets</Typography>
+                    <Box sx={{ mb: 2, pl: 1 }}>{debugData.weeklyMuscle}</Box>
+                    <Typography variant="caption" sx={{ color: '#ffb800', display: 'block', mb: 1 }}>// Payload Sent to AI:</Typography>
+                    <Box sx={{ pl: 1, color: '#d2a8ff', whiteSpace: 'pre-wrap' }}>{debugData.aiPrompt}</Box>
+                  </Paper>
+                </Collapse>
+              </Box>
+            )}
+
+            <Divider sx={{ borderColor: 'rgba(176, 106, 255, 0.2)', my: 2 }} />
+
+            <TextField 
+              fullWidth label="Any tweaks before I build this?" placeholder="e.g., 'Make it harder' or 'I don't have rings'"
+              value={tweaks} onChange={(e) => setTweaks(e.target.value)}
+              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3, bgcolor: 'rgba(0,0,0,0.2)' }, mb: 3 }}
+            />
+
             <Box sx={{ display: 'flex', gap: 2 }}>
               <Button fullWidth variant="outlined" onClick={() => setPhase('SETUP')} sx={{ color: '#8a8a9a', borderColor: '#8a8a9a' }}>Back</Button>
               <Button fullWidth variant="contained" onClick={handleFinalizeWorkout} disabled={isProcessing}>{isProcessing ? <CircularProgress size={24} /> : 'Approve & Build'}</Button>
@@ -300,105 +317,94 @@ export default function Coach() {
 
         {phase === 'WORKOUT' && workoutData && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {workoutData.warmup && workoutData.warmup.length > 0 && (
-              <Box>
-                <Typography variant="h6" sx={{ fontWeight: 800, color: '#b06aff', mb: 1 }}>1. Warm-up (AI)</Typography>
-                {workoutData.warmup.map((ex, idx) => (
-                  <Paper 
-                    key={ex.name} 
-                    draggable onDragStart={(e) => handleDragStart(e, 'warmup', idx)} onDragEnter={(e) => handleDragEnter(e, 'warmup', idx)} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
-                    onClick={() => toggleCellExpand(ex.name)} 
-                    sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(176, 106, 255, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'warmup' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
-                  >
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                        <DragIndicatorIcon sx={{ color: 'rgba(255,255,255,0.2)', mt: 1, cursor: 'grab', display: { xs: 'none', sm: 'block' } }} />
-                        <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, !!completedExercises[ex.name], 0, ex.reps, 1)} sx={{ color: '#b06aff', p: 0, mt: 0.8 }} />
-                        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                          <Typography sx={{ fontWeight: 700, textDecoration: completedExercises[ex.name] ? 'line-through' : 'none' }}>{ex.name}</Typography>
-                          <Typography variant="body2" sx={{ color: '#00d4ff' }}>Target: {ex.reps}</Typography>
-                        </Box>
-                      </Box>
-                      <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('warmup', idx, 'up'); }} disabled={idx === 0}><KeyboardArrowUpIcon fontSize="small" /></IconButton>
-                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('warmup', idx, 'down'); }} disabled={idx === workoutData.warmup.length - 1}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
-                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'warmup', index: idx }); }}><SwapHorizIcon fontSize="small" /></IconButton>
+            {workoutData.warmup.map((ex, idx) => (
+              <Paper 
+                key={ex.name} 
+                draggable onDragStart={(e) => handleDragStart(e, 'warmup', idx)} onDragEnter={(e) => handleDragEnter(e, 'warmup', idx)} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
+                onClick={() => toggleCellExpand(ex.name)} 
+                sx={{ p: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(176, 106, 255, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'warmup' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
+              >
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                    <DragIndicatorIcon sx={{ color: 'rgba(255,255,255,0.2)', mt: 1, cursor: 'grab', display: { xs: 'none', sm: 'block' } }} />
+                    <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, !!completedExercises[ex.name], 0, ex.reps, 1)} sx={{ p: 0, mt: 0.8 }} />
+                    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                      <Typography sx={{ fontWeight: 700, textDecoration: completedExercises[ex.name] ? 'line-through' : 'none' }}>{ex.name}</Typography>
+                      <Typography variant="body2" sx={{ color: '#00d4ff' }}>Target: {ex.reps}</Typography>
+                    </Box>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('warmup', idx, 'up'); }} disabled={idx === 0}><KeyboardArrowUpIcon fontSize="small" /></IconButton>
+                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('warmup', idx, 'down'); }} disabled={idx === workoutData.warmup.length - 1}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
+                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'warmup', index: idx }); }}><SwapHorizIcon fontSize="small" /></IconButton>
+                  </Box>
+                </Box>
+                <Collapse in={expandedCells[ex.name]}><Box sx={{ pl: { xs: 4, sm: 5 }, mt: 2 }}>{renderLiftHistory(ex.name)}</Box></Collapse>
+              </Paper>
+            ))}
+
+            <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.1)' }} />
+
+            {workoutData.mainBlock.map((ex, idx) => {
+               const repsMax = ex.repsMax || (ex.setsReps ? parseInt(ex.setsReps.split('x')[1]) : 10);
+               const sets = ex.sets || 3;
+               const hist = allLiftsDB.filter(l => l.exerciseName === ex.name && l.reps >= (ex.repsMin || 0) && l.reps <= repsMax).sort((a,b)=>b.timestamp-a.timestamp)[0];
+               const overloaded = hist?.weight ? Math.round((hist.weight * 1.05)/5)*5 : null;
+
+               return (
+                <Paper 
+                  key={ex.name} 
+                  draggable onDragStart={(e) => handleDragStart(e, 'main', idx)} onDragEnter={(e) => handleDragEnter(e, 'main', idx)} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
+                  onClick={() => toggleCellExpand(ex.name)} 
+                  sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(176, 106, 255, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'main' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
+                >
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                      <DragIndicatorIcon sx={{ color: 'rgba(255,255,255,0.2)', mt: 1, cursor: 'grab', display: { xs: 'none', sm: 'block' } }} />
+                      <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, !!completedExercises[ex.name], overloaded || '', repsMax, sets)} sx={{ p: 0, mt: 0.8 }} />
+                      <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                        <Typography sx={{ fontWeight: 700, textDecoration: completedExercises[ex.name] ? 'line-through' : 'none' }}>{ex.name} {loggedExercises[ex.name] && <Typography component="span" sx={{ fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(176, 106, 255, 0.2)', color: '#b06aff', px: 1, py: 0.3, borderRadius: 2, ml: 1 }}>Logged</Typography>}</Typography>
+                        <Typography variant="caption" sx={{ color: '#00d4ff', mt: 0.5, display: 'block' }}>{sets} Sets | {ex.repsMin}-{repsMax} Reps | Load: {overloaded ? displayWeight(overloaded) : 'Baseline'}</Typography>
                       </Box>
                     </Box>
-                    <Collapse in={expandedCells[ex.name]}><Box sx={{ pl: { xs: 4, sm: 5 }, mt: 2 }}>{renderLiftHistory(ex.name)}</Box></Collapse>
-                  </Paper>
-                ))}
-                <Divider sx={{ my: 2 }} />
-              </Box>
-            )}
-
-            <Box>
-              <Typography variant="h6" sx={{ fontWeight: 800, color: '#b06aff', mb: 1 }}>{workoutData.warmup && workoutData.warmup.length > 0 ? '2.' : '1.'} Main Block</Typography>
-              {workoutData.mainBlock.map((ex, idx) => {
-                const repsMax = ex.repsMax || (ex.setsReps ? parseInt(ex.setsReps.split('x')[1]) : 10);
-                const sets = ex.sets || 3;
-                const hist = allLiftsDB.filter(l => l.exerciseName === ex.name && l.reps >= (ex.repsMin || 0) && l.reps <= repsMax).sort((a,b)=>b.timestamp-a.timestamp)[0];
-                const overloaded = hist?.weight ? Math.round((hist.weight * 1.05)/5)*5 : null;
-
-                return (
-                  <Paper 
-                    key={ex.name} 
-                    draggable onDragStart={(e) => handleDragStart(e, 'main', idx)} onDragEnter={(e) => handleDragEnter(e, 'main', idx)} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
-                    onClick={() => toggleCellExpand(ex.name)} 
-                    sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(176, 106, 255, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'main' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
-                  >
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                        <DragIndicatorIcon sx={{ color: 'rgba(255,255,255,0.2)', mt: 1, cursor: 'grab', display: { xs: 'none', sm: 'block' } }} />
-                        <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, !!completedExercises[ex.name], overloaded || '', repsMax, sets)} sx={{ color: '#b06aff', p: 0, mt: 0.8 }} />
-                        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                          <Typography sx={{ fontWeight: 700, textDecoration: completedExercises[ex.name] ? 'line-through' : 'none' }}>{ex.name} {loggedExercises[ex.name] && <Typography component="span" sx={{ fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(176, 106, 255, 0.2)', color: '#b06aff', px: 1, py: 0.3, borderRadius: 2, ml: 1 }}>Logged</Typography>}</Typography>
-                          <Typography variant="caption" sx={{ color: '#00d4ff', mt: 0.5, display: 'block' }}>{sets} Sets | {ex.repsMin}-{repsMax} Reps | Load: {overloaded ? displayWeight(overloaded) : 'Baseline'}</Typography>
-                        </Box>
-                      </Box>
-                      <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('main', idx, 'up'); }} disabled={idx === 0}><KeyboardArrowUpIcon fontSize="small" /></IconButton>
-                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('main', idx, 'down'); }} disabled={idx === workoutData.mainBlock.length - 1}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
-                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'main', index: idx }); }}><SwapHorizIcon fontSize="small" /></IconButton>
-                      </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                      <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('main', idx, 'up'); }} disabled={idx === 0}><KeyboardArrowUpIcon fontSize="small" /></IconButton>
+                      <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('main', idx, 'down'); }} disabled={idx === workoutData.mainBlock.length - 1}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
+                      <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'main', index: idx }); }}><SwapHorizIcon fontSize="small" /></IconButton>
                     </Box>
-                    <Collapse in={expandedCells[ex.name]}><Box sx={{ pl: { xs: 4, sm: 5 }, mt: 2 }}>{renderLiftHistory(ex.name, ex.repsMin, repsMax)}</Box></Collapse>
-                  </Paper>
-                )
-              })}
-            </Box>
+                  </Box>
+                  <Collapse in={expandedCells[ex.name]}><Box sx={{ pl: { xs: 4, sm: 5 }, mt: 2 }}>{renderLiftHistory(ex.name, ex.repsMin, repsMax)}</Box></Collapse>
+                </Paper>
+               )
+            })}
 
-            {workoutData.cooldown && workoutData.cooldown.length > 0 && (
-              <Box>
-                <Divider sx={{ my: 2 }} />
-                <Typography variant="h6" sx={{ fontWeight: 800, color: '#b06aff', mb: 1 }}>3. Cooldown (AI)</Typography>
-                {workoutData.cooldown.map((ex, idx) => (
-                  <Paper 
-                    key={ex.name} 
-                    draggable onDragStart={(e) => handleDragStart(e, 'cooldown', idx)} onDragEnter={(e) => handleDragEnter(e, 'cooldown', idx)} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
-                    onClick={() => toggleCellExpand(ex.name)} 
-                    sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(176, 106, 255, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'cooldown' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
-                  >
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                        <DragIndicatorIcon sx={{ color: 'rgba(255,255,255,0.2)', mt: 1, cursor: 'grab', display: { xs: 'none', sm: 'block' } }} />
-                        <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, !!completedExercises[ex.name], 0, ex.reps, 1)} sx={{ color: '#b06aff', p: 0, mt: 0.8 }} />
-                        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                          <Typography sx={{ fontWeight: 700, textDecoration: completedExercises[ex.name] ? 'line-through' : 'none' }}>{ex.name}</Typography>
-                          <Typography variant="body2" sx={{ color: '#00d4ff' }}>Target: {ex.reps}</Typography>
-                        </Box>
-                      </Box>
-                      <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('cooldown', idx, 'up'); }} disabled={idx === 0}><KeyboardArrowUpIcon fontSize="small" /></IconButton>
-                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('cooldown', idx, 'down'); }} disabled={idx === workoutData.cooldown!.length - 1}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
-                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'cooldown', index: idx }); }}><SwapHorizIcon fontSize="small" /></IconButton>
-                      </Box>
+            <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.1)' }} />
+
+            {workoutData.cooldown.map((ex, idx) => (
+              <Paper 
+                key={ex.name} 
+                draggable onDragStart={(e) => handleDragStart(e, 'cooldown', idx)} onDragEnter={(e) => handleDragEnter(e, 'cooldown', idx)} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
+                onClick={() => toggleCellExpand(ex.name)} 
+                sx={{ p: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(176, 106, 255, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'cooldown' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
+              >
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                    <DragIndicatorIcon sx={{ color: 'rgba(255,255,255,0.2)', mt: 1, cursor: 'grab', display: { xs: 'none', sm: 'block' } }} />
+                    <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, !!completedExercises[ex.name], 0, ex.reps, 1)} sx={{ p: 0, mt: 0.8 }} />
+                    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                      <Typography sx={{ fontWeight: 700, textDecoration: completedExercises[ex.name] ? 'line-through' : 'none' }}>{ex.name}</Typography>
+                      <Typography variant="body2" sx={{ color: '#00d4ff' }}>Target: {ex.reps}</Typography>
                     </Box>
-                    <Collapse in={expandedCells[ex.name]}><Box sx={{ pl: { xs: 4, sm: 5 }, mt: 2 }}>{renderLiftHistory(ex.name)}</Box></Collapse>
-                  </Paper>
-                ))}
-              </Box>
-            )}
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('cooldown', idx, 'up'); }} disabled={idx === 0}><KeyboardArrowUpIcon fontSize="small" /></IconButton>
+                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('cooldown', idx, 'down'); }} disabled={idx === workoutData.cooldown!.length - 1}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
+                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'cooldown', index: idx }); }}><SwapHorizIcon fontSize="small" /></IconButton>
+                  </Box>
+                </Box>
+                <Collapse in={expandedCells[ex.name]}><Box sx={{ pl: { xs: 4, sm: 5 }, mt: 2 }}>{renderLiftHistory(ex.name)}</Box></Collapse>
+              </Paper>
+            ))}
           </Box>
         )}
 
