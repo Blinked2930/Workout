@@ -3,7 +3,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import {
   Box, Typography, Paper, Chip, TextField, InputAdornment,
   List, ListItemButton, ListItemText, Divider, Button, ToggleButton, ToggleButtonGroup,
-  Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Snackbar, Alert
+  Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Snackbar, Alert, FormControl, InputLabel, Select, MenuItem, CircularProgress
 } from '@mui/material';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
@@ -15,6 +15,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
+import AddTaskIcon from '@mui/icons-material/AddTask';
 
 // ── Metric definitions ─────────────────────────────────────────────────────
 const WEIGHTED_METRICS = [
@@ -75,6 +76,16 @@ export default function Progress() {
 
   // Edit State
   const [editSet, setEditSet] = useState<any | null>(null);
+  
+  // New Log State
+  const [logModalOpen, setLogModalOpen] = useState(false);
+  const [logEquipment, setLogEquipment] = useState('Barbell');
+  const [logWeight, setLogWeight] = useState<string | number>('');
+  const [logReps, setLogReps] = useState<string | number>('');
+  const [logSets, setLogSets] = useState<string | number>(1);
+  const [logTimestamp, setLogTimestamp] = useState<number>(Date.now());
+  const [isSavingLog, setIsSavingLog] = useState(false);
+
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -82,6 +93,7 @@ export default function Progress() {
   const allLifts = useQuery(api.lifts.getLifts, {});
   const updateSetMutation = useMutation(api.lifts.updateSet);
   const deleteSetMutation = useMutation(api.lifts.deleteSet);
+  const logSetMutation = useMutation(api.lifts.logSet);
 
   useEffect(() => {
     if (selectedExercise) localStorage.setItem('progress_exercise', selectedExercise);
@@ -172,9 +184,44 @@ export default function Progress() {
     setShowList(false);
   };
 
+  const handleOpenNewLog = () => {
+    const lastLift = historyForSelected.length > 0 ? historyForSelected[historyForSelected.length - 1] : null;
+    setLogEquipment(activeEquipment || 'Barbell');
+    setLogWeight(lastLift?.weight || '');
+    setLogReps(lastLift?.reps || '');
+    setLogSets(1);
+    setLogTimestamp(Date.now());
+    setLogModalOpen(true);
+  };
+
+  const handleSaveNewLog = async () => {
+    if (!selectedExercise) return;
+    setIsSavingLog(true);
+    try {
+      const dbMatch = exercises?.find(ex => ex.name.toLowerCase() === selectedExercise.toLowerCase());
+      const safeCategory = dbMatch?.category || 'Custom';
+      
+      await logSetMutation({
+        exerciseName: selectedExercise,
+        category: safeCategory,
+        equipmentType: logEquipment,
+        weight: parseFloat(logWeight.toString()) || 0,
+        reps: parseInt(logReps.toString()) || 0,
+        sets: parseInt(logSets.toString()) || 1,
+        timestamp: logTimestamp,
+      });
+      setLogModalOpen(false);
+      setSuccessMsg('Set logged successfully! 💪');
+    } catch (err) {
+      console.error(err);
+      setErrorMsg('Failed to log set.');
+    } finally {
+      setIsSavingLog(false);
+    }
+  };
+
   const handleUpdate = async () => {
     if (!editSet) return;
-    
     try {
       const weightVal = parseFloat(editSet.weight) || 0;
       const repsVal = parseInt(editSet.reps) || 0;
@@ -214,244 +261,301 @@ export default function Progress() {
   };
 
   return (
-    <Box sx={{ px: 2, pt: 3, pb: 2, maxWidth: 480, mx: 'auto' }}>
-      <Box sx={{ mb: 3 }}>
-        <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#00d4ff', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 0.5 }}>
-          Over Time
-        </Typography>
-        <Typography variant="h4" sx={{ fontWeight: 800, lineHeight: 1.1 }}>
-          Progress<br />
-          <Box component="span" sx={{ color: '#00d4ff' }}>Charts 📈</Box>
-        </Typography>
-      </Box>
-
-      {/* Exercise search */}
-      <Box sx={{ mb: 3 }}>
-        <TextField fullWidth size="small" placeholder="Search logged exercises..."
-          value={search}
-          onChange={e => { setSearch(e.target.value); setSelectedExercise(null); setShowList(true); }}
-          onFocus={() => setShowList(true)}
-          InputProps={{
-            startAdornment: <InputAdornment position="start"><SearchIcon sx={{ fontSize: '1rem', color: 'text.secondary' }} /></InputAdornment>,
-            endAdornment: selectedExercise ? <InputAdornment position="end"><Typography sx={{ fontSize: '0.75rem', color: '#00e096', fontWeight: 700 }}>✓</Typography></InputAdornment> : null,
-          }}
-        />
-        {showList && !selectedExercise && filteredExercises.length > 0 && (
-          <Paper sx={{ mt: 0.5, borderRadius: 2, maxHeight: 220, overflowY: 'auto', border: '1px solid rgba(255,255,255,0.1)' }}>
-            <List dense disablePadding>
-              {filteredExercises.map((ex, i) => (
-                <React.Fragment key={ex._id}>
-                  {i > 0 && <Divider sx={{ borderColor: 'rgba(255,255,255,0.05)' }} />}
-                  <ListItemButton onClick={() => handleSelectExercise(ex.name)}
-                    sx={{ py: 0.75, bgcolor: selectedExercise === ex.name ? 'rgba(0,212,255,0.08)' : 'transparent', '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' } }}>
-                    <ListItemText
-                      primary={ex.name}
-                      secondary={ex.subcategory ?? ex.category}
-                      primaryTypographyProps={{ fontSize: '0.88rem', fontWeight: 600 }}
-                      secondaryTypographyProps={{ fontSize: '0.7rem' }}
-                    />
-                  </ListItemButton>
-                </React.Fragment>
-              ))}
-            </List>
-          </Paper>
-        )}
-      </Box>
-
-      {/* Dynamic Equipment Toggle */}
-      {selectedExercise && availableEquipments.length > 1 && (
-        <Box sx={{ mb: 2.5 }}>
-          <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', mb: 1, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-            Equipment Types Used
-          </Typography>
-          <ToggleButtonGroup
-            value={activeEquipment} exclusive
-            onChange={(_, v) => v && setEquipmentOverride(v)}
-            size="small"
-            sx={{ 
-              display: 'flex', flexWrap: 'wrap', gap: 1, 
-              '& .MuiToggleButtonGroup-grouped': { border: 0 },
-              '& .MuiToggleButton-root': {
-                fontWeight: 700, fontSize: '0.78rem', borderRadius: '10px !important',
-                border: '1px solid rgba(255,255,255,0.1) !important', px: 1.5, py: 0.75,
-                '&.Mui-selected': { bgcolor: 'rgba(0,212,255,0.15)', color: '#00d4ff', borderColor: 'rgba(0,212,255,0.4) !important' },
-              }
-            }}
-          >
-            {availableEquipments.map(eq => (
-              <ToggleButton key={eq} value={eq}>
-                {EQUIPMENT_EMOJIS[eq] ?? '⚡'} {eq}
-              </ToggleButton>
-            ))}
-          </ToggleButtonGroup>
-        </Box>
-      )}
-
-      {/* Stats dashboard */}
-      {selectedExercise && chartData.length > 0 && (
+    <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={enGB}>
+      <Box sx={{ px: 2, pt: 3, pb: 2, maxWidth: 480, mx: 'auto' }}>
         <Box sx={{ mb: 3 }}>
-          {!isBW ? (
-            <>
-              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 1.5, mb: 1.5 }}>
+          <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#00d4ff', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 0.5 }}>
+            Over Time
+          </Typography>
+          <Typography variant="h4" sx={{ fontWeight: 800, lineHeight: 1.1 }}>
+            Progress<br />
+            <Box component="span" sx={{ color: '#00d4ff' }}>Charts 📈</Box>
+          </Typography>
+        </Box>
+
+        {/* Exercise search */}
+        <Box sx={{ mb: 3 }}>
+          <TextField fullWidth size="small" placeholder="Search logged exercises..."
+            value={search}
+            onChange={e => { setSearch(e.target.value); setSelectedExercise(null); setShowList(true); }}
+            onFocus={() => setShowList(true)}
+            InputProps={{
+              startAdornment: <InputAdornment position="start"><SearchIcon sx={{ fontSize: '1rem', color: 'text.secondary' }} /></InputAdornment>,
+              endAdornment: selectedExercise ? <InputAdornment position="end"><Typography sx={{ fontSize: '0.75rem', color: '#00e096', fontWeight: 700 }}>✓</Typography></InputAdornment> : null,
+            }}
+          />
+          {showList && !selectedExercise && filteredExercises.length > 0 && (
+            <Paper sx={{ mt: 0.5, borderRadius: 2, maxHeight: 220, overflowY: 'auto', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <List dense disablePadding>
+                {filteredExercises.map((ex, i) => (
+                  <React.Fragment key={ex._id}>
+                    {i > 0 && <Divider sx={{ borderColor: 'rgba(255,255,255,0.05)' }} />}
+                    <ListItemButton onClick={() => handleSelectExercise(ex.name)}
+                      sx={{ py: 0.75, bgcolor: selectedExercise === ex.name ? 'rgba(0,212,255,0.08)' : 'transparent', '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' } }}>
+                      <ListItemText
+                        primary={ex.name}
+                        secondary={ex.subcategory ?? ex.category}
+                        primaryTypographyProps={{ fontSize: '0.88rem', fontWeight: 600 }}
+                        secondaryTypographyProps={{ fontSize: '0.7rem' }}
+                      />
+                    </ListItemButton>
+                  </React.Fragment>
+                ))}
+              </List>
+            </Paper>
+          )}
+        </Box>
+
+        {/* Dynamic Equipment Toggle & Quick Log Button */}
+        {selectedExercise && (
+          <Box sx={{ mb: 2.5, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <Box>
+              {availableEquipments.length > 1 && (
+                <>
+                  <Typography sx={{ fontSize: '0.72rem', color: 'text.secondary', mb: 1, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                    Equipment Types Used
+                  </Typography>
+                  <ToggleButtonGroup
+                    value={activeEquipment} exclusive
+                    onChange={(_, v) => v && setEquipmentOverride(v)}
+                    size="small"
+                    sx={{ 
+                      display: 'flex', flexWrap: 'wrap', gap: 1, 
+                      '& .MuiToggleButtonGroup-grouped': { border: 0 },
+                      '& .MuiToggleButton-root': {
+                        fontWeight: 700, fontSize: '0.78rem', borderRadius: '10px !important',
+                        border: '1px solid rgba(255,255,255,0.1) !important', px: 1.5, py: 0.75,
+                        '&.Mui-selected': { bgcolor: 'rgba(0,212,255,0.15)', color: '#00d4ff', borderColor: 'rgba(0,212,255,0.4) !important' },
+                      }
+                    }}
+                  >
+                    {availableEquipments.map(eq => (
+                      <ToggleButton key={eq} value={eq}>
+                        {EQUIPMENT_EMOJIS[eq] ?? '⚡'} {eq}
+                      </ToggleButton>
+                    ))}
+                  </ToggleButtonGroup>
+                </>
+              )}
+            </Box>
+            <Button 
+              variant="contained" 
+              size="small" 
+              onClick={handleOpenNewLog}
+              sx={{ fontWeight: 800, bgcolor: '#00d4ff', color: '#000', '&:hover': { bgcolor: '#00b8e6' }, borderRadius: 2, height: 36 }}
+              startIcon={<AddTaskIcon />}
+            >
+              Log Set
+            </Button>
+          </Box>
+        )}
+
+        {/* Stats dashboard */}
+        {selectedExercise && chartData.length > 0 && (
+          <Box sx={{ mb: 3 }}>
+            {!isBW ? (
+              <>
+                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 1.5, mb: 1.5 }}>
+                  {[
+                    { label: 'e1RM', value: bestE1RM.toFixed(0), color: '#00d4ff', hi: true },
+                    { label: 'e4RM', value: e4RM.toFixed(0), color: '#f0f0f0' },
+                    { label: 'e8RM', value: e8RM.toFixed(0), color: '#f0f0f0' },
+                  ].map(s => (
+                    <Paper key={s.label} sx={{ p: 1.5, borderRadius: 3, textAlign: 'center',
+                      bgcolor: s.hi ? 'rgba(0,212,255,0.05)' : undefined,
+                      border: s.hi ? '1px solid rgba(0,212,255,0.1)' : undefined }}>
+                      <Typography sx={{ fontSize: '1.3rem', fontWeight: 800, color: s.color }}>{s.value}</Typography>
+                      <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase' }}>{s.label}</Typography>
+                    </Paper>
+                  ))}
+                </Box>
+                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 1.5, mb: 1.5 }}>
+                  <Paper sx={{ p: 1.5, borderRadius: 3, textAlign: 'center' }}>
+                    <Typography sx={{ fontSize: '0.62rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', mb: 0.25 }}>Heaviest Lift</Typography>
+                    <Typography sx={{ fontSize: '1.2rem', fontWeight: 800, color: '#ffb800' }}>{heaviestLift > 0 ? `${heaviestLift} lbs` : '—'}</Typography>
+                  </Paper>
+                  <Paper sx={{ p: 1.5, borderRadius: 3, textAlign: 'center' }}>
+                    <Typography sx={{ fontSize: '0.62rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', mb: 0.25 }}>Best Volume</Typography>
+                    <Typography sx={{ fontSize: '1.2rem', fontWeight: 800, color: '#00e096' }}>{bestVolume > 0 ? `${bestVolume} lbs` : '—'}</Typography>
+                  </Paper>
+                </Box>
+                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 1.5 }}>
+                  <Paper sx={{ p: 1.5, borderRadius: 3, textAlign: 'center' }}>
+                    <Typography sx={{ fontSize: '0.62rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', mb: 0.25 }}>Last Strength (4–7)</Typography>
+                    <Typography sx={{ fontSize: '1.1rem', fontWeight: 700 }}>{lastStrength ? `${lastStrength} lbs` : '—'}</Typography>
+                  </Paper>
+                  <Paper sx={{ p: 1.5, borderRadius: 3, textAlign: 'center' }}>
+                    <Typography sx={{ fontSize: '0.62rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', mb: 0.25 }}>Last Hyper (8–15)</Typography>
+                    <Typography sx={{ fontSize: '1.1rem', fontWeight: 700 }}>{lastHyper ? `${lastHyper} lbs` : '—'}</Typography>
+                  </Paper>
+                </Box>
+              </>
+            ) : (
+              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 1.5 }}>
                 {[
-                  { label: 'e1RM', value: bestE1RM.toFixed(0), color: '#00d4ff', hi: true },
-                  { label: 'e4RM', value: e4RM.toFixed(0), color: '#f0f0f0' },
-                  { label: 'e8RM', value: e8RM.toFixed(0), color: '#f0f0f0' },
+                  { label: 'Best Set', value: bestMaxReps, color: '#00d4ff', hi: true },
+                  { label: 'Total Reps', value: bestTotalReps, color: '#00e096', hi: true },
+                  { label: 'Most Sets', value: mostSets, color: '#ffb800' },
                 ].map(s => (
                   <Paper key={s.label} sx={{ p: 1.5, borderRadius: 3, textAlign: 'center',
-                    bgcolor: s.hi ? 'rgba(0,212,255,0.05)' : undefined,
-                    border: s.hi ? '1px solid rgba(0,212,255,0.1)' : undefined }}>
+                    bgcolor: s.hi ? `${s.color}08` : undefined,
+                    border: s.hi ? `1px solid ${s.color}22` : undefined }}>
                     <Typography sx={{ fontSize: '1.3rem', fontWeight: 800, color: s.color }}>{s.value}</Typography>
                     <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase' }}>{s.label}</Typography>
                   </Paper>
                 ))}
               </Box>
-              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 1.5, mb: 1.5 }}>
-                <Paper sx={{ p: 1.5, borderRadius: 3, textAlign: 'center' }}>
-                  <Typography sx={{ fontSize: '0.62rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', mb: 0.25 }}>Heaviest Lift</Typography>
-                  <Typography sx={{ fontSize: '1.2rem', fontWeight: 800, color: '#ffb800' }}>{heaviestLift > 0 ? `${heaviestLift} lbs` : '—'}</Typography>
-                </Paper>
-                <Paper sx={{ p: 1.5, borderRadius: 3, textAlign: 'center' }}>
-                  <Typography sx={{ fontSize: '0.62rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', mb: 0.25 }}>Best Volume</Typography>
-                  <Typography sx={{ fontSize: '1.2rem', fontWeight: 800, color: '#00e096' }}>{bestVolume > 0 ? `${bestVolume} lbs` : '—'}</Typography>
-                </Paper>
-              </Box>
-              <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 1.5 }}>
-                <Paper sx={{ p: 1.5, borderRadius: 3, textAlign: 'center' }}>
-                  <Typography sx={{ fontSize: '0.62rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', mb: 0.25 }}>Last Strength (4–7)</Typography>
-                  <Typography sx={{ fontSize: '1.1rem', fontWeight: 700 }}>{lastStrength ? `${lastStrength} lbs` : '—'}</Typography>
-                </Paper>
-                <Paper sx={{ p: 1.5, borderRadius: 3, textAlign: 'center' }}>
-                  <Typography sx={{ fontSize: '0.62rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', mb: 0.25 }}>Last Hyper (8–15)</Typography>
-                  <Typography sx={{ fontSize: '1.1rem', fontWeight: 700 }}>{lastHyper ? `${lastHyper} lbs` : '—'}</Typography>
-                </Paper>
-              </Box>
-            </>
-          ) : (
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 1.5 }}>
-              {[
-                { label: 'Best Set', value: bestMaxReps, color: '#00d4ff', hi: true },
-                { label: 'Total Reps', value: bestTotalReps, color: '#00e096', hi: true },
-                { label: 'Most Sets', value: mostSets, color: '#ffb800' },
-              ].map(s => (
-                <Paper key={s.label} sx={{ p: 1.5, borderRadius: 3, textAlign: 'center',
-                  bgcolor: s.hi ? `${s.color}08` : undefined,
-                  border: s.hi ? `1px solid ${s.color}22` : undefined }}>
-                  <Typography sx={{ fontSize: '1.3rem', fontWeight: 800, color: s.color }}>{s.value}</Typography>
-                  <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase' }}>{s.label}</Typography>
+            )}
+          </Box>
+        )}
+
+        {/* Metric selector */}
+        {selectedExercise && (
+          <Box sx={{ display: 'flex', gap: 1, mb: 2.5, flexWrap: 'wrap' }}>
+            {currentMetricsList.map(m => (
+              <Chip key={m.value} label={m.label} onClick={() => setMetric(m.value)}
+                sx={{ cursor: 'pointer', fontWeight: 700,
+                  bgcolor: metric === m.value ? `${m.color}22` : 'rgba(255,255,255,0.05)',
+                  color: metric === m.value ? m.color : 'text.secondary',
+                  border: metric === m.value ? `1px solid ${m.color}55` : '1px solid transparent' }} />
+            ))}
+          </Box>
+        )}
+
+        {/* Chart */}
+        {selectedExercise && chartData.length > 1 && (
+          <Paper sx={{ p: 2, borderRadius: 3, mb: 3 }}>
+            <Typography sx={{ fontWeight: 700, mb: 2, fontSize: '0.82rem', color: 'text.secondary' }}>
+              {selectedMetric.label} Trend
+            </Typography>
+            <ResponsiveContainer width="100%" height={200}>
+              <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
+                <defs>
+                  <linearGradient id="metricGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor={selectedMetric.color} stopOpacity={0.35} />
+                    <stop offset="95%" stopColor={selectedMetric.color} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                <XAxis dataKey="date" tick={{ fill: '#555566', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: '#555566', fontSize: 10 }} axisLine={false} tickLine={false} />
+                <Tooltip content={<CustomTooltip isBW={isBW} />} />
+                <Area type="monotone" dataKey={metric} name={metric}
+                  stroke={selectedMetric.color} strokeWidth={2.5}
+                  fill="url(#metricGrad)"
+                  dot={{ fill: selectedMetric.color, r: 3, strokeWidth: 0 }}
+                  activeDot={{ r: 5, strokeWidth: 0 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </Paper>
+        )}
+
+        {selectedExercise && chartData.length === 1 && (
+          <Paper sx={{ p: 3, borderRadius: 3, textAlign: 'center', mb: 3 }}>
+            <Typography sx={{ fontSize: '1.5rem', mb: 1 }}>📍</Typography>
+            <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>
+              One session logged — keep going to see your trend!
+            </Typography>
+          </Paper>
+        )}
+
+        {!selectedExercise && (
+          <Paper sx={{ p: 3, borderRadius: 3, textAlign: 'center', mb: 3, bgcolor: 'transparent', border: '1px dashed rgba(255,255,255,0.1)' }}>
+            <Typography sx={{ fontSize: '1.5rem', mb: 1 }}>🔍</Typography>
+            <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>
+              Search for a logged exercise above<br />to see your progress dashboard
+            </Typography>
+          </Paper>
+        )}
+
+        {/* History list with Edit feature */}
+        {selectedExercise && chartData.length > 0 && (
+          <>
+            <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.1em', mb: 1.5 }}>
+              Session History (Tap to Edit)
+            </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+              {[...chartData].reverse().map((entry, i) => (
+                <Paper 
+                  key={i} 
+                  onClick={() => setEditSet(entry.rawSet)}
+                  sx={{ px: 2, py: 1.5, borderRadius: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', '&:hover': { bgcolor: 'rgba(255,255,255,0.03)' } }}
+                >
+                  <Box>
+                    <Typography sx={{ fontWeight: 700, fontSize: '0.9rem' }}>
+                      {entry.weight > 0 ? `${entry.weight} lbs` : 'Bodyweight'}
+                      <Box component="span" sx={{ color: 'text.secondary', fontWeight: 400 }}>
+                        {' '}× {entry.reps} reps × {entry.sets} sets
+                      </Box>
+                    </Typography>
+                    <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>{entry.date}</Typography>
+                  </Box>
+                  <Box sx={{ textAlign: 'right' }}>
+                    {isBW ? (
+                      <>
+                        <Typography sx={{ fontWeight: 800, fontSize: '0.9rem', color: '#00d4ff' }}>{entry.totalReps}</Typography>
+                        <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>Total Reps</Typography>
+                      </>
+                    ) : (
+                      <>
+                        <Typography sx={{ fontWeight: 800, fontSize: '0.9rem', color: '#00d4ff' }}>
+                          {entry.e1rm > 0 ? entry.e1rm.toFixed(0) : '—'}
+                        </Typography>
+                        <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>e1RM</Typography>
+                      </>
+                    )}
+                  </Box>
                 </Paper>
               ))}
             </Box>
-          )}
-        </Box>
-      )}
+          </>
+        )}
 
-      {/* Metric selector */}
-      {selectedExercise && (
-        <Box sx={{ display: 'flex', gap: 1, mb: 2.5, flexWrap: 'wrap' }}>
-          {currentMetricsList.map(m => (
-            <Chip key={m.value} label={m.label} onClick={() => setMetric(m.value)}
-              sx={{ cursor: 'pointer', fontWeight: 700,
-                bgcolor: metric === m.value ? `${m.color}22` : 'rgba(255,255,255,0.05)',
-                color: metric === m.value ? m.color : 'text.secondary',
-                border: metric === m.value ? `1px solid ${m.color}55` : '1px solid transparent' }} />
-          ))}
-        </Box>
-      )}
+        {/* NEW LOG DIALOG (Progress Page) */}
+        <Dialog open={logModalOpen} onClose={() => setLogModalOpen(false)} PaperProps={{ sx: { bgcolor: '#16171a', borderRadius: 4, border: '1px solid rgba(255,255,255,0.1)', width: '100%', maxWidth: 400 } }}>
+          <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
+            <Typography sx={{ fontWeight: 800, color: '#00d4ff' }}>Log Completed Set</Typography>
+            <IconButton onClick={() => setLogModalOpen(false)} size="small" sx={{ color: '#8a8a9a' }}><CloseIcon /></IconButton>
+          </DialogTitle>
+          <DialogContent>
+            <Typography variant="h5" sx={{ fontWeight: 900, mb: 2 }}>{selectedExercise}</Typography>
+            
+            <DateTimePicker 
+              label="Date & Time (Defaults to Now)" 
+              value={new Date(logTimestamp)} 
+              onChange={(v) => v && setLogTimestamp(v.getTime())} 
+              format="MMM d, yyyy '·' h:mm a" 
+              slotProps={{ textField: { size: 'small', fullWidth: true, sx: { mb: 2 } } }} 
+            />
 
-      {/* Chart */}
-      {selectedExercise && chartData.length > 1 && (
-        <Paper sx={{ p: 2, borderRadius: 3, mb: 3 }}>
-          <Typography sx={{ fontWeight: 700, mb: 2, fontSize: '0.82rem', color: 'text.secondary' }}>
-            {selectedMetric.label} Trend
-          </Typography>
-          <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={chartData} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
-              <defs>
-                <linearGradient id="metricGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor={selectedMetric.color} stopOpacity={0.35} />
-                  <stop offset="95%" stopColor={selectedMetric.color} stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="date" tick={{ fill: '#555566', fontSize: 10 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: '#555566', fontSize: 10 }} axisLine={false} tickLine={false} />
-              <Tooltip content={<CustomTooltip isBW={isBW} />} />
-              <Area type="monotone" dataKey={metric} name={metric}
-                stroke={selectedMetric.color} strokeWidth={2.5}
-                fill="url(#metricGrad)"
-                dot={{ fill: selectedMetric.color, r: 3, strokeWidth: 0 }}
-                activeDot={{ r: 5, strokeWidth: 0 }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </Paper>
-      )}
+            <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+              <FormControl fullWidth size="small">
+                <InputLabel sx={{ color: 'rgba(255,255,255,0.5)' }}>Equipment</InputLabel>
+                <Select value={logEquipment} onChange={(e) => setLogEquipment(e.target.value)} label="Equipment" sx={{ borderRadius: 2 }}>
+                  <MenuItem value="Bodyweight">Bodyweight</MenuItem>
+                  <MenuItem value="Barbell">Barbell</MenuItem>
+                  <MenuItem value="Dumbbell">Dumbbell</MenuItem>
+                  <MenuItem value="Machine">Machine</MenuItem>
+                  <MenuItem value="Cable">Cable</MenuItem>
+                </Select>
+              </FormControl>
+            </Box>
+            <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+              <TextField fullWidth type="number" label="Weight (lbs)" value={logWeight} onChange={(e) => setLogWeight(e.target.value)} InputProps={{ inputProps: { min: 0 } }} />
+              <TextField fullWidth type="number" label="Reps" value={logReps} onChange={(e) => setLogReps(e.target.value)} InputProps={{ inputProps: { min: 0 } }} />
+              <TextField fullWidth type="number" label="Sets" value={logSets} onChange={(e) => setLogSets(e.target.value)} InputProps={{ inputProps: { min: 1 } }} />
+            </Box>
+          </DialogContent>
+          <DialogActions sx={{ p: 3, pt: 0 }}>
+            <Button fullWidth variant="contained" onClick={handleSaveNewLog} disabled={isSavingLog} sx={{ py: 1.5, borderRadius: 3, fontWeight: 800, background: 'linear-gradient(135deg, #00d4ff 0%, #0099cc 100%)', color: '#000' }}>
+              {isSavingLog ? <CircularProgress size={24} sx={{ color: '#000' }} /> : <><AddTaskIcon sx={{ mr: 1 }} /> Save Log</>}
+            </Button>
+          </DialogActions>
+        </Dialog>
 
-      {selectedExercise && chartData.length === 1 && (
-        <Paper sx={{ p: 3, borderRadius: 3, textAlign: 'center', mb: 3 }}>
-          <Typography sx={{ fontSize: '1.5rem', mb: 1 }}>📍</Typography>
-          <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>
-            One session logged — keep going to see your trend!
-          </Typography>
-        </Paper>
-      )}
-
-      {!selectedExercise && (
-        <Paper sx={{ p: 3, borderRadius: 3, textAlign: 'center', mb: 3, bgcolor: 'transparent', border: '1px dashed rgba(255,255,255,0.1)' }}>
-          <Typography sx={{ fontSize: '1.5rem', mb: 1 }}>🔍</Typography>
-          <Typography sx={{ color: 'text.secondary', fontSize: '0.9rem' }}>
-            Search for a logged exercise above<br />to see your progress dashboard
-          </Typography>
-        </Paper>
-      )}
-
-      {/* History list with Edit feature */}
-      {selectedExercise && chartData.length > 0 && (
-        <>
-          <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.1em', mb: 1.5 }}>
-            Session History (Tap to Edit)
-          </Typography>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            {[...chartData].reverse().map((entry, i) => (
-              <Paper 
-                key={i} 
-                onClick={() => setEditSet(entry.rawSet)}
-                sx={{ px: 2, py: 1.5, borderRadius: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', '&:hover': { bgcolor: 'rgba(255,255,255,0.03)' } }}
-              >
-                <Box>
-                  <Typography sx={{ fontWeight: 700, fontSize: '0.9rem' }}>
-                    {entry.weight > 0 ? `${entry.weight} lbs` : 'Bodyweight'}
-                    <Box component="span" sx={{ color: 'text.secondary', fontWeight: 400 }}>
-                      {' '}× {entry.reps} reps × {entry.sets} sets
-                    </Box>
-                  </Typography>
-                  <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>{entry.date}</Typography>
-                </Box>
-                <Box sx={{ textAlign: 'right' }}>
-                  {isBW ? (
-                    <>
-                      <Typography sx={{ fontWeight: 800, fontSize: '0.9rem', color: '#00d4ff' }}>{entry.totalReps}</Typography>
-                      <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>Total Reps</Typography>
-                    </>
-                  ) : (
-                    <>
-                      <Typography sx={{ fontWeight: 800, fontSize: '0.9rem', color: '#00d4ff' }}>
-                        {entry.e1rm > 0 ? entry.e1rm.toFixed(0) : '—'}
-                      </Typography>
-                      <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>e1RM</Typography>
-                    </>
-                  )}
-                </Box>
-              </Paper>
-            ))}
-          </Box>
-        </>
-      )}
-
-      {/* Full Edit Dialog */}
-      <Dialog open={!!editSet} onClose={() => setEditSet(null)} fullWidth maxWidth="sm">
-        <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={enGB}>
+        {/* FULL EDIT DIALOG */}
+        <Dialog open={!!editSet} onClose={() => setEditSet(null)} fullWidth maxWidth="sm">
           <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
             <Typography variant="h6" sx={{ fontWeight: 800 }}>Edit Entry</Typography>
             <IconButton onClick={() => setEditSet(null)} size="small"><CloseIcon /></IconButton>
@@ -505,11 +609,11 @@ export default function Progress() {
             <Button color="error" onClick={handleDelete} sx={{ fontWeight: 700 }}>Delete</Button>
             <Button variant="contained" fullWidth onClick={handleUpdate} sx={{ fontWeight: 800 }}>Save Changes</Button>
           </DialogActions>
-        </LocalizationProvider>
-      </Dialog>
+        </Dialog>
 
-      <Snackbar open={!!successMsg} autoHideDuration={2000} onClose={() => setSuccessMsg('')}><Alert severity="success">{successMsg}</Alert></Snackbar>
-      <Snackbar open={!!errorMsg} autoHideDuration={3000} onClose={() => setErrorMsg('')}><Alert severity="error">{errorMsg}</Alert></Snackbar>
-    </Box>
+        <Snackbar open={!!successMsg} autoHideDuration={2000} onClose={() => setSuccessMsg('')}><Alert severity="success">{successMsg}</Alert></Snackbar>
+        <Snackbar open={!!errorMsg} autoHideDuration={3000} onClose={() => setErrorMsg('')}><Alert severity="error">{errorMsg}</Alert></Snackbar>
+      </Box>
+    </LocalizationProvider>
   );
 }

@@ -7,6 +7,7 @@ import Volume from './pages/Volume';
 import Progress from './pages/Progress';
 import Cardio from './pages/Cardio';
 import Coach from './pages/Coach';
+import Manual from './pages/Manual'; // NEW MANUAL IMPORT
 import ExerciseManager from './pages/ExerciseManager';
 import { ConvexProvider, ConvexReactClient } from 'convex/react';
 
@@ -69,7 +70,7 @@ export const theme = createTheme({
           color: '#555566',
           '&.Mui-selected': { color: '#00d4ff' },
           minWidth: 'unset',
-          padding: '6px 2px', // Slightly tighter padding to fit 6 tabs perfectly
+          padding: '6px 2px', 
         },
         label: {
           fontFamily: '"Barlow", sans-serif',
@@ -122,6 +123,7 @@ const NAV_ITEMS = [
   { label: 'Progress', emoji: '📈', path: '/progress' },
   { label: 'Cardio', emoji: '🏃', path: '/cardio' },
   { label: 'Coach', emoji: '🧠', path: '/coach' },
+  { label: 'Builder', emoji: '🏗️', path: '/manual' }, // NEW MANUAL BUILDER TAB
   { label: 'Exercises', emoji: '🗂️', path: '/exercises' },
 ];
 
@@ -144,6 +146,7 @@ function AppShell() {
           <Route path="/progress" element={<Progress />} />
           <Route path="/cardio" element={<Cardio />} />
           <Route path="/coach" element={<Coach />} />
+          <Route path="/manual" element={<Manual />} /> {/* NEW ROUTE */}
           <Route path="/exercises" element={<ExerciseManager />} />
         </Routes>
       </Box>
@@ -173,7 +176,6 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState(false);
 
-  // Check if they already logged in previously
   useEffect(() => {
     const isAuthed = localStorage.getItem('liftlog_auth');
     if (isAuthed === 'true') {
@@ -183,7 +185,6 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    // Compare inputs to the environment variables
     if (
       username === import.meta.env.VITE_APP_USERNAME &&
       password === import.meta.env.VITE_APP_PASSWORD
@@ -193,7 +194,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       setError(false);
     } else {
       setError(true);
-      setPassword(''); // Clear the password field so you can try again
+      setPassword(''); 
     }
   };
 
@@ -201,7 +202,6 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  // The Login Screen UI
   return (
     <Box sx={{ 
       minHeight: '100vh', 

@@ -6,25 +6,41 @@ import './index.css';
 import './utils/envTest'; // Import the test file
 import * as serviceWorkerRegistration from './serviceWorkerRegistration';
 
-// Add error boundary for the entire app
-class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean}> {
+// UPGRADED ERROR BOUNDARY: Actually shows the exact error and stack trace!
+class ErrorBoundary extends React.Component<{children: React.ReactNode}, {error: Error | null, errorInfo: React.ErrorInfo | null}> {
   constructor(props: {children: React.ReactNode}) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { error: null, errorInfo: null };
   }
 
   static getDerivedStateFromError(error: Error) {
-    console.error('Error in app:', error);
-    return { hasError: true };
+    // Update state so the next render will show the fallback UI.
+    return { error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('Error caught by boundary:', error, errorInfo);
+    this.setState({ errorInfo });
   }
 
   render() {
-    if (this.state.hasError) {
+    if (this.state.error) {
       return (
-        <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
-          <h1>Something went wrong.</h1>
-          <p>Please refresh the page or try again later.</p>
-          <button onClick={() => window.location.reload()}>Refresh Page</button>
+        <div style={{ padding: '20px', fontFamily: 'monospace', backgroundColor: '#16171a', color: '#ff4d6d', minHeight: '100vh' }}>
+          <h1 style={{ borderBottom: '1px solid #ff4d6d', paddingBottom: '10px' }}>🚨 React Render Crash</h1>
+          <h3 style={{ color: '#fff' }}>{this.state.error.message}</h3>
+          <details style={{ whiteSpace: 'pre-wrap', backgroundColor: '#0d0d0f', padding: '15px', borderRadius: '8px', overflowX: 'auto', border: '1px solid rgba(255, 77, 109, 0.3)', color: '#d2a8ff', marginTop: '15px' }}>
+            <summary style={{ cursor: 'pointer', color: '#00d4ff', fontWeight: 'bold', marginBottom: '10px' }}>View Stack Trace (Click to expand)</summary>
+            {this.state.error.stack}
+            {'\n\nComponent Stack:\n'}
+            {this.state.errorInfo?.componentStack}
+          </details>
+          <button 
+            onClick={() => window.location.reload()} 
+            style={{ marginTop: '20px', padding: '10px 20px', backgroundColor: '#ff4d6d', color: '#000', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}
+          >
+            Refresh Page
+          </button>
         </div>
       );
     }
@@ -99,13 +115,9 @@ try {
   const rootElement = document.getElementById('root');
   if (rootElement) {
     rootElement.innerHTML = `
-      <div style="padding: 20px; font-family: Arial, sans-serif; color: #721c24; background-color: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px; margin: 20px;">
-        <h1>Application Error</h1>
-        <p>Failed to initialize the application. Please check the console for more details.</p>
+      <div style="padding: 20px; font-family: monospace; color: #ff4d6d; background-color: #16171a; min-height: 100vh;">
+        <h1>Fatal Initialization Error</h1>
         <p>${error instanceof Error ? error.message : String(error)}</p>
-        <button onclick="window.location.reload()" style="padding: 8px 16px; background-color: #dc3545; color: white; border: none; border-radius: 4px; cursor: pointer;">
-          Try Again
-        </button>
       </div>
     `;
   }
