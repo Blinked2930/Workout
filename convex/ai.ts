@@ -47,6 +47,27 @@ const defaultGoals = [
   { muscleGroup: "Chest", lowGoal: 8, highGoal: 15 }
 ];
 
+// MAP SCHEMA TO WEEKLY GOAL STRINGS
+const SCHEMA_TO_GOAL: Record<string, string> = {
+  chest:      'Chest',
+  shoulders:  'Shoulders',
+  triceps:    'Triceps - Isolation',
+  back:       'Back',
+  upperTraps: 'Upper Traps',
+  biceps:     'Biceps - Isolation',
+  glutes:     'Glute',
+  quads:      'Quads',
+  hamstrings: 'Hamstrings',
+  calves:     'Calves',
+  forearms:   'Forearms',
+  neck:       'Neck',
+  core:       'Core',
+};
+
+const PUSH_MUSCLES = ['chest', 'shoulders', 'triceps'];
+const PULL_MUSCLES = ['back', 'upperTraps', 'biceps', 'forearms'];
+const LEG_MUSCLES = ['glutes', 'quads', 'hamstrings', 'calves'];
+
 // ---------------------------------------------------------
 // ACTION 1: The Gap Analysis & Suggestion Engine
 // ---------------------------------------------------------
@@ -80,17 +101,14 @@ export const suggestWorkoutFocus = action({
     
     if (!weeklyGoals || weeklyGoals.length === 0) weeklyGoals = defaultGoals;
 
-    const muscleMap = new Map((exercises || []).map(e => [
-      e.name.toLowerCase(), 
-      (e.subcategory || e.category || "Unknown").toLowerCase()
-    ]));
+    // Create the Fractional Weight Map just like Volume.tsx
+    const exerciseMuscleMap: Record<string, Record<string, number>> = {};
+    exercises.forEach((ex: any) => {
+      exerciseMuscleMap[ex.name.toLowerCase()] = ex.muscleWeights || {};
+    });
 
     const exercisesCSV = "Exercise Name,Category,Subcategory\n" + 
       (exercises || []).map(ex => `"${ex.name}",${ex.category},${ex.subcategory || ''}`).join("\n");
-
-    const pushGroups = ['chest', 'shoulders', 'triceps', 'upper body push'];
-    const pullGroups = ['back', 'u. traps', 'biceps', 'forearms', 'neck', 'upper body pull'];
-    const legGroups = ['glute', 'quads', 'hamstrings', 'calves', 'legs', 'lower body'];
 
     const formatLocalYMD = (epochMs: number) => {
       const localEpoch = epochMs - (args.timezoneOffset * 60 * 1000);
@@ -107,31 +125,48 @@ export const suggestWorkoutFocus = action({
     localMondayStart.setUTCDate(localNow.getUTCDate() - daysSinceMonday);
     localMondayStart.setUTCHours(0, 0, 0, 0);
     const mondayEpoch = localMondayStart.getTime() + (args.timezoneOffset * 60 * 1000);
-
     const yesterdayStr = formatLocalYMD(nowEpoch - 24 * 60 * 60 * 1000);
+
     const recentLifts = (allLifts || []).filter((l: any) => l.timestamp >= mondayEpoch);
 
-    const yesterdayLifts = recentLifts.filter((l: any) => formatLocalYMD(l.timestamp) === yesterdayStr);
-    const yesterdayModalities = new Set<string>();
-    yesterdayLifts.forEach((l: any) => {
-      const muscle = muscleMap.get(l.exerciseName.toLowerCase()) || "unknown";
-      if (pushGroups.includes(muscle)) yesterdayModalities.add("PUSH");
-      if (pullGroups.includes(muscle)) yesterdayModalities.add("PULL");
-      if (legGroups.includes(muscle)) yesterdayModalities.add("LEGS");
+    // Calculate true fractional volume for the week & yesterday
+    const muscleBreakdown: Record<string, number> = {};
+    let yesterdayPush = 0;
+    let yesterdayPull = 0;
+    let yesterdayLegs = 0;
+
+    recentLifts.forEach((l: any) => {
+      const isYesterday = formatLocalYMD(l.timestamp) === yesterdayStr;
+      const weights = exerciseMuscleMap[l.exerciseName.toLowerCase()] || {};
+      
+      Object.entries(weights).forEach(([schemaKey, w]) => {
+        const goalKey = SCHEMA_TO_GOAL[schemaKey];
+        const addedSets = l.sets * (w as number);
+        
+        if (goalKey && addedSets > 0) {
+          // Accumulate weekly total for this exact muscle
+          muscleBreakdown[goalKey] = (muscleBreakdown[goalKey] || 0) + addedSets;
+          
+          // Accumulate yesterday's modality totals
+          if (isYesterday) {
+            if (PUSH_MUSCLES.includes(schemaKey)) yesterdayPush += addedSets;
+            if (PULL_MUSCLES.includes(schemaKey)) yesterdayPull += addedSets;
+            if (LEG_MUSCLES.includes(schemaKey)) yesterdayLegs += addedSets;
+          }
+        }
+      });
     });
+
+    // Ban modality only if they did >= 2 sets of it yesterday
+    const yesterdayModalities = new Set<string>();
+    if (yesterdayPush >= 2) yesterdayModalities.add("PUSH");
+    if (yesterdayPull >= 2) yesterdayModalities.add("PULL");
+    if (yesterdayLegs >= 2) yesterdayModalities.add("LEGS");
+    
     const bannedStr = yesterdayModalities.size > 0 ? Array.from(yesterdayModalities).join(", ") : "None. User is rested.";
 
-    // Target vs Actual Math
-    const muscleBreakdown: Record<string, number> = {};
-    recentLifts.forEach((l: any) => {
-      let muscle = muscleMap.get(l.exerciseName.toLowerCase()) || "unknown";
-      // Ensure isolation tracking for arms based on goals map
-      if (muscle.includes("tricep")) muscle = "triceps - isolation";
-      if (muscle.includes("bicep")) muscle = "biceps - isolation";
-      muscleBreakdown[muscle] = (muscleBreakdown[muscle] || 0) + l.sets;
-    });
-
-    const goalsMap = new Map(weeklyGoals.map(g => [g.muscleGroup.toLowerCase(), { low: g.lowGoal, high: g.highGoal }]));
+    // Generate accurate scoreboard
+    const goalsMap = new Map(weeklyGoals.map(g => [g.muscleGroup, { low: g.lowGoal, high: g.highGoal }]));
     const volumeStrings: string[] = [];
     
     for (const [muscle, goal] of goalsMap.entries()) {
