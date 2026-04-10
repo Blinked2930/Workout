@@ -11,7 +11,7 @@ import Coach from './pages/Coach';
 import Manual from './pages/Manual'; 
 import ExerciseManager from './pages/ExerciseManager';
 import { ConvexProvider, ConvexReactClient } from 'convex/react';
-import { UnitProvider, useUnit } from './context/UnitContext'; // <-- THE GLOBAL BRAIN
+import { UnitProvider, useUnit } from './context/UnitContext'; 
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
 
@@ -71,13 +71,14 @@ export const theme = createTheme({
         root: {
           color: '#555566',
           '&.Mui-selected': { color: '#00d4ff' },
-          minWidth: 'unset',
-          padding: '6px 2px', 
+          minWidth: '40px', // MOBILE TWEAK: Prevents wrapping
+          padding: '6px 0px', // MOBILE TWEAK: Removes tight gaps
         },
         label: {
           fontFamily: '"Barlow", sans-serif',
-          fontWeight: 600,
-          fontSize: '0.62rem !important',
+          fontWeight: 700,
+          fontSize: '0.6rem !important', // MOBILE TWEAK: Smaller label
+          marginTop: '2px',
         },
       },
     },
@@ -119,14 +120,15 @@ export const theme = createTheme({
   },
 });
 
+// Shorter labels for the mobile squeeze
 const NAV_ITEMS = [
   { label: 'Log', emoji: '💪', path: '/' },
-  { label: 'Volume', emoji: '📊', path: '/volume' },
-  { label: 'Progress', emoji: '📈', path: '/progress' },
+  { label: 'Vol', emoji: '📊', path: '/volume' },
+  { label: 'Prog', emoji: '📈', path: '/progress' },
   { label: 'Cardio', emoji: '🏃', path: '/cardio' },
   { label: 'Coach', emoji: '🧠', path: '/coach' },
-  { label: 'Builder', emoji: '🏗️', path: '/manual' }, 
-  { label: 'Exercises', emoji: '🗂️', path: '/exercises' },
+  { label: 'Build', emoji: '🏗️', path: '/manual' }, 
+  { label: 'DB', emoji: '🗂️', path: '/exercises' },
 ];
 
 function AppShell() {
@@ -134,7 +136,6 @@ function AppShell() {
   const navigate = useNavigate();
   const currentTab = NAV_ITEMS.findIndex(item => item.path === location.pathname);
 
-  // Settings State & Unit Context
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { unit, toggleUnit } = useUnit();
 
@@ -173,7 +174,7 @@ function AppShell() {
           <Route path="/progress" element={<Progress />} />
           <Route path="/cardio" element={<Cardio />} />
           <Route path="/coach" element={<Coach />} />
-          <Route path="/manual" element={<Manual />} />
+          <Route path="/manual" element={<Manual />} /> 
           <Route path="/exercises" element={<ExerciseManager />} />
         </Routes>
       </Box>
@@ -196,7 +197,6 @@ function AppShell() {
   );
 }
 
-// --- The Login Wrapper ---
 function AuthGate({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [username, setUsername] = useState('');
@@ -300,7 +300,7 @@ function App() {
     <ConvexProvider client={convex}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <UnitProvider> {/* <-- THIS WAS MISSING! IT PLUGS IN THE CONVERTER */}
+        <UnitProvider> 
           <AuthGate>
             <Router>
               <AppShell />

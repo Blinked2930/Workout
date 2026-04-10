@@ -7,6 +7,7 @@ import ConstructionIcon from '@mui/icons-material/Construction';
 import AddTaskIcon from '@mui/icons-material/AddTask';
 import CloseIcon from '@mui/icons-material/Close';
 import HistoryIcon from '@mui/icons-material/History';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz'; // Swap Icon
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -46,6 +47,10 @@ export default function Manual() {
   const [workoutData, setWorkoutData] = useState<WorkoutJSON | null>(null);
   
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // Swap State
+  const [swapTarget, setSwapTarget] = useState<{ section: 'warmup' | 'main' | 'cooldown', index: number } | null>(null);
+  const [swapSearch, setSwapSearch] = useState('');
 
   // Logging States
   const [completedExercises, setCompletedExercises] = useState<Record<string, boolean>>({});
@@ -97,6 +102,12 @@ export default function Manual() {
     } catch (e) { return []; }
   }, [exercisesDB, activeCategory, activeSubcategory]);
 
+  const filteredSwapExercises = useMemo(() => {
+    if (!Array.isArray(exercisesDB)) return [];
+    if (!swapSearch) return exercisesDB.slice(0, 15);
+    return exercisesDB.filter(ex => String(ex?.name || '').toLowerCase().includes(swapSearch.toLowerCase())).slice(0, 15);
+  }, [exercisesDB, swapSearch]);
+
   const handleCategoryChange = (newCat: string) => {
     setActiveCategory(newCat);
     setActiveSubcategory('All');
@@ -108,7 +119,6 @@ export default function Manual() {
     );
   };
 
-  // NEW DUAL-LOGIC START WORKOUT FUNCTION
   const handleStartWorkout = async (useAI: boolean) => {
     if (selectedExercisesList.length === 0) return;
     
@@ -122,7 +132,6 @@ export default function Manual() {
     }));
 
     if (!useAI) {
-      // Instant skip: Go straight to the workout without calling the API
       setWorkoutData({
         title: "Custom Built Protocol",
         focus: style,
@@ -136,7 +145,6 @@ export default function Manual() {
 
     setIsGenerating(true);
     try {
-      // Call Gemini API for warmups
       const aiResponse = await generateWarmupCooldown({
         equipment,
         style,
@@ -159,6 +167,23 @@ export default function Manual() {
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const handleSwapExercise = (newName: string) => {
+    if (!workoutData || !swapTarget) return;
+    const newWorkout = { ...workoutData };
+    
+    if (swapTarget.section === 'main') {
+      newWorkout.mainBlock[swapTarget.index].name = newName;
+    } else if (swapTarget.section === 'warmup' && newWorkout.warmup) {
+      newWorkout.warmup[swapTarget.index].name = newName;
+    } else if (swapTarget.section === 'cooldown' && newWorkout.cooldown) {
+      newWorkout.cooldown[swapTarget.index].name = newName;
+    }
+    
+    setWorkoutData(newWorkout);
+    setSwapTarget(null);
+    setSwapSearch('');
   };
 
   const clearSession = () => {
@@ -334,26 +359,9 @@ export default function Manual() {
               })}
             </Box>
 
-            {/* NEW: Split Buttons */}
             <Box sx={{ display: 'flex', gap: 2, mt: 1 }}>
-              <Button 
-                fullWidth 
-                variant="outlined" 
-                onClick={() => handleStartWorkout(false)} 
-                disabled={selectedExercisesList.length === 0 || isGenerating}
-                sx={{ py: 1.5, borderRadius: 3, fontWeight: 700, borderColor: 'rgba(0, 224, 150, 0.5)', color: selectedExercisesList.length > 0 ? '#00e096' : 'rgba(255,255,255,0.3)' }}
-              >
-                Quick Start
-              </Button>
-              <Button 
-                fullWidth 
-                variant="contained" 
-                onClick={() => handleStartWorkout(true)} 
-                disabled={selectedExercisesList.length === 0 || isGenerating}
-                sx={{ py: 1.5, borderRadius: 3, fontWeight: 800, background: selectedExercisesList.length > 0 ? 'linear-gradient(135deg, #00e096 0%, #0099cc 100%)' : 'rgba(255,255,255,0.1)', color: selectedExercisesList.length > 0 ? '#000' : 'rgba(255,255,255,0.3)' }}
-              >
-                {isGenerating ? <CircularProgress size={24} sx={{ color: '#000' }} /> : '+ AI Warmup'}
-              </Button>
+              <Button fullWidth variant="outlined" onClick={() => handleStartWorkout(false)} disabled={selectedExercisesList.length === 0 || isGenerating} sx={{ py: 1.5, borderRadius: 3, fontWeight: 700, borderColor: 'rgba(0, 224, 150, 0.5)', color: selectedExercisesList.length > 0 ? '#00e096' : 'rgba(255,255,255,0.3)' }}>Quick Start</Button>
+              <Button fullWidth variant="contained" onClick={() => handleStartWorkout(true)} disabled={selectedExercisesList.length === 0 || isGenerating} sx={{ py: 1.5, borderRadius: 3, fontWeight: 800, background: selectedExercisesList.length > 0 ? 'linear-gradient(135deg, #00e096 0%, #0099cc 100%)' : 'rgba(255,255,255,0.1)', color: selectedExercisesList.length > 0 ? '#000' : 'rgba(255,255,255,0.3)' }}>{isGenerating ? <CircularProgress size={24} sx={{ color: '#000' }} /> : '+ AI Warmup'}</Button>
             </Box>
           </Paper>
         )}
@@ -374,6 +382,7 @@ export default function Manual() {
                     const isDone = completedExercises[ex.name] || false;
                     const isLogged = loggedExercises[ex.name] || false;
                     const isExpanded = expandedCells[ex.name] || false;
+                    
                     return (
                       <Paper key={idx} onClick={() => toggleCellExpand(ex.name)} sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: isDone ? 'rgba(0, 224, 150, 0.05)' : 'rgba(255,255,255,0.03)', border: isDone ? '1px solid rgba(0, 224, 150, 0.3)' : '1px solid rgba(255,255,255,0.05)', opacity: isDone ? 0.6 : 1 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: isExpanded ? 1 : 0 }}>
@@ -387,6 +396,7 @@ export default function Manual() {
                               <Typography variant="body2" sx={{ color: '#00e096', fontWeight: 600, fontSize: '0.85rem', mt: 0.5 }}>Target: {ex.reps}</Typography>
                             </Box>
                           </Box>
+                          <IconButton onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'warmup', index: idx }); }} sx={{ color: 'rgba(255,255,255,0.5)' }}><SwapHorizIcon /></IconButton>
                         </Box>
                         <Collapse in={isExpanded}><Box sx={{ pl: 4, mt: 2 }}>{renderLiftHistory(ex.name)}</Box></Collapse>
                       </Paper>
@@ -433,6 +443,7 @@ export default function Manual() {
                           </Typography>
                         </Box>
                       </Box>
+                      <IconButton onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'main', index: idx }); }} sx={{ color: 'rgba(255,255,255,0.5)' }}><SwapHorizIcon /></IconButton>
                     </Box>
                     <Collapse in={isExpanded}><Box sx={{ pl: 4, mt: 2 }}>{renderLiftHistory(ex.name, ex.repsMin, ex.repsMax)}</Box></Collapse>
                   </Paper>
@@ -461,6 +472,7 @@ export default function Manual() {
                               <Typography variant="body2" sx={{ color: '#00e096', fontWeight: 600, fontSize: '0.85rem', mt: 0.5 }}>Target: {ex.reps}</Typography>
                             </Box>
                           </Box>
+                          <IconButton onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'cooldown', index: idx }); }} sx={{ color: 'rgba(255,255,255,0.5)' }}><SwapHorizIcon /></IconButton>
                         </Box>
                         <Collapse in={isExpanded}><Box sx={{ pl: 4, mt: 2 }}>{renderLiftHistory(ex.name)}</Box></Collapse>
                       </Paper>
@@ -472,6 +484,25 @@ export default function Manual() {
           </Paper>
         )}
 
+        {/* SWAP DIALOG */}
+        <Dialog open={!!swapTarget} onClose={() => setSwapTarget(null)} fullWidth maxWidth="xs">
+          <DialogTitle sx={{ fontWeight: 800 }}>Swap Exercise</DialogTitle>
+          <DialogContent>
+            <TextField fullWidth size="small" placeholder="Search to swap..." value={swapSearch} onChange={e => setSwapSearch(e.target.value)} sx={{ mt: 1, mb: 2 }} />
+            <Box sx={{ maxHeight: 300, overflowY: 'auto' }}>
+              {filteredSwapExercises.map(ex => (
+                <MenuItem key={ex.name} onClick={() => handleSwapExercise(String(ex.name))}>
+                  <Box>
+                    <Typography sx={{ fontWeight: 600 }}>{ex.name}</Typography>
+                    <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>{ex.category}</Typography>
+                  </Box>
+                </MenuItem>
+              ))}
+            </Box>
+          </DialogContent>
+        </Dialog>
+
+        {/* LOG DIALOG */}
         <Dialog open={logModalOpen} onClose={handleCloseModal} PaperProps={{ sx: { bgcolor: '#16171a', borderRadius: 4, border: '1px solid rgba(255,255,255,0.1)', width: '100%', maxWidth: 400 } }}>
           <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
             <Typography sx={{ fontWeight: 800, color: '#00e096' }}>Log Completed Set</Typography>
