@@ -1,7 +1,7 @@
 // src/App.tsx
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
-import { ThemeProvider, createTheme, CssBaseline, Box, BottomNavigation, BottomNavigationAction, Paper, Typography, TextField, Button, Alert, IconButton, Dialog, DialogTitle, DialogContent } from '@mui/material';
+import { ThemeProvider, createTheme, CssBaseline, Box, BottomNavigation, BottomNavigationAction, Paper, Typography, TextField, Button, Alert, IconButton, Dialog, DialogTitle, DialogContent, Drawer, List, ListItemButton, ListItemIcon, ListItemText } from '@mui/material';
 import SettingsIcon from '@mui/icons-material/Settings';
 import Home from './pages/Home';
 import Volume from './pages/Volume';
@@ -71,13 +71,13 @@ export const theme = createTheme({
         root: {
           color: '#555566',
           '&.Mui-selected': { color: '#00d4ff' },
-          minWidth: '40px', // Shrink for mobile
-          padding: '6px 0px', // Tighten padding
+          minWidth: '40px',
+          padding: '6px 0px',
         },
         label: {
           fontFamily: '"Barlow", sans-serif',
           fontWeight: 700,
-          fontSize: '0.6rem !important', // Shrunk for mobile
+          fontSize: '0.65rem !important',
           marginTop: '2px',
         },
       },
@@ -120,23 +120,45 @@ export const theme = createTheme({
   },
 });
 
-const NAV_ITEMS = [
-  { label: 'Log', emoji: '💪', path: '/' },
-  { label: 'Vol', emoji: '📊', path: '/volume' },
-  { label: 'Prog', emoji: '📈', path: '/progress' },
-  { label: 'Cardio', emoji: '🏃', path: '/cardio' },
-  { label: 'Coach', emoji: '🧠', path: '/coach' },
-  { label: 'Build', emoji: '🏗️', path: '/manual' }, 
-  { label: 'DB', emoji: '🗂️', path: '/exercises' },
+// NEW 4-HUB NAVIGATION SYSTEM
+const NAV_HUBS = [
+  { label: 'Log', emoji: '💪', id: 'log_menu' }, // Opens Log Drawer (Home/Cardio)
+  { label: 'Train', emoji: '🧠', id: 'train_menu' }, // Opens Train Drawer
+  { label: 'Stats', emoji: '📈', id: 'stats_menu' }, // Opens Stats Drawer
+  { label: 'DB', emoji: '🗂️', path: '/exercises' }, // Directly routes to Exercises
 ];
 
 function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
-  const currentTab = NAV_ITEMS.findIndex(item => item.path === location.pathname);
-
+  
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [activeMenu, setActiveMenu] = useState<'log_menu' | 'train_menu' | 'stats_menu' | null>(null);
   const { unit, toggleUnit } = useUnit();
+
+  // Determine which HUB is active based on the current URL
+  const getActiveHubIndex = () => {
+    const path = location.pathname;
+    if (path === '/' || path === '/cardio') return 0;
+    if (path === '/coach' || path === '/manual') return 1;
+    if (path === '/progress' || path === '/volume') return 2;
+    if (path === '/exercises') return 3;
+    return 0;
+  };
+
+  const handleNavClick = (index: number) => {
+    const hub = NAV_HUBS[index];
+    if (hub.path) {
+      navigate(hub.path);
+    } else if (hub.id) {
+      setActiveMenu(hub.id as any);
+    }
+  };
+
+  const handleMenuSelect = (path: string) => {
+    setActiveMenu(null);
+    navigate(path);
+  };
 
   return (
     <Box sx={{
@@ -145,6 +167,7 @@ function AppShell() {
     }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@700;800;900&display=swap');`}</style>
 
+      {/* Global Settings Button */}
       <IconButton 
         onClick={() => setSettingsOpen(true)}
         sx={{ position: 'fixed', top: 16, right: 16, zIndex: 100, bgcolor: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(10px)' }}
@@ -152,6 +175,7 @@ function AppShell() {
         <SettingsIcon sx={{ color: '#fff' }} />
       </IconButton>
 
+      {/* Settings Modal */}
       <Dialog open={settingsOpen} onClose={() => setSettingsOpen(false)} PaperProps={{ sx: { maxWidth: 350, width: '100%', p: 2 } }}>
         <DialogTitle sx={{ fontWeight: 800, textAlign: 'center' }}>Global Settings</DialogTitle>
         <DialogContent>
@@ -176,20 +200,66 @@ function AppShell() {
         </Routes>
       </Box>
 
+      {/* BOTTOM NAVIGATION (4 HUBS) */}
       <Paper elevation={0} sx={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 100, borderRadius: 0 }}>
         <BottomNavigation
-          value={currentTab === -1 ? 0 : currentTab}
-          onChange={(_, v) => navigate(NAV_ITEMS[v].path)}
+          value={getActiveHubIndex()}
+          onChange={(_, v) => handleNavClick(v)}
         >
-          {NAV_ITEMS.map(item => (
+          {NAV_HUBS.map(item => (
             <BottomNavigationAction
-              key={item.path}
+              key={item.label}
               label={item.label}
-              icon={<Box sx={{ fontSize: '1.3rem', lineHeight: 1 }}>{item.emoji}</Box>}
+              icon={<Box sx={{ fontSize: '1.4rem', lineHeight: 1 }}>{item.emoji}</Box>}
             />
           ))}
         </BottomNavigation>
       </Paper>
+
+      {/* LOG DRAWER MENU */}
+      <Drawer anchor="bottom" open={activeMenu === 'log_menu'} onClose={() => setActiveMenu(null)} PaperProps={{ sx: { bgcolor: '#16171a', borderRadius: '24px 24px 0 0', p: 2 } }}>
+        <Typography sx={{ fontWeight: 800, textAlign: 'center', color: '#00d4ff', mb: 2, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Log Activity</Typography>
+        <List>
+          <ListItemButton onClick={() => handleMenuSelect('/')} sx={{ borderRadius: 3, mb: 1, bgcolor: 'rgba(0, 212, 255, 0.05)' }}>
+            <ListItemIcon sx={{ fontSize: '1.5rem', minWidth: 40 }}>💪</ListItemIcon>
+            <ListItemText primary="Lift Logs" secondary="Record sets and reps" primaryTypographyProps={{ fontWeight: 700 }} />
+          </ListItemButton>
+          <ListItemButton onClick={() => handleMenuSelect('/cardio')} sx={{ borderRadius: 3, bgcolor: 'rgba(0, 224, 150, 0.05)' }}>
+            <ListItemIcon sx={{ fontSize: '1.5rem', minWidth: 40 }}>🏃</ListItemIcon>
+            <ListItemText primary="Cardio Logs" secondary="Record distance and duration" primaryTypographyProps={{ fontWeight: 700 }} />
+          </ListItemButton>
+        </List>
+      </Drawer>
+
+      {/* TRAIN DRAWER MENU */}
+      <Drawer anchor="bottom" open={activeMenu === 'train_menu'} onClose={() => setActiveMenu(null)} PaperProps={{ sx: { bgcolor: '#16171a', borderRadius: '24px 24px 0 0', p: 2 } }}>
+        <Typography sx={{ fontWeight: 800, textAlign: 'center', color: '#b06aff', mb: 2, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Select Training Mode</Typography>
+        <List>
+          <ListItemButton onClick={() => handleMenuSelect('/coach')} sx={{ borderRadius: 3, mb: 1, bgcolor: 'rgba(176, 106, 255, 0.05)' }}>
+            <ListItemIcon sx={{ fontSize: '1.5rem', minWidth: 40 }}>🧠</ListItemIcon>
+            <ListItemText primary="AI Coach" secondary="Generates tailored workouts" primaryTypographyProps={{ fontWeight: 700 }} />
+          </ListItemButton>
+          <ListItemButton onClick={() => handleMenuSelect('/manual')} sx={{ borderRadius: 3, bgcolor: 'rgba(0, 224, 150, 0.05)' }}>
+            <ListItemIcon sx={{ fontSize: '1.5rem', minWidth: 40 }}>🏗️</ListItemIcon>
+            <ListItemText primary="Manual Builder" secondary="Select your own exercises" primaryTypographyProps={{ fontWeight: 700 }} />
+          </ListItemButton>
+        </List>
+      </Drawer>
+
+      {/* STATS DRAWER MENU */}
+      <Drawer anchor="bottom" open={activeMenu === 'stats_menu'} onClose={() => setActiveMenu(null)} PaperProps={{ sx: { bgcolor: '#16171a', borderRadius: '24px 24px 0 0', p: 2 } }}>
+        <Typography sx={{ fontWeight: 800, textAlign: 'center', color: '#00d4ff', mb: 2, textTransform: 'uppercase', letterSpacing: '0.1em' }}>View Statistics</Typography>
+        <List>
+          <ListItemButton onClick={() => handleMenuSelect('/progress')} sx={{ borderRadius: 3, mb: 1, bgcolor: 'rgba(0, 212, 255, 0.05)' }}>
+            <ListItemIcon sx={{ fontSize: '1.5rem', minWidth: 40 }}>📈</ListItemIcon>
+            <ListItemText primary="Progress Charts" secondary="Analyze lift history over time" primaryTypographyProps={{ fontWeight: 700 }} />
+          </ListItemButton>
+          <ListItemButton onClick={() => handleMenuSelect('/volume')} sx={{ borderRadius: 3, bgcolor: 'rgba(255, 184, 0, 0.05)' }}>
+            <ListItemIcon sx={{ fontSize: '1.5rem', minWidth: 40 }}>📊</ListItemIcon>
+            <ListItemText primary="Volume Tracker" secondary="Track weekly sets per muscle" primaryTypographyProps={{ fontWeight: 700 }} />
+          </ListItemButton>
+        </List>
+      </Drawer>
     </Box>
   );
 }
@@ -201,18 +271,12 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState(false);
 
   useEffect(() => {
-    const isAuthed = localStorage.getItem('liftlog_auth');
-    if (isAuthed === 'true') {
-      setIsAuthenticated(true);
-    }
+    if (localStorage.getItem('liftlog_auth') === 'true') setIsAuthenticated(true);
   }, []);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (
-      username === import.meta.env.VITE_APP_USERNAME &&
-      password === import.meta.env.VITE_APP_PASSWORD
-    ) {
+    if (username === import.meta.env.VITE_APP_USERNAME && password === import.meta.env.VITE_APP_PASSWORD) {
       localStorage.setItem('liftlog_auth', 'true');
       setIsAuthenticated(true);
       setError(false);
@@ -222,77 +286,25 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     }
   };
 
-  if (isAuthenticated) {
-    return <>{children}</>;
-  }
+  if (isAuthenticated) return <>{children}</>;
 
   return (
-    <Box sx={{ 
-      minHeight: '100vh', 
-      display: 'flex', 
-      flexDirection: 'column', 
-      alignItems: 'center', 
-      justifyContent: 'center',
-      background: 'radial-gradient(ellipse at top, #12141a 0%, #0d0d0f 60%)',
-      px: 3
-    }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@700;800;900&display=swap');`}</style>
-      
+    <Box sx={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'radial-gradient(ellipse at top, #12141a 0%, #0d0d0f 60%)', px: 3 }}>
       <Box sx={{ mb: 4, textAlign: 'center' }}>
-        <Typography sx={{ fontSize: '1rem', fontWeight: 700, color: '#00d4ff', textTransform: 'uppercase', letterSpacing: '0.15em', mb: 1 }}>
-          LiftLog
-        </Typography>
-        <Typography variant="h3" sx={{ fontWeight: 800 }}>
-          Welcome back.
-        </Typography>
+        <Typography sx={{ fontSize: '1rem', fontWeight: 700, color: '#00d4ff', textTransform: 'uppercase', letterSpacing: '0.15em', mb: 1 }}>LiftLog</Typography>
+        <Typography variant="h3" sx={{ fontWeight: 800 }}>Welcome back.</Typography>
       </Box>
-
       <Paper component="form" onSubmit={handleLogin} sx={{ p: 4, borderRadius: 4, width: '100%', maxWidth: 400, textAlign: 'center' }}>
-        <TextField
-          fullWidth
-          label="Username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          sx={{ mb: 2 }}
-          autoFocus
-        />
-        
-        <TextField
-          fullWidth
-          type="password"
-          label="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          sx={{ mb: 3 }}
-        />
-        
-        {error && (
-          <Alert severity="error" sx={{ mb: 3, borderRadius: 2, fontWeight: 600 }}>
-            Incorrect credentials. Try again.
-          </Alert>
-        )}
-
-        <Button 
-          fullWidth 
-          type="submit" 
-          variant="contained" 
-          size="large"
-          sx={{ py: 1.5, fontSize: '1.1rem' }}
-        >
-          Unlock
-        </Button>
+        <TextField fullWidth label="Username" value={username} onChange={(e) => setUsername(e.target.value)} sx={{ mb: 2 }} autoFocus />
+        <TextField fullWidth type="password" label="Password" value={password} onChange={(e) => setPassword(e.target.value)} sx={{ mb: 3 }} />
+        {error && <Alert severity="error" sx={{ mb: 3, borderRadius: 2, fontWeight: 600 }}>Incorrect credentials. Try again.</Alert>}
+        <Button fullWidth type="submit" variant="contained" size="large" sx={{ py: 1.5, fontSize: '1.1rem' }}>Unlock</Button>
       </Paper>
     </Box>
   );
 }
 
 function App() {
-  useEffect(() => {
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      console.log('Running as PWA');
-    }
-  }, []);
-
   return (
     <ConvexProvider client={convex}>
       <ThemeProvider theme={theme}>

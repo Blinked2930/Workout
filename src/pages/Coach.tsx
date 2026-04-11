@@ -45,7 +45,6 @@ export default function Coach() {
   const [style, setStyle] = useState<string>('Hypertrophy (8-12 reps)'); 
   const [customInput, setCustomInput] = useState<string>('');
   
-  // RESTORED: TWEAKS AND DEBUG DATA
   const [suggestion, setSuggestion] = useState<SuggestionJSON | null>(null);
   const [debugData, setDebugData] = useState<DebugData | null>(null); 
   const [showDebug, setShowDebug] = useState(false); 
@@ -66,11 +65,18 @@ export default function Coach() {
   
   const [logModalOpen, setLogModalOpen] = useState(false);
   const [activeLoggingExercise, setActiveLoggingExercise] = useState<string>('');
+  
+  // GHOST PLACEHOLDERS
+  const [ghostWeight, setGhostWeight] = useState<string | number>('');
+  const [ghostReps, setGhostReps] = useState<string | number>('');
+  const [ghostSets, setGhostSets] = useState<string | number>('');
+
   const [logCategory, setLogCategory] = useState('Custom'); 
   const [logEquipment, setLogEquipment] = useState('Bodyweight');
   const [logWeight, setLogWeight] = useState<string | number>('');
   const [logReps, setLogReps] = useState<string | number>('');
-  const [logSets, setLogSets] = useState<string | number>(1);
+  const [logSets, setLogSets] = useState<string | number>('');
+  const [logNotes, setLogNotes] = useState<string>('');
   const [logTimestamp, setLogTimestamp] = useState<number>(Date.now());
   const [isProcessing, setIsProcessing] = useState(false);
   
@@ -99,7 +105,7 @@ export default function Coach() {
     try {
       const response: any = await suggestWorkoutFocus({ timeAvailable: time, equipment, style, customRequest: customInput, localTime: new Date().toISOString(), timezoneOffset: new Date().getTimezoneOffset() });
       setSuggestion(parseAIJSON(response.suggestionText));
-      setDebugData(response.debugData); // RESTORED AUDIT CATCH
+      setDebugData(response.debugData); 
       setPhase('REVIEW');
     } finally { setIsProcessing(false); }
   };
@@ -184,11 +190,21 @@ export default function Coach() {
     const lastLift = allLiftsDB.filter(l => String(l?.exerciseName || '').toLowerCase() === exerciseName.toLowerCase()).sort((a,b) => b.timestamp - a.timestamp)[0];
     let eq = lastLift?.equipmentType || 'Bodyweight';
     if (eq === 'Machine' || eq === 'Cable') eq = 'Machine/Cable';
+    
     setLogCategory(dbMatch?.category || 'Custom');
     setLogEquipment(eq);
-    setLogWeight(suggestedWeight !== undefined && suggestedWeight !== '' ? suggestedWeight : (lastLift?.weight ? toDisplay(lastLift.weight) : ''));
-    setLogReps(suggestedReps !== undefined ? suggestedReps : (lastLift?.reps || ''));
-    setLogSets(suggestedSets !== undefined ? suggestedSets : 1);
+    
+    // GHOST PLACEHOLDERS
+    setGhostWeight(suggestedWeight !== undefined && suggestedWeight !== '' ? suggestedWeight : (lastLift?.weight ? toDisplay(lastLift.weight) : ''));
+    setGhostReps(suggestedReps !== undefined ? suggestedReps : (lastLift?.reps || ''));
+    setGhostSets(suggestedSets !== undefined ? suggestedSets : 1);
+    
+    // ENSURE INPUTS ARE BLANK
+    setLogWeight('');
+    setLogReps('');
+    setLogSets('');
+    setLogNotes('');
+
     setLogModalOpen(true);
   };
 
@@ -204,9 +220,13 @@ export default function Coach() {
   const handleSaveLogToDB = async () => {
     setIsProcessing(true);
     try {
+      const finalWeight = logWeight !== '' ? parseFloat(String(logWeight)) : parseFloat(String(ghostWeight));
+      const finalReps = logReps !== '' ? parseInt(String(logReps)) : parseInt(String(ghostReps));
+      const finalSets = logSets !== '' ? parseInt(String(logSets)) : parseInt(String(ghostSets));
+
       await logSet({
         exerciseName: activeLoggingExercise, category: logCategory, equipmentType: logEquipment,
-        weight: toDB(parseFloat(String(logWeight)) || 0), reps: parseInt(String(logReps)) || 0, sets: parseInt(String(logSets)) || 1, timestamp: logTimestamp,
+        weight: toDB(finalWeight || 0), reps: finalReps || 0, sets: finalSets || 1, notes: logNotes || undefined, timestamp: logTimestamp,
       });
       setLoggedExercises(prev => ({ ...prev, [activeLoggingExercise]: true }));
       setCompletedExercises(prev => ({ ...prev, [activeLoggingExercise]: true })); 
@@ -233,7 +253,6 @@ export default function Coach() {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={enGB}>
-      {/* DESKTOP WIDE LAYOUT */}
       <Box sx={{ px: { xs: 2, md: 4 }, pt: { xs: 3, md: 5 }, pb: 10, maxWidth: { xs: 480, md: 900 }, mx: 'auto', display: 'flex', flexDirection: 'column', gap: 3 }}>
         
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
@@ -274,7 +293,6 @@ export default function Coach() {
           </Paper>
         )}
 
-        {/* RESTORED REVIEW PHASE UI */}
         {phase === 'REVIEW' && suggestion && (
           <Paper sx={{ p: 3, borderRadius: 4, border: '1px solid #b06aff' }}>
             <Typography variant="h5" sx={{ fontWeight: 900, mb: 1 }}>{suggestion.focusTitle}</Typography>
@@ -356,7 +374,7 @@ export default function Coach() {
                   key={ex.name} 
                   draggable onDragStart={(e) => handleDragStart(e, 'main', idx)} onDragEnter={(e) => handleDragEnter(e, 'main', idx)} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
                   onClick={() => toggleCellExpand(ex.name)} 
-                  sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(176, 106, 255, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'main' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
+                  sx={{ p: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(176, 106, 255, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'main' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
                 >
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
@@ -410,9 +428,9 @@ export default function Coach() {
 
         {/* SWAP DIALOG */}
         <Dialog open={!!swapTarget} onClose={() => setSwapTarget(null)} fullWidth maxWidth="xs">
-          <DialogTitle sx={{ fontWeight: 800 }}>Swap Exercise</DialogTitle>
+          <DialogTitle>Swap Exercise</DialogTitle>
           <DialogContent>
-            <TextField fullWidth size="small" placeholder="Search..." value={swapSearch} onChange={e => setSwapSearch(e.target.value)} sx={{ mt: 1, mb: 2 }} />
+            <TextField fullWidth placeholder="Search..." value={swapSearch} onChange={e => setSwapSearch(e.target.value)} sx={{ my: 2 }} />
             <Box sx={{ maxHeight: 300, overflowY: 'auto' }}>
               {filteredSwapExercises.map(ex => (
                 <MenuItem key={ex.name} onClick={() => handleSwapExercise(String(ex.name))}>
@@ -439,10 +457,11 @@ export default function Coach() {
                 </Select>
              </FormControl>
              <Box sx={{ display: 'flex', gap: 1 }}>
-                <TextField fullWidth type="number" label={`Weight (${unit})`} value={logWeight} onChange={e => setLogWeight(e.target.value)} />
-                <TextField fullWidth type="number" label="Reps" value={logReps} onChange={e => setLogReps(e.target.value)} />
-                <TextField fullWidth type="number" label="Sets" value={logSets} onChange={e => setLogSets(e.target.value)} />
+                <TextField fullWidth type="number" label={`Weight (${unit})`} placeholder={ghostWeight ? `Last: ${ghostWeight}` : ''} value={logWeight} onChange={e => setLogWeight(e.target.value)} />
+                <TextField fullWidth type="number" label="Reps" placeholder={ghostReps ? `Last: ${ghostReps}` : ''} value={logReps} onChange={e => setLogReps(e.target.value)} />
+                <TextField fullWidth type="number" label="Sets" placeholder={ghostSets ? `Last: ${ghostSets}` : ''} value={logSets} onChange={e => setLogSets(e.target.value)} />
              </Box>
+             <TextField fullWidth label="Notes (optional)" size="small" multiline rows={2} value={logNotes} onChange={e => setLogNotes(e.target.value)} />
           </DialogContent>
           <DialogActions sx={{ p: 2 }}>
              <Button fullWidth variant="contained" onClick={handleSaveLogToDB} disabled={isProcessing}>{isProcessing ? <CircularProgress size={24} sx={{ color: '#000' }} /> : 'Save Log'}</Button>

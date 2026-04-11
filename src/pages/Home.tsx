@@ -55,7 +55,6 @@ export default function Home() {
   const [open, setOpen] = useState(false);
   const [filterCat, setFilterCat] = useState('');
   
-  // Form State
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [exerciseName, setExerciseName] = useState('');
@@ -63,10 +62,16 @@ export default function Home() {
   const [exerciseSubcat, setExerciseSubcat] = useState('');
   const [exerciseSearch, setExerciseSearch] = useState('');
   const [showList, setShowList] = useState(false);
+  
+  // GHOST PLACEHOLDERS
+  const [ghostWeight, setGhostWeight] = useState<string | number>('');
+  const [ghostReps, setGhostReps] = useState<string | number>('');
+  const [ghostSets, setGhostSets] = useState<string | number>('');
+
   const [equipment, setEquipment] = useState('Barbell');
-  const [weight, setWeight] = useState('');
-  const [reps, setReps] = useState('');
-  const [sets, setSets] = useState('1');
+  const [weight, setWeight] = useState<string | number>('');
+  const [reps, setReps] = useState<string | number>('');
+  const [sets, setSets] = useState<string | number>('');
   const [rir, setRir] = useState('');
   const [notes, setNotes] = useState('');
   const [timestamp, setTimestamp] = useState<number>(Date.now());
@@ -89,10 +94,8 @@ export default function Home() {
   }, [allExercises, filterCat, exerciseSearch]);
 
   const totalSets = thisWeeksLifts?.reduce((a, l) => a + l.sets, 0) ?? 0;
-  
   const totalVolumeLbs = thisWeeksLifts?.reduce((a, l) => a + l.volume, 0) ?? 0;
   const totalVolumeDisplay = totalVolumeLbs > 0 ? (toDisplay(totalVolumeLbs) as number) : 0;
-  
   const uniqueCount = new Set(thisWeeksLifts?.map(l => l.exerciseName) ?? []).size;
 
   const groupedLifts = useMemo(() => {
@@ -115,7 +118,6 @@ export default function Home() {
       if (lift.timestamp > days[dayLabel].firstTimestamp) {
         days[dayLabel].firstTimestamp = lift.timestamp;
       }
-
       days[dayLabel].lifts.push(lift);
     });
 
@@ -129,7 +131,8 @@ export default function Home() {
   const resetForm = () => {
     setFilterCat(''); setExerciseName(''); setExerciseCategory('');
     setExerciseSubcat(''); setExerciseSearch(''); setShowList(false);
-    setEquipment('Barbell'); setWeight(''); setReps(''); setSets('1'); setRir(''); setNotes('');
+    setEquipment('Barbell'); setWeight(''); setReps(''); setSets(''); setRir(''); setNotes('');
+    setGhostWeight(''); setGhostReps(''); setGhostSets('');
     setTimestamp(Date.now()); setEditingId(null);
   };
 
@@ -156,67 +159,62 @@ export default function Home() {
     try {
       await deleteSetMutation({ id: deleteConfirmId as any });
       setSuccessMsg('Set deleted! 🗑️');
-    } catch (err) {
-      setErrorMsg('Failed to delete set.');
-    } finally {
-      setDeleteConfirmId(null);
-      setOpen(false); 
-    }
+    } catch (err) { setErrorMsg('Failed to delete set.'); } 
+    finally { setDeleteConfirmId(null); setOpen(false); }
   };
 
   const handleSelectExercise = (ex: any) => {
     setExerciseName(ex.name); setExerciseCategory(ex.category);
     setExerciseSubcat(ex.subcategory ?? ''); setExerciseSearch(ex.name);
+    
+    // FETCH LAST DATA FOR GHOST PLACEHOLDERS
+    if (!editingId && allLifts) {
+      const lastLift = allLifts.filter(l => l.exerciseName === ex.name).sort((a,b) => b.timestamp - a.timestamp)[0];
+      if (lastLift) {
+        setEquipment(lastLift.equipmentType || 'Barbell');
+        setGhostWeight(lastLift.weight > 0 ? toDisplay(lastLift.weight).toString() : '');
+        setGhostReps(lastLift.reps.toString());
+        setGhostSets('1');
+      } else {
+        setGhostWeight(''); setGhostReps(''); setGhostSets('1');
+      }
+    }
     setShowList(false);
   };
 
   const handleSubmit = async () => {
-    if (!exerciseName || !reps) return;
+    // Check if the user filled it OR if we have ghost data to fallback on
+    const finalWeight = weight !== '' ? parseFloat(String(weight)) : parseFloat(String(ghostWeight));
+    const finalReps = reps !== '' ? parseInt(String(reps)) : parseInt(String(ghostReps));
+    const finalSets = sets !== '' ? parseInt(String(sets)) : parseInt(String(ghostSets));
+
+    if (!exerciseName || isNaN(finalReps)) {
+      setErrorMsg('Exercise and Reps are required.');
+      return;
+    }
     
     try {
-      const parsedWeight = parseFloat(weight) || 0;
-      const dbWeight = toDB(parsedWeight); 
-      
-      const parsedReps = parseInt(reps) || 0;
-      const parsedSets = parseInt(sets) || 1;
-      
+      const dbWeight = toDB(finalWeight || 0); 
       const targetTimestamp = isNaN(new Date(timestamp).getTime()) ? Date.now() : new Date(timestamp).getTime();
 
       if (editingId) {
         await updateSetMutation({
-          id: editingId as any,
-          equipmentType: equipment,
-          weight: dbWeight,
-          reps: parsedReps,
-          sets: parsedSets,
-          rir: rir ? parseInt(rir) : undefined,
-          notes: notes || undefined,
-          timestamp: targetTimestamp,
+          id: editingId as any, equipmentType: equipment, weight: dbWeight,
+          reps: finalReps, sets: finalSets, rir: rir ? parseInt(rir) : undefined, notes: notes || undefined, timestamp: targetTimestamp,
         });
         setSuccessMsg('Set updated! 🔄');
       } else {
         await logSetMutation({
-          exerciseName,
-          category: exerciseCategory || 'Other',
-          subcategory: exerciseSubcat || undefined,
-          equipmentType: equipment,
-          weight: dbWeight,
-          reps: parsedReps,
-          sets: parsedSets,
-          rir: rir ? parseInt(rir) : undefined,
-          notes: notes || undefined,
-          timestamp: targetTimestamp,
+          exerciseName, category: exerciseCategory || 'Other', subcategory: exerciseSubcat || undefined, equipmentType: equipment,
+          weight: dbWeight, reps: finalReps, sets: finalSets, rir: rir ? parseInt(rir) : undefined, notes: notes || undefined, timestamp: targetTimestamp,
         });
         setSuccessMsg('Set logged! 🔥');
       }
       setOpen(false);
-    } catch (err) {
-      setErrorMsg('Failed to save set. Please check your inputs.');
-    }
+    } catch (err) { setErrorMsg('Failed to save set. Please check your inputs.'); }
   };
 
   return (
-    // DESKTOP WIDE LAYOUT
     <Box sx={{ px: { xs: 2, md: 4 }, pt: { xs: 3, md: 5 }, pb: 2, maxWidth: { xs: 480, md: 900 }, mx: 'auto' }}>
       <Box sx={{ mb: 3 }}>
         <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#00d4ff', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 0.5 }}>LiftLog</Typography>
@@ -235,7 +233,6 @@ export default function Home() {
       </Box>
 
       {groupedLifts.length > 0 ? (
-        // DESKTOP GRID FOR DAYS
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 3 }}>
           {groupedLifts.map(day => (
             <Paper key={day.label} sx={{ borderRadius: 3, overflow: 'hidden', bgcolor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', alignSelf: 'start' }}>
@@ -262,7 +259,6 @@ export default function Home() {
                             {lift.exerciseName} 
                             <Box component="span" sx={{ opacity: 0.6, fontSize: '0.85rem', fontWeight: 400 }}>{eqEmoji}</Box>
                           </Typography>
-                          
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                             <Typography sx={{ fontSize: '0.85rem', color: '#00d4ff', fontWeight: 700 }}>
                               {lift.sets} × {lift.reps}
@@ -274,11 +270,8 @@ export default function Home() {
                               <Chip label={`RIR ${lift.rir}`} size="small" sx={{ height: 18, fontSize: '0.65rem', fontWeight: 700, bgcolor: 'rgba(255,255,255,0.1)', color: 'text.secondary' }} />
                             )}
                           </Box>
-                          
                           {lift.notes && (
-                            <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontStyle: 'italic', mt: 0.5 }}>
-                              "{lift.notes}"
-                            </Typography>
+                            <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontStyle: 'italic', mt: 0.5 }}>"{lift.notes}"</Typography>
                           )}
                         </Box>
                       </ListItemButton>
@@ -350,10 +343,10 @@ export default function Home() {
                     ))}
                   </Box>
                 </Box>
-                <TextField label={`Weight (${unit})`} type="number" size="small" fullWidth placeholder="0 = pure bodyweight" value={weight} onChange={e => setWeight(e.target.value)} helperText={equipment === 'Dumbbell' ? `Enter weight of ONE dumbbell.` : "Enter total weight. Leave blank for bodyweight."} />
+                <TextField label={`Weight (${unit})`} type="number" size="small" fullWidth placeholder={ghostWeight ? `Last: ${ghostWeight}` : "0 = pure bodyweight"} value={weight} onChange={e => setWeight(e.target.value)} helperText={equipment === 'Dumbbell' ? `Enter weight of ONE dumbbell.` : "Enter total weight. Leave blank for bodyweight."} />
                 <Box sx={{ display: 'flex', gap: 1.5 }}>
-                  <TextField label="Reps *" type="number" size="small" fullWidth value={reps} onChange={e => setReps(e.target.value)} />
-                  <TextField label="Sets" type="number" size="small" fullWidth value={sets} onChange={e => setSets(e.target.value)} />
+                  <TextField label="Reps *" type="number" size="small" fullWidth placeholder={ghostReps ? `Last: ${ghostReps}` : ''} value={reps} onChange={e => setReps(e.target.value)} />
+                  <TextField label="Sets" type="number" size="small" fullWidth placeholder={ghostSets ? `Last: ${ghostSets}` : ''} value={sets} onChange={e => setSets(e.target.value)} />
                   <TextField label="RIR" type="number" size="small" fullWidth value={rir} onChange={e => setRir(e.target.value)} />
                 </Box>
                 <TextField label="Notes (optional)" size="small" fullWidth multiline rows={2} value={notes} onChange={e => setNotes(e.target.value)} />
@@ -361,20 +354,13 @@ export default function Home() {
             )}
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
-            {editingId && (
-              <Button color="error" onClick={() => setDeleteConfirmId(editingId)} sx={{ fontWeight: 700, mr: 'auto' }}>
-                Delete
-              </Button>
-            )}
+            {editingId && <Button color="error" onClick={() => setDeleteConfirmId(editingId)} sx={{ fontWeight: 700, mr: 'auto' }}>Delete</Button>}
             <Button onClick={() => setOpen(false)} sx={{ color: 'text.secondary' }}>Cancel</Button>
-            <Button variant="contained" onClick={handleSubmit} disabled={!exerciseName || !reps} sx={{ px: 3, py: 1.5 }}>
-              {editingId ? 'Update ✅' : 'Save Set ✅'}
-            </Button>
+            <Button variant="contained" onClick={handleSubmit} disabled={!exerciseName} sx={{ px: 3, py: 1.5 }}>{editingId ? 'Update ✅' : 'Save Set ✅'}</Button>
           </DialogActions>
         </LocalizationProvider>
       </Dialog>
       
-      {/* Delete Confirmation */}
       <Dialog open={!!deleteConfirmId} onClose={() => setDeleteConfirmId(null)}>
         <DialogTitle sx={{ fontWeight: 800 }}>Delete Set?</DialogTitle>
         <DialogActions sx={{ p: 2 }}>
