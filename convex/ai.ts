@@ -279,8 +279,8 @@ export const generateWorkout = action({
     3. NEUROLOGICAL ORDERING: Order Main Block from most complex/heavy compound movements to least complex isolations.
     4. WARM-UP & COOLDOWN: Warm-ups = joint prep/mobility. Cooldowns = down-regulation/stretching.
     5. SAID PRINCIPLE: Adapt sets, reps, and rest strictly to Workout Style:
-       - Hypertrophy (8-12 reps): 8-12 reps, 90s rest.
-       - Strength (4-10 reps): 4-10 reps, 120s+ rest.
+       - Hypertrophy (9+ reps): repsMin = 9, repsMax = 999, 90s rest.
+       - Strength (4-10 reps): repsMin = 4, repsMax = 10, 120s+ rest.
        - HIIT/Recovery: Adjust as needed.
     
     RULES:

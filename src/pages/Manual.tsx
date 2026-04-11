@@ -21,7 +21,7 @@ interface WorkoutJSON {
   title: string; 
   focus: string; 
   warmup?: { name: string; reps: string }[]; 
-  mainBlock: { name: string; sets: number; repsMin: number; repsMax: number; rest: string; notes: string }[]; 
+  mainBlock: { name: string; sets: number; repsMin: number; repsMax: number; rest: string; notes: string; setsReps?: string }[]; 
   cooldown?: { name: string; reps: string }[]; 
 }
 
@@ -36,17 +36,35 @@ export default function Manual() {
   const { unit, displayWeight, toDisplay, toDB } = useUnit(); 
   
   const [phase, setPhase] = useState<'SETUP' | 'WORKOUT'>(() => (localStorage.getItem('manual_phase') as any) || 'SETUP');
+  
   const [selectedExercisesList, setSelectedExercisesList] = useState<string[]>(() => {
     const saved = localStorage.getItem('manual_selected');
     return saved ? JSON.parse(saved) : [];
   });
+  
+  // WITH LEGACY CACHE MIGRATOR
   const [workoutData, setWorkoutData] = useState<WorkoutJSON | null>(() => {
     const saved = localStorage.getItem('manual_workout');
-    return saved ? JSON.parse(saved) : null;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        // Automatically hot-swap old 12-rep maxes from memory to the new 999 ceiling
+        if (parsed && parsed.mainBlock) {
+          parsed.mainBlock = parsed.mainBlock.map((ex: any) => {
+            if (ex.repsMax === 12) {
+              return { ...ex, repsMin: 9, repsMax: 999 };
+            }
+            return ex;
+          });
+        }
+        return parsed;
+      } catch (e) { return null; }
+    }
+    return null;
   });
 
   const equipment = 'Full Gym Access'; 
-  const [style, setStyle] = useState<string>('Hypertrophy (8-12 reps)'); 
+  const [style, setStyle] = useState<string>('Hypertrophy (9+ reps)'); 
   
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [activeSubcategory, setActiveSubcategory] = useState<string>('All');
@@ -56,7 +74,6 @@ export default function Manual() {
   const [swapSearch, setSwapSearch] = useState('');
   const [draggedItem, setDraggedItem] = useState<{ section: string, index: number } | null>(null);
 
-  // LOGGING STATES WIRED TO LOCAL STORAGE
   const [completedExercises, setCompletedExercises] = useState<Record<string, boolean>>(() => {
     const saved = localStorage.getItem('manual_completed');
     return saved ? JSON.parse(saved) : {};
@@ -70,7 +87,6 @@ export default function Manual() {
   const [logModalOpen, setLogModalOpen] = useState(false);
   const [activeLoggingExercise, setActiveLoggingExercise] = useState<string>('');
   
-  // GHOST PLACEHOLDERS
   const [ghostWeight, setGhostWeight] = useState<string | number>('');
   const [ghostReps, setGhostReps] = useState<string | number>('');
   const [ghostSets, setGhostSets] = useState<string | number>('');
@@ -89,7 +105,6 @@ export default function Manual() {
   const exercisesDB = useQuery(api.exercises.getExercises, { category: "" });
   const allLiftsDB = useQuery(api.lifts.getLifts, {}) || [];
 
-  // MEMORY SYNC
   useEffect(() => { localStorage.setItem('manual_phase', phase); }, [phase]);
   useEffect(() => { localStorage.setItem('manual_selected', JSON.stringify(selectedExercisesList)); }, [selectedExercisesList]);
   useEffect(() => { localStorage.setItem('manual_completed', JSON.stringify(completedExercises)); }, [completedExercises]);
@@ -141,8 +156,8 @@ export default function Manual() {
   const handleStartWorkout = async (useAI: boolean) => {
     if (selectedExercisesList.length === 0) return;
     const isStrength = style.includes('Strength');
-    const repsMin = isStrength ? 4 : 8;
-    const repsMax = isStrength ? 8 : 12;
+    const repsMin = isStrength ? 4 : 9;
+    const repsMax = isStrength ? 8 : 999;
     const rest = isStrength ? '120s' : '90s';
 
     const mainBlock = selectedExercisesList.map(name => ({ name, sets: 3, repsMin, repsMax, rest, notes: "Manual selection" }));
@@ -223,7 +238,9 @@ export default function Manual() {
     setPhase('SETUP');
   };
 
-  const toggleCellExpand = (exerciseName: string) => setExpandedCells(prev => ({ ...prev, [exerciseName]: !prev[exerciseName] }));
+  const toggleCellExpand = (exerciseName: string) => {
+    setExpandedCells(prev => ({ ...prev, [exerciseName]: !prev[exerciseName] }));
+  };
 
   const openLogger = (exerciseName: string, suggestedWeight?: number | string, suggestedReps?: number | string, suggestedSets?: number | string) => {
     setActiveLoggingExercise(exerciseName);
@@ -236,12 +253,10 @@ export default function Manual() {
     setLogCategory(dbMatch?.category || 'Custom');
     setLogEquipment(eq);
     
-    // GHOST PLACEHOLDERS (Data goes here, inputs stay blank)
     setGhostWeight(suggestedWeight !== undefined && suggestedWeight !== '' ? suggestedWeight : (lastLift?.weight ? toDisplay(lastLift.weight) : ''));
     setGhostReps(suggestedReps !== undefined ? suggestedReps : (lastLift?.reps || ''));
     setGhostSets(suggestedSets !== undefined ? suggestedSets : 3);
     
-    // ENSURE INPUTS ARE BLANK
     setLogWeight('');
     setLogReps('');
     setLogSets('');
@@ -262,10 +277,9 @@ export default function Manual() {
   const handleSaveLogToDB = async () => {
     setIsSavingLog(true);
     try {
-      // Fallback to ghost data if user leaves it blank
-      const finalWeight = logWeight !== '' ? parseFloat(String(logWeight)) : parseFloat(String(ghostWeight));
-      const finalReps = logReps !== '' ? parseInt(String(logReps)) : parseInt(String(ghostReps));
-      const finalSets = logSets !== '' ? parseInt(String(logSets)) : parseInt(String(ghostSets));
+      const finalWeight = logWeight !== '' ? parseFloat(String(logWeight)) : parseFloat(String(ghostWeight).replace(/[^\d.-]/g, ''));
+      const finalReps = logReps !== '' ? parseInt(String(logReps)) : parseInt(String(ghostReps).replace(/[^\d.-]/g, ''));
+      const finalSets = logSets !== '' ? parseInt(String(logSets)) : parseInt(String(ghostSets).replace(/[^\d.-]/g, ''));
 
       await logSet({
         exerciseName: activeLoggingExercise, category: logCategory, equipmentType: logEquipment,
@@ -312,7 +326,7 @@ export default function Manual() {
               <FormControl fullWidth size="small">
                 <InputLabel>Style</InputLabel>
                 <Select value={style} label="Style" onChange={(e) => setStyle(e.target.value)}>
-                  <MenuItem value="Hypertrophy (8-12 reps)">Hypertrophy</MenuItem>
+                  <MenuItem value="Hypertrophy (9+ reps)">Hypertrophy</MenuItem>
                   <MenuItem value="Strength (4-8 reps)">Strength</MenuItem>
                 </Select>
               </FormControl>
@@ -354,6 +368,7 @@ export default function Manual() {
 
         {phase === 'WORKOUT' && workoutData && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            
             {workoutData.warmup && workoutData.warmup.length > 0 && (
               <Box>
                 <Typography variant="h6" sx={{ fontWeight: 800, color: '#00e096', mb: 1 }}>1. Warm-up (AI)</Typography>
@@ -389,7 +404,11 @@ export default function Manual() {
             <Box>
               <Typography variant="h6" sx={{ fontWeight: 800, color: '#00e096', mb: 1 }}>{workoutData.warmup && workoutData.warmup.length > 0 ? '2.' : '1.'} Main Block</Typography>
               {workoutData.mainBlock.map((ex, idx) => {
-                const hist = allLiftsDB.filter(l => l.exerciseName === ex.name && l.reps >= ex.repsMin && l.reps <= ex.repsMax).sort((a,b)=>b.timestamp-a.timestamp)[0];
+                const repsMax = ex.repsMax || (ex.setsReps ? parseInt((ex as any).setsReps.split('x')[1]) : 999);
+                const repsLabel = repsMax >= 99 ? `${ex.repsMin}+` : `${ex.repsMin}-${repsMax}`;
+                const targetRepsGhost = repsMax >= 99 ? `${ex.repsMin}+` : repsMax;
+                const sets = ex.sets || 3;
+                const hist = allLiftsDB.filter(l => l.exerciseName === ex.name && l.reps >= (ex.repsMin || 0) && l.reps <= repsMax).sort((a,b)=>b.timestamp-a.timestamp)[0];
                 const overloaded = hist?.weight ? Math.round((hist.weight * 1.05)/5)*5 : null;
                 
                 return (
@@ -402,10 +421,10 @@ export default function Manual() {
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
                         <DragIndicatorIcon sx={{ color: 'rgba(255,255,255,0.2)', mt: 1, cursor: 'grab', display: { xs: 'none', sm: 'block' } }} />
-                        <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, !!completedExercises[ex.name], overloaded || '', ex.repsMax, ex.sets)} sx={{ color: '#00e096', p: 0, mt: 0.8 }} />
+                        <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, !!completedExercises[ex.name], overloaded || '', targetRepsGhost, sets)} sx={{ color: '#00e096', p: 0, mt: 0.8 }} />
                         <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                           <Typography sx={{ fontWeight: 700, textDecoration: completedExercises[ex.name] ? 'line-through' : 'none' }}>{ex.name} {loggedExercises[ex.name] && <Typography component="span" sx={{ fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(0, 224, 150, 0.2)', color: '#00e096', px: 1, py: 0.3, borderRadius: 2, ml: 1 }}>Logged</Typography>}</Typography>
-                          <Typography variant="caption" sx={{ color: '#00d4ff', mt: 0.5, display: 'block' }}>{ex.sets} Sets | {ex.repsMin}-{ex.repsMax} Reps | Load: {overloaded ? displayWeight(overloaded) : 'Baseline'}</Typography>
+                          <Typography variant="caption" sx={{ color: '#00d4ff', mt: 0.5, display: 'block' }}>{sets} Sets | {repsLabel} Reps | Load: {overloaded ? displayWeight(overloaded) : 'Baseline'}</Typography>
                         </Box>
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'center', ml: 1, flexShrink: 0 }}>
@@ -414,7 +433,7 @@ export default function Manual() {
                         <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'main', index: idx }); }} sx={{ color: 'rgba(255,255,255,0.5)' }}><SwapHorizIcon fontSize="small" /></IconButton>
                       </Box>
                     </Box>
-                    <Collapse in={expandedCells[ex.name]}><Box sx={{ pl: { xs: 4, sm: 5 }, mt: 2 }}>{renderLiftHistory(ex.name, ex.repsMin, ex.repsMax)}</Box></Collapse>
+                    <Collapse in={expandedCells[ex.name]}><Box sx={{ pl: { xs: 4, sm: 5 }, mt: 2 }}>{renderLiftHistory(ex.name, ex.repsMin, repsMax)}</Box></Collapse>
                   </Paper>
                 );
               })}
@@ -429,9 +448,9 @@ export default function Manual() {
                     key={ex.name} 
                     draggable onDragStart={(e) => handleDragStart(e, 'cooldown', idx)} onDragEnter={(e) => handleDragEnter(e, 'cooldown', idx)} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
                     onClick={() => toggleCellExpand(ex.name)} 
-                    sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(0, 224, 150, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'cooldown' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
+                    sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(176, 106, 255, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'cooldown' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
                   >
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
                         <DragIndicatorIcon sx={{ color: 'rgba(255,255,255,0.2)', mt: 1, cursor: 'grab', display: { xs: 'none', sm: 'block' } }} />
                         <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, !!completedExercises[ex.name], 0, ex.reps, 1)} sx={{ color: '#00e096', p: 0, mt: 0.8 }} />
@@ -454,7 +473,6 @@ export default function Manual() {
           </Box>
         )}
 
-        {/* SWAP DIALOG */}
         <Dialog open={!!swapTarget} onClose={() => setSwapTarget(null)} fullWidth maxWidth="xs">
           <DialogTitle>Swap Exercise</DialogTitle>
           <DialogContent>
@@ -474,27 +492,27 @@ export default function Manual() {
 
         {/* LOG MODAL */}
         <Dialog open={logModalOpen} onClose={() => setLogModalOpen(false)}>
-          <DialogTitle sx={{ fontWeight: 800 }}>Log Set: {activeLoggingExercise}</DialogTitle>
+          <DialogTitle sx={{ fontWeight: 800, color: '#00d4ff' }}>Log Set</DialogTitle>
           <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-            <DateTimePicker label="Time" value={new Date(logTimestamp)} onChange={(v) => v && setLogTimestamp(v.getTime())} slotProps={{ textField: { size: 'small', fullWidth: true } }} />
-            <FormControl fullWidth size="small">
-              <InputLabel>Equipment</InputLabel>
-              <Select value={logEquipment} onChange={(e) => setLogEquipment(e.target.value)} label="Equipment">
-                <MenuItem value="Bodyweight">Bodyweight</MenuItem><MenuItem value="Barbell">Barbell</MenuItem><MenuItem value="Dumbbell">Dumbbell</MenuItem><MenuItem value="Smith">Smith</MenuItem><MenuItem value="Machine/Cable">Machine/Cable</MenuItem>
-              </Select>
-            </FormControl>
-            <Box sx={{ display: 'flex', gap: 1 }}>
-              <TextField fullWidth type="number" label={`Weight (${unit})`} placeholder={ghostWeight ? `Last: ${ghostWeight}` : ''} value={logWeight} onChange={e => setLogWeight(e.target.value)} />
-              <TextField fullWidth type="number" label="Reps" placeholder={ghostReps ? `Last: ${ghostReps}` : ''} value={logReps} onChange={e => setLogReps(e.target.value)} />
-              <TextField fullWidth type="number" label="Sets" placeholder={ghostSets ? `Last: ${ghostSets}` : ''} value={logSets} onChange={e => setLogSets(e.target.value)} />
-            </Box>
-            <TextField fullWidth label="Notes (optional)" size="small" multiline rows={2} value={logNotes} onChange={e => setLogNotes(e.target.value)} />
+             <Typography variant="h5" sx={{ fontWeight: 900 }}>{activeLoggingExercise}</Typography>
+             <DateTimePicker label="Time" value={new Date(logTimestamp)} onChange={(v) => v && setLogTimestamp(v.getTime())} slotProps={{ textField: { size: 'small', fullWidth: true } }} />
+             <FormControl fullWidth size="small">
+                <InputLabel>Equipment</InputLabel>
+                <Select value={logEquipment} onChange={(e) => setLogEquipment(e.target.value)} label="Equipment">
+                  <MenuItem value="Bodyweight">Bodyweight</MenuItem><MenuItem value="Barbell">Barbell</MenuItem><MenuItem value="Dumbbell">Dumbbell</MenuItem><MenuItem value="Smith">Smith</MenuItem><MenuItem value="Machine/Cable">Machine/Cable</MenuItem>
+                </Select>
+             </FormControl>
+             <Box sx={{ display: 'flex', gap: 1 }}>
+                <TextField fullWidth type="number" label={`Weight (${unit})`} placeholder={ghostWeight ? `Target: ${ghostWeight}` : ''} value={logWeight} onChange={e => setLogWeight(e.target.value)} />
+                <TextField fullWidth type="number" label="Reps" placeholder={ghostReps ? `Target: ${ghostReps}` : ''} value={logReps} onChange={e => setLogReps(e.target.value)} />
+                <TextField fullWidth type="number" label="Sets" placeholder={ghostSets ? `Target: ${ghostSets}` : ''} value={logSets} onChange={e => setLogSets(e.target.value)} />
+             </Box>
+             <TextField fullWidth label="Notes (optional)" size="small" multiline rows={2} value={logNotes} onChange={e => setLogNotes(e.target.value)} sx={{ mt: 2 }} />
           </DialogContent>
           <DialogActions sx={{ p: 2 }}>
-            <Button fullWidth variant="contained" onClick={handleSaveLogToDB} disabled={isSavingLog}>Save</Button>
+             <Button fullWidth variant="contained" onClick={handleSaveLogToDB} disabled={isProcessing} sx={{ bgcolor: '#b06aff', color: '#fff' }}>Save Log</Button>
           </DialogActions>
         </Dialog>
-
       </Box>
     </LocalizationProvider>
   );

@@ -42,7 +42,7 @@ export default function Coach() {
   const [phase, setPhase] = useState<'SETUP' | 'REVIEW' | 'WORKOUT'>('SETUP');
   const [time, setTime] = useState<number>(45);
   const [equipment, setEquipment] = useState<string>('Floor Mode (Bodyweight Only)');
-  const [style, setStyle] = useState<string>('Hypertrophy (8-12 reps)'); 
+  const [style, setStyle] = useState<string>('Hypertrophy (9+ reps)'); 
   const [customInput, setCustomInput] = useState<string>('');
   
   const [suggestion, setSuggestion] = useState<SuggestionJSON | null>(null);
@@ -65,21 +65,20 @@ export default function Coach() {
   
   const [logModalOpen, setLogModalOpen] = useState(false);
   const [activeLoggingExercise, setActiveLoggingExercise] = useState<string>('');
-  
-  // GHOST PLACEHOLDERS
-  const [ghostWeight, setGhostWeight] = useState<string | number>('');
-  const [ghostReps, setGhostReps] = useState<string | number>('');
-  const [ghostSets, setGhostSets] = useState<string | number>('');
-
   const [logCategory, setLogCategory] = useState('Custom'); 
   const [logEquipment, setLogEquipment] = useState('Bodyweight');
-  const [logWeight, setLogWeight] = useState<string | number>('');
-  const [logReps, setLogReps] = useState<string | number>('');
-  const [logSets, setLogSets] = useState<string | number>('');
-  const [logNotes, setLogNotes] = useState<string>('');
   const [logTimestamp, setLogTimestamp] = useState<number>(Date.now());
   const [isProcessing, setIsProcessing] = useState(false);
   
+  const [logWeight, setLogWeight] = useState<string | number>('');
+  const [logReps, setLogReps] = useState<string | number>('');
+  const [logSets, setLogSets] = useState<string | number>('');
+  const [logNotes, setLogNotes] = useState<string>(''); 
+
+  const [ghostWeight, setGhostWeight] = useState('');
+  const [ghostReps, setGhostReps] = useState('');
+  const [ghostSets, setGhostSets] = useState('');
+
   const suggestWorkoutFocus = useAction("ai:suggestWorkoutFocus");
   const generateWorkout = useAction("ai:generateWorkout");
   const logSet = useMutation(api.lifts.logSet);
@@ -105,7 +104,7 @@ export default function Coach() {
     try {
       const response: any = await suggestWorkoutFocus({ timeAvailable: time, equipment, style, customRequest: customInput, localTime: new Date().toISOString(), timezoneOffset: new Date().getTimezoneOffset() });
       setSuggestion(parseAIJSON(response.suggestionText));
-      setDebugData(response.debugData); 
+      setDebugData(response.debugData);
       setPhase('REVIEW');
     } finally { setIsProcessing(false); }
   };
@@ -188,23 +187,22 @@ export default function Coach() {
     setLogTimestamp(Date.now());
     const dbMatch = exercisesDB?.find(ex => String(ex?.name || '').toLowerCase() === exerciseName.toLowerCase());
     const lastLift = allLiftsDB.filter(l => String(l?.exerciseName || '').toLowerCase() === exerciseName.toLowerCase()).sort((a,b) => b.timestamp - a.timestamp)[0];
+    
     let eq = lastLift?.equipmentType || 'Bodyweight';
     if (eq === 'Machine' || eq === 'Cable') eq = 'Machine/Cable';
     
     setLogCategory(dbMatch?.category || 'Custom');
     setLogEquipment(eq);
     
-    // GHOST PLACEHOLDERS
-    setGhostWeight(suggestedWeight !== undefined && suggestedWeight !== '' ? suggestedWeight : (lastLift?.weight ? toDisplay(lastLift.weight) : ''));
-    setGhostReps(suggestedReps !== undefined ? suggestedReps : (lastLift?.reps || ''));
-    setGhostSets(suggestedSets !== undefined ? suggestedSets : 1);
-    
-    // ENSURE INPUTS ARE BLANK
     setLogWeight('');
     setLogReps('');
     setLogSets('');
     setLogNotes('');
 
+    setGhostWeight(suggestedWeight ? `Target: ${suggestedWeight}` : (lastLift?.weight > 0 ? `Last: ${toDisplay(lastLift.weight)}` : 'Last: BW'));
+    setGhostReps(suggestedReps ? `Target: ${suggestedReps}` : (lastLift?.reps ? `Last: ${lastLift.reps}` : ''));
+    setGhostSets(suggestedSets ? `Target: ${suggestedSets}` : (lastLift?.sets ? `Last: ${lastLift.sets}` : ''));
+    
     setLogModalOpen(true);
   };
 
@@ -220,13 +218,14 @@ export default function Coach() {
   const handleSaveLogToDB = async () => {
     setIsProcessing(true);
     try {
-      const finalWeight = logWeight !== '' ? parseFloat(String(logWeight)) : parseFloat(String(ghostWeight));
-      const finalReps = logReps !== '' ? parseInt(String(logReps)) : parseInt(String(ghostReps));
-      const finalSets = logSets !== '' ? parseInt(String(logSets)) : parseInt(String(ghostSets));
+      const finalWeight = logWeight !== '' ? parseFloat(String(logWeight)) : parseFloat(String(ghostWeight).replace(/[^\d.-]/g, ''));
+      const finalReps = logReps !== '' ? parseInt(String(logReps)) : parseInt(String(ghostReps).replace(/[^\d.-]/g, ''));
+      const finalSets = logSets !== '' ? parseInt(String(logSets)) : parseInt(String(ghostSets).replace(/[^\d.-]/g, ''));
 
       await logSet({
         exerciseName: activeLoggingExercise, category: logCategory, equipmentType: logEquipment,
-        weight: toDB(finalWeight || 0), reps: finalReps || 0, sets: finalSets || 1, notes: logNotes || undefined, timestamp: logTimestamp,
+        weight: toDB(finalWeight || 0), reps: finalReps || 0, sets: finalSets || 1, 
+        notes: logNotes || undefined, timestamp: logTimestamp,
       });
       setLoggedExercises(prev => ({ ...prev, [activeLoggingExercise]: true }));
       setCompletedExercises(prev => ({ ...prev, [activeLoggingExercise]: true })); 
@@ -243,7 +242,7 @@ export default function Coach() {
       <Box sx={{ bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, p: 1.5, mt: 1 }}>
         {history.map((lift, i) => (
           <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
-            <Typography variant="body2" sx={{ color: i === 0 ? '#b06aff' : '#d2a8ff' }}>{displayWeight(lift.weight)} × {lift.reps} reps ({lift.sets} sets)</Typography>
+            <Typography variant="body2" sx={{ color: i === 0 ? '#b06aff' : '#d2a8ff' }}>{displayWeight(lift.weight)} × {lift.reps} reps</Typography>
             <Typography variant="body2" sx={{ color: '#8a8a9a' }}>{new Date(lift.timestamp).toLocaleDateString()}</Typography>
           </Box>
         ))}
@@ -281,8 +280,8 @@ export default function Coach() {
               <FormControl fullWidth size="small">
                 <InputLabel>Workout Style</InputLabel>
                 <Select value={style} label="Workout Style" onChange={(e) => setStyle(e.target.value)}>
-                  <MenuItem value="Hypertrophy (8-12 reps)">Hypertrophy</MenuItem>
-                  <MenuItem value="Strength (4-10 reps)">Strength</MenuItem>
+                  <MenuItem value="Hypertrophy (9+ reps)">Hypertrophy (9+ reps)</MenuItem>
+                  <MenuItem value="Strength (4-10 reps)">Strength (4-10 reps)</MenuItem>
                   <MenuItem value="High Intensity Interval Training (HIIT)">High Intensity Interval Training (HIIT)</MenuItem>
                   <MenuItem value="Active Recovery & Mobility">Active Recovery & Mobility</MenuItem>
                 </Select>
@@ -320,11 +319,7 @@ export default function Coach() {
 
             <Divider sx={{ borderColor: 'rgba(176, 106, 255, 0.2)', my: 2 }} />
 
-            <TextField 
-              fullWidth label="Any tweaks before I build this?" placeholder="e.g., 'Make it harder' or 'I don't have rings'"
-              value={tweaks} onChange={(e) => setTweaks(e.target.value)}
-              sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3, bgcolor: 'rgba(0,0,0,0.2)' }, mb: 3 }}
-            />
+            <TextField fullWidth label="Any tweaks before I build this?" placeholder="e.g., 'Make it harder' or 'I don't have rings'" value={tweaks} onChange={(e) => setTweaks(e.target.value)} sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3, bgcolor: 'rgba(0,0,0,0.2)' }, mb: 3 }} />
 
             <Box sx={{ display: 'flex', gap: 2 }}>
               <Button fullWidth variant="outlined" onClick={() => setPhase('SETUP')} sx={{ color: '#8a8a9a', borderColor: '#8a8a9a' }}>Back</Button>
@@ -364,7 +359,10 @@ export default function Coach() {
             <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.1)' }} />
 
             {workoutData.mainBlock.map((ex, idx) => {
-               const repsMax = ex.repsMax || (ex.setsReps ? parseInt(ex.setsReps.split('x')[1]) : 10);
+               const repsMax = ex.repsMax || (ex.setsReps ? parseInt(ex.setsReps.split('x')[1]) : 999);
+               const repsLabel = repsMax >= 99 ? `${ex.repsMin}+` : `${ex.repsMin}-${repsMax}`;
+               const targetRepsGhost = repsMax >= 99 ? `${ex.repsMin}+` : repsMax;
+               
                const sets = ex.sets || 3;
                const hist = allLiftsDB.filter(l => l.exerciseName === ex.name && l.reps >= (ex.repsMin || 0) && l.reps <= repsMax).sort((a,b)=>b.timestamp-a.timestamp)[0];
                const overloaded = hist?.weight ? Math.round((hist.weight * 1.05)/5)*5 : null;
@@ -374,15 +372,15 @@ export default function Coach() {
                   key={ex.name} 
                   draggable onDragStart={(e) => handleDragStart(e, 'main', idx)} onDragEnter={(e) => handleDragEnter(e, 'main', idx)} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
                   onClick={() => toggleCellExpand(ex.name)} 
-                  sx={{ p: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(176, 106, 255, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'main' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
+                  sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(176, 106, 255, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'main' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
                 >
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
                       <DragIndicatorIcon sx={{ color: 'rgba(255,255,255,0.2)', mt: 1, cursor: 'grab', display: { xs: 'none', sm: 'block' } }} />
-                      <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, !!completedExercises[ex.name], overloaded || '', repsMax, sets)} sx={{ p: 0, mt: 0.8 }} />
+                      <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, !!completedExercises[ex.name], overloaded || '', targetRepsGhost, sets)} sx={{ p: 0, mt: 0.8 }} />
                       <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                         <Typography sx={{ fontWeight: 700, textDecoration: completedExercises[ex.name] ? 'line-through' : 'none' }}>{ex.name} {loggedExercises[ex.name] && <Typography component="span" sx={{ fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(176, 106, 255, 0.2)', color: '#b06aff', px: 1, py: 0.3, borderRadius: 2, ml: 1 }}>Logged</Typography>}</Typography>
-                        <Typography variant="caption" sx={{ color: '#00d4ff', mt: 0.5, display: 'block' }}>{sets} Sets | {ex.repsMin}-{repsMax} Reps | Load: {overloaded ? displayWeight(overloaded) : 'Baseline'}</Typography>
+                        <Typography variant="caption" sx={{ color: '#00d4ff', mt: 0.5, display: 'block' }}>{sets} Sets | {repsLabel} Reps | Load: {overloaded ? displayWeight(overloaded) : 'Baseline'}</Typography>
                       </Box>
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
@@ -426,7 +424,6 @@ export default function Coach() {
           </Box>
         )}
 
-        {/* SWAP DIALOG */}
         <Dialog open={!!swapTarget} onClose={() => setSwapTarget(null)} fullWidth maxWidth="xs">
           <DialogTitle>Swap Exercise</DialogTitle>
           <DialogContent>
@@ -444,7 +441,6 @@ export default function Coach() {
           </DialogContent>
         </Dialog>
 
-        {/* LOG MODAL */}
         <Dialog open={logModalOpen} onClose={() => setLogModalOpen(false)}>
           <DialogTitle sx={{ fontWeight: 800, color: '#00d4ff' }}>Log Set</DialogTitle>
           <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
@@ -457,14 +453,14 @@ export default function Coach() {
                 </Select>
              </FormControl>
              <Box sx={{ display: 'flex', gap: 1 }}>
-                <TextField fullWidth type="number" label={`Weight (${unit})`} placeholder={ghostWeight ? `Last: ${ghostWeight}` : ''} value={logWeight} onChange={e => setLogWeight(e.target.value)} />
-                <TextField fullWidth type="number" label="Reps" placeholder={ghostReps ? `Last: ${ghostReps}` : ''} value={logReps} onChange={e => setLogReps(e.target.value)} />
-                <TextField fullWidth type="number" label="Sets" placeholder={ghostSets ? `Last: ${ghostSets}` : ''} value={logSets} onChange={e => setLogSets(e.target.value)} />
+                <TextField fullWidth type="number" label={`Weight (${unit})`} placeholder={ghostWeight ? `Target: ${ghostWeight}` : ''} value={logWeight} onChange={e => setLogWeight(e.target.value)} />
+                <TextField fullWidth type="number" label="Reps" placeholder={ghostReps ? `Target: ${ghostReps}` : ''} value={logReps} onChange={e => setLogReps(e.target.value)} />
+                <TextField fullWidth type="number" label="Sets" placeholder={ghostSets ? `Target: ${ghostSets}` : ''} value={logSets} onChange={e => setLogSets(e.target.value)} />
              </Box>
-             <TextField fullWidth label="Notes (optional)" size="small" multiline rows={2} value={logNotes} onChange={e => setLogNotes(e.target.value)} />
+             <TextField fullWidth label="Notes (optional)" size="small" multiline rows={2} value={logNotes} onChange={e => setLogNotes(e.target.value)} sx={{ mt: 2 }} />
           </DialogContent>
           <DialogActions sx={{ p: 2 }}>
-             <Button fullWidth variant="contained" onClick={handleSaveLogToDB} disabled={isProcessing}>{isProcessing ? <CircularProgress size={24} sx={{ color: '#000' }} /> : 'Save Log'}</Button>
+             <Button fullWidth variant="contained" onClick={handleSaveLogToDB} disabled={isProcessing} sx={{ bgcolor: '#b06aff', color: '#fff' }}>Save Log</Button>
           </DialogActions>
         </Dialog>
       </Box>

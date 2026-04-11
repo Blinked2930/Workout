@@ -79,7 +79,6 @@ export default function Progress() {
   const [editSet, setEditSet] = useState<any | null>(null);
   const [logModalOpen, setLogModalOpen] = useState(false);
   
-  // GHOST PLACEHOLDERS
   const [ghostWeight, setGhostWeight] = useState<string | number>('');
   const [ghostReps, setGhostReps] = useState<string | number>('');
   const [ghostSets, setGhostSets] = useState<string | number>('');
@@ -176,7 +175,7 @@ export default function Progress() {
   const e8RM = bestE1RM * (29 / 36);
 
   const strengthLifts = chartData.filter(d => d.weight > 0 && d.reps >= 4 && d.reps <= 8).reverse();
-  const hyperLifts = chartData.filter(d => d.weight > 0 && d.reps >= 9 && d.reps <= 15).reverse();
+  const hyperLifts = chartData.filter(d => d.weight > 0 && d.reps >= 9).reverse();
   const lastStrength = strengthLifts[0]?.weight ?? null;
   const lastHyper = hyperLifts[0]?.weight ?? null;
 
@@ -204,12 +203,10 @@ export default function Progress() {
     const lastLift = historyForSelected.length > 0 ? historyForSelected[historyForSelected.length - 1] : null;
     setLogEquipment(activeEquipment || 'Barbell');
     
-    // GHOST PLACEHOLDERS
     setGhostWeight(lastLift?.weight ? toDisplay(lastLift.weight) : '');
     setGhostReps(lastLift?.reps || '');
     setGhostSets(1);
     
-    // ENSURE INPUTS ARE BLANK
     setLogWeight('');
     setLogReps('');
     setLogSets('');
@@ -382,7 +379,7 @@ export default function Progress() {
                     <Typography sx={{ fontSize: '1.1rem', fontWeight: 700 }}>{lastStrength ? `${lastStrength} ${unit}` : '—'}</Typography>
                   </Paper>
                   <Paper sx={{ p: 1.5, borderRadius: 3, textAlign: 'center' }}>
-                    <Typography sx={{ fontSize: '0.62rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', mb: 0.25 }}>Last Hyper (9-15)</Typography>
+                    <Typography sx={{ fontSize: '0.62rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', mb: 0.25 }}>Last Hyper (9+)</Typography>
                     <Typography sx={{ fontSize: '1.1rem', fontWeight: 700 }}>{lastHyper ? `${lastHyper} ${unit}` : '—'}</Typography>
                   </Paper>
                 </Box>
