@@ -35,32 +35,34 @@ const parseAIJSON = (rawStr: string) => {
 export default function Manual() {
   const { unit, displayWeight, toDisplay, toDB } = useUnit(); 
   
-  const [phase, setPhase] = useState<'SETUP' | 'WORKOUT'>(() => (localStorage.getItem('manual_phase') as any) || 'SETUP');
-  
-  const [selectedExercisesList, setSelectedExercisesList] = useState<string[]>(() => {
-    const saved = localStorage.getItem('manual_selected');
-    return saved ? JSON.parse(saved) : [];
+  // IRONCLAD MEMORY CACHE (Prevents JSON crashes)
+  const [phase, setPhase] = useState<'SETUP' | 'WORKOUT'>(() => {
+    try { return (localStorage.getItem('manual_phase') as any) || 'SETUP'; } 
+    catch (e) { return 'SETUP'; }
   });
   
-  // WITH LEGACY CACHE MIGRATOR
+  const [selectedExercisesList, setSelectedExercisesList] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('manual_selected');
+      return saved ? JSON.parse(saved) || [] : [];
+    } catch (e) { return []; }
+  });
+  
   const [workoutData, setWorkoutData] = useState<WorkoutJSON | null>(() => {
-    const saved = localStorage.getItem('manual_workout');
-    if (saved) {
-      try {
+    try {
+      const saved = localStorage.getItem('manual_workout');
+      if (saved) {
         const parsed = JSON.parse(saved);
-        // Automatically hot-swap old 12-rep maxes from memory to the new 999 ceiling
         if (parsed && parsed.mainBlock) {
           parsed.mainBlock = parsed.mainBlock.map((ex: any) => {
-            if (ex.repsMax === 12) {
-              return { ...ex, repsMin: 9, repsMax: 999 };
-            }
+            if (ex.repsMax === 12) return { ...ex, repsMin: 9, repsMax: 999 };
             return ex;
           });
         }
         return parsed;
-      } catch (e) { return null; }
-    }
-    return null;
+      }
+      return null;
+    } catch (e) { return null; }
   });
 
   const equipment = 'Full Gym Access'; 
@@ -75,12 +77,17 @@ export default function Manual() {
   const [draggedItem, setDraggedItem] = useState<{ section: string, index: number } | null>(null);
 
   const [completedExercises, setCompletedExercises] = useState<Record<string, boolean>>(() => {
-    const saved = localStorage.getItem('manual_completed');
-    return saved ? JSON.parse(saved) : {};
+    try {
+      const saved = localStorage.getItem('manual_completed');
+      return saved ? JSON.parse(saved) || {} : {};
+    } catch (e) { return {}; }
   });
+  
   const [loggedExercises, setLoggedExercises] = useState<Record<string, boolean>>(() => {
-    const saved = localStorage.getItem('manual_logged');
-    return saved ? JSON.parse(saved) : {};
+    try {
+      const saved = localStorage.getItem('manual_logged');
+      return saved ? JSON.parse(saved) || {} : {};
+    } catch (e) { return {}; }
   });
 
   const [expandedCells, setExpandedCells] = useState<Record<string, boolean>>({});
@@ -180,7 +187,7 @@ export default function Manual() {
   const handleSwapExercise = (newName: string) => {
     if (!workoutData || !swapTarget) return;
     const newWorkout = { ...workoutData };
-    if (swapTarget.section === 'main') newWorkout.mainBlock[swapTarget.index].name = newName;
+    if (swapTarget.section === 'main' && newWorkout.mainBlock) newWorkout.mainBlock[swapTarget.index].name = newName;
     else if (swapTarget.section === 'warmup' && newWorkout.warmup) newWorkout.warmup[swapTarget.index].name = newName;
     else if (swapTarget.section === 'cooldown' && newWorkout.cooldown) newWorkout.cooldown[swapTarget.index].name = newName;
     setWorkoutData(newWorkout);
@@ -264,6 +271,8 @@ export default function Manual() {
     
     setLogModalOpen(true);
   };
+
+  const handleCloseModal = () => setLogModalOpen(false);
 
   const handleCheckboxClick = (e: React.MouseEvent, exerciseName: string, isCurrentlyDone: boolean, targetWeight?: number | string, targetReps?: number | string, targetSets?: number | string) => {
     e.stopPropagation(); 
@@ -390,7 +399,7 @@ export default function Manual() {
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
                         <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('warmup', idx, 'up'); }} disabled={idx === 0}><KeyboardArrowUpIcon fontSize="small" /></IconButton>
-                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('warmup', idx, 'down'); }} disabled={idx === workoutData.warmup!.length - 1}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
+                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('warmup', idx, 'down'); }} disabled={idx === workoutData.warmup?.length - 1}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
                         <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'warmup', index: idx }); }}><SwapHorizIcon fontSize="small" /></IconButton>
                       </Box>
                     </Box>
@@ -403,7 +412,7 @@ export default function Manual() {
 
             <Box>
               <Typography variant="h6" sx={{ fontWeight: 800, color: '#00e096', mb: 1 }}>{workoutData.warmup && workoutData.warmup.length > 0 ? '2.' : '1.'} Main Block</Typography>
-              {workoutData.mainBlock.map((ex, idx) => {
+              {workoutData.mainBlock?.map((ex, idx) => {
                 const repsMax = ex.repsMax || (ex.setsReps ? parseInt((ex as any).setsReps.split('x')[1]) : 999);
                 const repsLabel = repsMax >= 99 ? `${ex.repsMin}+` : `${ex.repsMin}-${repsMax}`;
                 const targetRepsGhost = repsMax >= 99 ? `${ex.repsMin}+` : repsMax;
@@ -429,7 +438,7 @@ export default function Manual() {
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'center', ml: 1, flexShrink: 0 }}>
                         <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('main', idx, 'up'); }} disabled={idx === 0} sx={{ color: 'rgba(255,255,255,0.5)' }}><KeyboardArrowUpIcon fontSize="small" /></IconButton>
-                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('main', idx, 'down'); }} disabled={idx === workoutData.mainBlock.length - 1} sx={{ color: 'rgba(255,255,255,0.5)' }}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
+                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('main', idx, 'down'); }} disabled={idx === workoutData.mainBlock?.length - 1} sx={{ color: 'rgba(255,255,255,0.5)' }}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
                         <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'main', index: idx }); }} sx={{ color: 'rgba(255,255,255,0.5)' }}><SwapHorizIcon fontSize="small" /></IconButton>
                       </Box>
                     </Box>
@@ -448,7 +457,7 @@ export default function Manual() {
                     key={ex.name} 
                     draggable onDragStart={(e) => handleDragStart(e, 'cooldown', idx)} onDragEnter={(e) => handleDragEnter(e, 'cooldown', idx)} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
                     onClick={() => toggleCellExpand(ex.name)} 
-                    sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(176, 106, 255, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'cooldown' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
+                    sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(0, 224, 150, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'cooldown' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
                   >
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
@@ -461,7 +470,7 @@ export default function Manual() {
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
                         <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('cooldown', idx, 'up'); }} disabled={idx === 0}><KeyboardArrowUpIcon fontSize="small" /></IconButton>
-                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('cooldown', idx, 'down'); }} disabled={idx === workoutData.cooldown!.length - 1}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
+                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('cooldown', idx, 'down'); }} disabled={idx === workoutData.cooldown?.length - 1}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
                         <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'cooldown', index: idx }); }}><SwapHorizIcon fontSize="small" /></IconButton>
                       </Box>
                     </Box>
@@ -473,6 +482,7 @@ export default function Manual() {
           </Box>
         )}
 
+        {/* SWAP DIALOG */}
         <Dialog open={!!swapTarget} onClose={() => setSwapTarget(null)} fullWidth maxWidth="xs">
           <DialogTitle>Swap Exercise</DialogTitle>
           <DialogContent>
@@ -503,14 +513,14 @@ export default function Manual() {
                 </Select>
              </FormControl>
              <Box sx={{ display: 'flex', gap: 1 }}>
-                <TextField fullWidth type="number" label={`Weight (${unit})`} placeholder={ghostWeight ? `Target: ${ghostWeight}` : ''} value={logWeight} onChange={e => setLogWeight(e.target.value)} />
-                <TextField fullWidth type="number" label="Reps" placeholder={ghostReps ? `Target: ${ghostReps}` : ''} value={logReps} onChange={e => setLogReps(e.target.value)} />
-                <TextField fullWidth type="number" label="Sets" placeholder={ghostSets ? `Target: ${ghostSets}` : ''} value={logSets} onChange={e => setLogSets(e.target.value)} />
+                <TextField fullWidth type="text" inputMode="decimal" label={`Weight (${unit})`} placeholder={ghostWeight ? `Target: ${ghostWeight}` : ''} value={logWeight} onChange={e => setLogWeight(e.target.value)} />
+                <TextField fullWidth type="text" inputMode="numeric" label="Reps" placeholder={ghostReps ? `Target: ${ghostReps}` : ''} value={logReps} onChange={e => setLogReps(e.target.value)} />
+                <TextField fullWidth type="text" inputMode="numeric" label="Sets" placeholder={ghostSets ? `Target: ${ghostSets}` : ''} value={logSets} onChange={e => setLogSets(e.target.value)} />
              </Box>
              <TextField fullWidth label="Notes (optional)" size="small" multiline rows={2} value={logNotes} onChange={e => setLogNotes(e.target.value)} sx={{ mt: 2 }} />
           </DialogContent>
           <DialogActions sx={{ p: 2 }}>
-             <Button fullWidth variant="contained" onClick={handleSaveLogToDB} disabled={isProcessing} sx={{ bgcolor: '#b06aff', color: '#fff' }}>Save Log</Button>
+             <Button fullWidth variant="contained" onClick={handleSaveLogToDB} disabled={isSavingLog}>Save</Button>
           </DialogActions>
         </Dialog>
       </Box>
