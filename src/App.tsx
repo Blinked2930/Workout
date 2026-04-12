@@ -62,7 +62,7 @@ export const theme = createTheme({
         root: {
           backgroundColor: '#16171a',
           borderTop: '1px solid rgba(255,255,255,0.08)',
-          height: 64,
+          height: 76, // Taller bottom bar
         },
       },
     },
@@ -71,14 +71,14 @@ export const theme = createTheme({
         root: {
           color: '#555566',
           '&.Mui-selected': { color: '#00d4ff' },
-          minWidth: '40px',
-          padding: '6px 0px',
+          minWidth: '50px',
+          padding: '8px 0px',
         },
         label: {
           fontFamily: '"Barlow", sans-serif',
           fontWeight: 700,
-          fontSize: '0.65rem !important',
-          marginTop: '2px',
+          fontSize: '0.72rem !important', // Larger text
+          marginTop: '4px',
         },
       },
     },
@@ -122,10 +122,10 @@ export const theme = createTheme({
 
 // NEW 4-HUB NAVIGATION SYSTEM
 const NAV_HUBS = [
-  { label: 'Log', emoji: '💪', id: 'log_menu' }, // Opens Log Drawer (Home/Cardio)
-  { label: 'Train', emoji: '🧠', id: 'train_menu' }, // Opens Train Drawer
-  { label: 'Stats', emoji: '📈', id: 'stats_menu' }, // Opens Stats Drawer
-  { label: 'DB', emoji: '🗂️', path: '/exercises' }, // Directly routes to Exercises
+  { label: 'Log', emoji: '💪', id: 'log_menu' },
+  { label: 'Train', emoji: '🧠', id: 'train_menu' },
+  { label: 'Stats', emoji: '📈', id: 'stats_menu' },
+  { label: 'DB', emoji: '🗂️', path: '/exercises' },
 ];
 
 function AppShell() {
@@ -160,6 +160,17 @@ function AppShell() {
     navigate(path);
   };
 
+  // Uniform style for drawer items to prevent touch-ripple flickering
+  const drawerItemStyle = {
+    borderRadius: 3, 
+    mb: 1, 
+    bgcolor: 'rgba(255,255,255,0.03)', 
+    border: '1px solid rgba(255,255,255,0.05)',
+    transition: 'background-color 0.2s ease',
+    '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' },
+    '&:active': { bgcolor: 'rgba(255,255,255,0.08)' }
+  };
+
   return (
     <Box sx={{
       display: 'flex', flexDirection: 'column', minHeight: '100vh',
@@ -188,7 +199,7 @@ function AppShell() {
         </DialogContent>
       </Dialog>
 
-      <Box sx={{ flex: 1, overflowY: 'auto', pb: '80px' }}>
+      <Box sx={{ flex: 1, overflowY: 'auto', pb: '96px' }}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/volume" element={<Volume />} />
@@ -210,7 +221,7 @@ function AppShell() {
             <BottomNavigationAction
               key={item.label}
               label={item.label}
-              icon={<Box sx={{ fontSize: '1.4rem', lineHeight: 1 }}>{item.emoji}</Box>}
+              icon={<Box sx={{ fontSize: '1.6rem', lineHeight: 1 }}>{item.emoji}</Box>}
             />
           ))}
         </BottomNavigation>
@@ -220,11 +231,11 @@ function AppShell() {
       <Drawer anchor="bottom" open={activeMenu === 'log_menu'} onClose={() => setActiveMenu(null)} PaperProps={{ sx: { bgcolor: '#16171a', borderRadius: '24px 24px 0 0', p: 2 } }}>
         <Typography sx={{ fontWeight: 800, textAlign: 'center', color: '#00d4ff', mb: 2, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Log Activity</Typography>
         <List>
-          <ListItemButton onClick={() => handleMenuSelect('/')} sx={{ borderRadius: 3, mb: 1, bgcolor: 'rgba(0, 212, 255, 0.05)' }}>
+          <ListItemButton onClick={() => handleMenuSelect('/')} sx={drawerItemStyle}>
             <ListItemIcon sx={{ fontSize: '1.5rem', minWidth: 40 }}>💪</ListItemIcon>
             <ListItemText primary="Lift Logs" secondary="Record sets and reps" primaryTypographyProps={{ fontWeight: 700 }} />
           </ListItemButton>
-          <ListItemButton onClick={() => handleMenuSelect('/cardio')} sx={{ borderRadius: 3, bgcolor: 'rgba(0, 224, 150, 0.05)' }}>
+          <ListItemButton onClick={() => handleMenuSelect('/cardio')} sx={drawerItemStyle}>
             <ListItemIcon sx={{ fontSize: '1.5rem', minWidth: 40 }}>🏃</ListItemIcon>
             <ListItemText primary="Cardio Logs" secondary="Record distance and duration" primaryTypographyProps={{ fontWeight: 700 }} />
           </ListItemButton>
@@ -235,11 +246,11 @@ function AppShell() {
       <Drawer anchor="bottom" open={activeMenu === 'train_menu'} onClose={() => setActiveMenu(null)} PaperProps={{ sx: { bgcolor: '#16171a', borderRadius: '24px 24px 0 0', p: 2 } }}>
         <Typography sx={{ fontWeight: 800, textAlign: 'center', color: '#b06aff', mb: 2, textTransform: 'uppercase', letterSpacing: '0.1em' }}>Select Training Mode</Typography>
         <List>
-          <ListItemButton onClick={() => handleMenuSelect('/coach')} sx={{ borderRadius: 3, mb: 1, bgcolor: 'rgba(176, 106, 255, 0.05)' }}>
+          <ListItemButton onClick={() => handleMenuSelect('/coach')} sx={drawerItemStyle}>
             <ListItemIcon sx={{ fontSize: '1.5rem', minWidth: 40 }}>🧠</ListItemIcon>
             <ListItemText primary="AI Coach" secondary="Generates tailored workouts" primaryTypographyProps={{ fontWeight: 700 }} />
           </ListItemButton>
-          <ListItemButton onClick={() => handleMenuSelect('/manual')} sx={{ borderRadius: 3, bgcolor: 'rgba(0, 224, 150, 0.05)' }}>
+          <ListItemButton onClick={() => handleMenuSelect('/manual')} sx={drawerItemStyle}>
             <ListItemIcon sx={{ fontSize: '1.5rem', minWidth: 40 }}>🏗️</ListItemIcon>
             <ListItemText primary="Manual Builder" secondary="Select your own exercises" primaryTypographyProps={{ fontWeight: 700 }} />
           </ListItemButton>
@@ -250,11 +261,11 @@ function AppShell() {
       <Drawer anchor="bottom" open={activeMenu === 'stats_menu'} onClose={() => setActiveMenu(null)} PaperProps={{ sx: { bgcolor: '#16171a', borderRadius: '24px 24px 0 0', p: 2 } }}>
         <Typography sx={{ fontWeight: 800, textAlign: 'center', color: '#00d4ff', mb: 2, textTransform: 'uppercase', letterSpacing: '0.1em' }}>View Statistics</Typography>
         <List>
-          <ListItemButton onClick={() => handleMenuSelect('/progress')} sx={{ borderRadius: 3, mb: 1, bgcolor: 'rgba(0, 212, 255, 0.05)' }}>
+          <ListItemButton onClick={() => handleMenuSelect('/progress')} sx={drawerItemStyle}>
             <ListItemIcon sx={{ fontSize: '1.5rem', minWidth: 40 }}>📈</ListItemIcon>
             <ListItemText primary="Progress Charts" secondary="Analyze lift history over time" primaryTypographyProps={{ fontWeight: 700 }} />
           </ListItemButton>
-          <ListItemButton onClick={() => handleMenuSelect('/volume')} sx={{ borderRadius: 3, bgcolor: 'rgba(255, 184, 0, 0.05)' }}>
+          <ListItemButton onClick={() => handleMenuSelect('/volume')} sx={drawerItemStyle}>
             <ListItemIcon sx={{ fontSize: '1.5rem', minWidth: 40 }}>📊</ListItemIcon>
             <ListItemText primary="Volume Tracker" secondary="Track weekly sets per muscle" primaryTypographyProps={{ fontWeight: 700 }} />
           </ListItemButton>
