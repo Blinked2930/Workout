@@ -249,7 +249,7 @@ export default function Coach() {
     if (history.length === 0) return (
       <Box sx={{ bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, p: 1.5, mt: 1, textAlign: 'center' }}>
         <Typography variant="body2" sx={{ color: '#8a8a9a', fontStyle: 'italic', mb: 1 }}>No history found matching this rep range.</Typography>
-        <Button size="small" onClick={navToProgress} sx={{ color: '#00d4ff', fontSize: '0.7rem', fontWeight: 800 }}>Full Progress 📈</Button>
+        <Button size="small" onClick={navToProgress} sx={{ color: '#b06aff', fontSize: '0.7rem', fontWeight: 800 }}>Full Progress 📈</Button>
       </Box>
     );
 
@@ -261,7 +261,7 @@ export default function Coach() {
             <Typography variant="body2" sx={{ color: '#8a8a9a' }}>{new Date(lift.timestamp).toLocaleDateString()}</Typography>
           </Box>
         ))}
-        <Button fullWidth size="small" onClick={navToProgress} sx={{ mt: 1, color: '#00d4ff', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', borderTop: '1px solid rgba(255,255,255,0.05)', pt: 1.5 }}>
+        <Button fullWidth size="small" onClick={navToProgress} sx={{ mt: 1, color: '#b06aff', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', borderTop: '1px solid rgba(255,255,255,0.05)', pt: 1.5 }}>
           Full Progress 📈
         </Button>
       </Box>
@@ -380,9 +380,13 @@ export default function Coach() {
                const repsMax = ex.repsMax || (ex.setsReps ? parseInt((ex as any).setsReps.split('x')[1]) : 999);
                const repsLabel = repsMax >= 99 ? `${ex.repsMin}+` : `${ex.repsMin}-${repsMax}`;
                const targetRepsGhost = repsMax >= 99 ? `${ex.repsMin}+` : repsMax;
+               
                const sets = ex.sets || 3;
-               const hist = allLiftsDB.filter(l => l.exerciseName === ex.name && l.reps >= (ex.repsMin || 0) && l.reps <= repsMax).sort((a,b)=>b.timestamp-a.timestamp)[0];
-               const overloaded = hist?.weight ? Math.round((hist.weight * 1.05)/5)*5 : null;
+               const exerciseLifts = allLiftsDB.filter(l => l.exerciseName === ex.name);
+               const maxE1rmDB = exerciseLifts.length > 0 ? Math.max(...exerciseLifts.map(l => l.e1rm ?? 0)) : 0;
+               const e4RM_DB = maxE1rmDB * (33 / 36);
+               const e8RM_DB = maxE1rmDB * (29 / 36);
+               const loadText = maxE1rmDB > 0 ? `e4RM: ${displayWeight(Math.round(e4RM_DB))} | e8RM: ${displayWeight(Math.round(e8RM_DB))}` : 'Baseline';
 
                return (
                 <Paper 
@@ -394,13 +398,13 @@ export default function Coach() {
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
                       <DragIndicatorIcon sx={{ color: 'rgba(255,255,255,0.2)', mt: 1, cursor: 'grab', display: { xs: 'none', sm: 'block' } }} />
-                      <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, !!completedExercises[ex.name], overloaded || '', targetRepsGhost, sets)} sx={{ p: 0, mt: 0.8 }} />
+                      <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, !!completedExercises[ex.name], '', targetRepsGhost, sets)} sx={{ color: '#b06aff', p: 0, mt: 0.8 }} />
                       <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                         <Typography sx={{ fontWeight: 700, textDecoration: completedExercises[ex.name] ? 'line-through' : 'none' }}>{ex.name} {loggedExercises[ex.name] && <Typography component="span" sx={{ fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(176, 106, 255, 0.2)', color: '#b06aff', px: 1, py: 0.3, borderRadius: 2, ml: 1 }}>Logged</Typography>}</Typography>
-                        <Typography variant="caption" sx={{ color: '#00d4ff', mt: 0.5, display: 'block' }}>{sets} Sets | {repsLabel} Reps | Load: {overloaded ? displayWeight(overloaded) : 'Baseline'}</Typography>
+                        <Typography variant="caption" sx={{ color: '#00d4ff', mt: 0.5, display: 'block' }}>{sets} Sets | {repsLabel} Reps | Load: {loadText}</Typography>
                       </Box>
                     </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', ml: 1, flexShrink: 0 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
                       <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('main', idx, 'up'); }} disabled={idx === 0} sx={{ color: 'rgba(255,255,255,0.5)' }}><KeyboardArrowUpIcon fontSize="small" /></IconButton>
                       <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('main', idx, 'down'); }} disabled={idx === workoutData.mainBlock.length - 1} sx={{ color: 'rgba(255,255,255,0.5)' }}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
                       <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'main', index: idx }); }} sx={{ color: 'rgba(255,255,255,0.5)' }}><SwapHorizIcon fontSize="small" /></IconButton>
@@ -441,7 +445,6 @@ export default function Coach() {
           </Box>
         )}
 
-        {/* SWAP DIALOG */}
         <Dialog open={!!swapTarget} onClose={() => setSwapTarget(null)} fullWidth maxWidth="xs">
           <DialogTitle>Swap Exercise</DialogTitle>
           <DialogContent>
