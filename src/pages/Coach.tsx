@@ -21,11 +21,20 @@ interface SuggestionJSON { focusTitle: string; reasoning: string; }
 interface WorkoutJSON { 
   title: string; 
   focus: string; 
-  warmup: { name: string; reps: string }[]; 
-  mainBlock: { name: string; sets?: number; repsMin?: number; repsMax?: number; setsReps?: string; rest: string; notes: string }[]; 
-  cooldown: { name: string; reps: string }[]; 
+  warmup: { name: string; reps: string; equipment?: string }[]; 
+  mainBlock: { name: string; sets?: number; repsMin?: number; repsMax?: number; setsReps?: string; rest: string; notes: string; equipment?: string }[]; 
+  cooldown: { name: string; reps: string; equipment?: string }[]; 
 }
 interface DebugData { yesterdayBanned: string; weeklyMuscle: string; dateMath: string; aiPrompt: string; }
+
+const EQUIPMENT_TYPES = [
+  { value: 'Barbell', emoji: '🏋️' },
+  { value: 'Dumbbell', emoji: '🫳' },
+  { value: 'Smith', emoji: '🦾' },
+  { value: 'Machine/Cable', emoji: '⚙️' },
+  { value: 'Bodyweight', emoji: '🤸' },
+  { value: 'Other', emoji: '⚡' },
+];
 
 const parseAIJSON = (rawStr: string) => {
   try {
@@ -115,20 +124,53 @@ export default function Coach() {
     try {
       const result = await generateWorkout({ timeAvailable: time, equipment, style, localTime: new Date().toISOString(), approvedFocus: suggestion?.focusTitle || "", userTweaks: tweaks });
       const parsed = parseAIJSON(result as string);
-      setWorkoutData(parsed);
-      setPhase('WORKOUT');
+      
+      const applyEq = (list: any[]) => list?.map(ex => {
+         const lastLift = allLiftsDB.filter(l => l.exerciseName === ex.name).sort((a,b)=>b.timestamp-a.timestamp)[0];
+         let eq = lastLift?.equipmentType || 'Bodyweight';
+         if (eq === 'Machine' || eq === 'Cable') eq = 'Machine/Cable';
+         return { ...ex, equipment: eq };
+      });
+
+      if (parsed) {
+        parsed.warmup = applyEq(parsed.warmup);
+        parsed.mainBlock = applyEq(parsed.mainBlock);
+        parsed.cooldown = applyEq(parsed.cooldown);
+        setWorkoutData(parsed);
+        setPhase('WORKOUT');
+      }
     } finally { setIsProcessing(false); }
   };
 
   const handleSwapExercise = (newName: string) => {
     if (!workoutData || !swapTarget) return;
     const newWorkout = { ...workoutData };
-    if (swapTarget.section === 'main') newWorkout.mainBlock[swapTarget.index].name = newName;
-    else if (swapTarget.section === 'warmup') newWorkout.warmup[swapTarget.index].name = newName;
-    else if (swapTarget.section === 'cooldown') newWorkout.cooldown[swapTarget.index].name = newName;
+    const lastLift = allLiftsDB.filter(l => l.exerciseName === newName).sort((a,b)=>b.timestamp-a.timestamp)[0];
+    let eq = lastLift?.equipmentType || 'Bodyweight';
+    if (eq === 'Machine' || eq === 'Cable') eq = 'Machine/Cable';
+
+    if (swapTarget.section === 'main' && newWorkout.mainBlock) {
+      newWorkout.mainBlock[swapTarget.index].name = newName;
+      newWorkout.mainBlock[swapTarget.index].equipment = eq;
+    } else if (swapTarget.section === 'warmup' && newWorkout.warmup) {
+      newWorkout.warmup[swapTarget.index].name = newName;
+      newWorkout.warmup[swapTarget.index].equipment = eq;
+    } else if (swapTarget.section === 'cooldown' && newWorkout.cooldown) {
+      newWorkout.cooldown[swapTarget.index].name = newName;
+      newWorkout.cooldown[swapTarget.index].equipment = eq;
+    }
     setWorkoutData(newWorkout);
     setSwapTarget(null);
     setSwapSearch('');
+  };
+
+  const updateEquipment = (section: 'warmup'|'main'|'cooldown', index: number, eq: string) => {
+    if (!workoutData) return;
+    const newWorkout = { ...workoutData };
+    if (section === 'main' && newWorkout.mainBlock) newWorkout.mainBlock[index].equipment = eq;
+    else if (section === 'warmup' && newWorkout.warmup) newWorkout.warmup[index].equipment = eq;
+    else if (section === 'cooldown' && newWorkout.cooldown) newWorkout.cooldown[index].equipment = eq;
+    setWorkoutData(newWorkout);
   };
 
   const moveExercise = (section: 'warmup'|'main'|'cooldown', index: number, direction: 'up'|'down') => {
@@ -183,36 +225,33 @@ export default function Coach() {
 
   const toggleCellExpand = (exerciseName: string) => setExpandedCells(prev => ({ ...prev, [exerciseName]: !prev[exerciseName] }));
 
-  const openLogger = (exerciseName: string, suggestedWeight?: number | string, suggestedReps?: number | string, suggestedSets?: number | string) => {
+  const openLogger = (exerciseName: string, equipment: string, suggestedWeight?: number | string, suggestedReps?: number | string, suggestedSets?: number | string) => {
     setActiveLoggingExercise(exerciseName);
     setLogTimestamp(Date.now());
     const dbMatch = exercisesDB?.find(ex => String(ex?.name || '').toLowerCase() === exerciseName.toLowerCase());
-    const lastLift = allLiftsDB.filter(l => String(l?.exerciseName || '').toLowerCase() === exerciseName.toLowerCase()).sort((a,b) => b.timestamp - a.timestamp)[0];
-    
-    let eq = lastLift?.equipmentType || 'Bodyweight';
-    if (eq === 'Machine' || eq === 'Cable') eq = 'Machine/Cable';
+    const lastLift = allLiftsDB.filter(l => String(l?.exerciseName || '').toLowerCase() === exerciseName.toLowerCase() && (l.equipmentType || 'Bodyweight') === equipment).sort((a,b) => b.timestamp - a.timestamp)[0];
     
     setLogCategory(dbMatch?.category || 'Custom');
-    setLogEquipment(eq);
+    setLogEquipment(equipment);
     
     setLogWeight('');
     setLogReps('');
     setLogSets('');
     setLogNotes('');
 
-    setGhostWeight(suggestedWeight ? `Target: ${suggestedWeight}` : (lastLift?.weight > 0 ? `Last: ${toDisplay(lastLift.weight)}` : 'Last: BW'));
-    setGhostReps(suggestedReps ? `Target: ${suggestedReps}` : (lastLift?.reps ? `Last: ${lastLift.reps}` : ''));
-    setGhostSets(suggestedSets ? `Target: ${suggestedSets}` : (lastLift?.sets ? `Last: ${lastLift.sets}` : ''));
+    setGhostWeight(suggestedWeight !== undefined && suggestedWeight !== '' ? suggestedWeight : (lastLift?.weight > 0 ? toDisplay(lastLift.weight) : ''));
+    setGhostReps(suggestedReps !== undefined && suggestedReps !== '' ? suggestedReps : (lastLift?.reps || ''));
+    setGhostSets(suggestedSets !== undefined ? suggestedSets : 3);
     
     setLogModalOpen(true);
   };
 
-  const handleCheckboxClick = (e: React.MouseEvent, exerciseName: string, isCurrentlyDone: boolean, targetWeight?: number | string, targetReps?: number | string, targetSets?: number | string) => {
+  const handleCheckboxClick = (e: React.MouseEvent, exerciseName: string, equipment: string, isCurrentlyDone: boolean, targetWeight?: number | string, targetReps?: number | string, targetSets?: number | string) => {
     e.stopPropagation(); 
     if (isCurrentlyDone) setCompletedExercises(prev => ({ ...prev, [exerciseName]: false }));
     else {
       setCompletedExercises(prev => ({ ...prev, [exerciseName]: true }));
-      openLogger(exerciseName, targetWeight, targetReps, targetSets);
+      openLogger(exerciseName, equipment, targetWeight, targetReps, targetSets);
     }
   };
 
@@ -234,8 +273,8 @@ export default function Coach() {
     } finally { setIsProcessing(false); }
   };
 
-  const renderLiftHistory = (exerciseName: string, maxE1rm?: number) => {
-    const history = allLiftsDB.filter(l => String(l?.exerciseName || '').toLowerCase() === exerciseName.toLowerCase()).sort((a,b) => b.timestamp - a.timestamp).slice(0, 3);
+  const renderLiftHistory = (exerciseName: string, equipment: string, bestE1RM_Display?: number) => {
+    const history = allLiftsDB.filter(l => String(l?.exerciseName || '').toLowerCase() === exerciseName.toLowerCase() && (l.equipmentType || 'Bodyweight') === equipment).sort((a,b) => b.timestamp - a.timestamp).slice(0, 3);
 
     const navToProgress = (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -243,21 +282,21 @@ export default function Coach() {
       navigate('/progress');
     };
 
-    const e4RM = maxE1rm ? maxE1rm * (33 / 36) : 0;
-    const e8RM = maxE1rm ? maxE1rm * (29 / 36) : 0;
+    const e4RM = bestE1RM_Display ? bestE1RM_Display * (33 / 36) : 0;
+    const e8RM = bestE1RM_Display ? bestE1RM_Display * (29 / 36) : 0;
 
     return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 1 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
         
-        {/* CALCULATED LOADING TARGETS PANEL - Purple accents inside expanded cell */}
-        {maxE1rm && maxE1rm > 0 ? (
+        {/* CALCULATED LOADING TARGETS PANEL */}
+        {bestE1RM_Display && bestE1RM_Display > 0 ? (
           <Paper sx={{ p: 2, bgcolor: 'rgba(0,0,0,0.3)', borderRadius: 2, display: 'flex', justifyContent: 'center', gap: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
             <Box sx={{ flex: 1, textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.1)', pr: 2 }}>
-              <Typography sx={{ fontWeight: 800, fontSize: '1.2rem', color: '#00d4ff' }}>{displayWeight(Math.round(e4RM))}</Typography>
+              <Typography sx={{ fontWeight: 800, fontSize: '1.2rem', color: '#b06aff' }}>{Math.round(e4RM)} {unit}</Typography>
               <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase' }}>Target (4 Reps)</Typography>
             </Box>
             <Box sx={{ flex: 1, textAlign: 'center' }}>
-              <Typography sx={{ fontWeight: 800, fontSize: '1.2rem', color: '#b06aff' }}>{displayWeight(Math.round(e8RM))}</Typography>
+              <Typography sx={{ fontWeight: 800, fontSize: '1.2rem', color: '#d2a8ff' }}>{Math.round(e8RM)} {unit}</Typography>
               <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase' }}>Target (8 Reps)</Typography>
             </Box>
           </Paper>
@@ -270,14 +309,14 @@ export default function Coach() {
           {history.length > 0 ? (
             history.map((lift, i) => (
               <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
-                <Typography variant="body2" sx={{ color: i === 0 ? '#b06aff' : '#8a8a8a' }}>{displayWeight(lift.weight)} × {lift.reps} reps</Typography>
+                <Typography variant="body2" sx={{ color: i === 0 ? '#b06aff' : '#8a8a9a' }}>{displayWeight(lift.weight)} × {lift.reps} reps</Typography>
                 <Typography variant="body2" sx={{ color: '#555566' }}>{new Date(lift.timestamp).toLocaleDateString()}</Typography>
               </Box>
             ))
           ) : (
-             <Typography variant="body2" sx={{ color: '#8a8a9a', fontStyle: 'italic', textAlign: 'center', py: 1 }}>No history found.</Typography>
+             <Typography variant="body2" sx={{ color: '#8a8a9a', fontStyle: 'italic', textAlign: 'center', py: 1 }}>No history found for {equipment}.</Typography>
           )}
-          <Button fullWidth size="small" onClick={navToProgress} sx={{ mt: 1.5, color: '#00d4ff', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', borderTop: '1px solid rgba(255,255,255,0.05)', pt: 1 }}>
+          <Button fullWidth size="small" onClick={navToProgress} sx={{ mt: 1.5, color: '#b06aff', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', borderTop: '1px solid rgba(255,255,255,0.05)', pt: 1 }}>
             Full Progress Chart 📈
           </Button>
         </Box>
@@ -365,43 +404,56 @@ export default function Coach() {
 
         {phase === 'WORKOUT' && workoutData && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {workoutData.warmup.map((ex, idx) => (
-              <Paper 
-                key={ex.name} 
-                draggable onDragStart={(e) => handleDragStart(e, 'warmup', idx)} onDragEnter={(e) => handleDragEnter(e, 'warmup', idx)} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
-                onClick={() => toggleCellExpand(ex.name)} 
-                sx={{ p: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(176, 106, 255, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'warmup' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
-              >
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                    <DragIndicatorIcon sx={{ color: 'rgba(255,255,255,0.2)', mt: 1, cursor: 'grab', display: { xs: 'none', sm: 'block' } }} />
-                    <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, !!completedExercises[ex.name], 0, ex.reps, 1)} sx={{ p: 0, mt: 0.8 }} />
-                    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                      <Typography sx={{ fontWeight: 700, textDecoration: completedExercises[ex.name] ? 'line-through' : 'none' }}>{ex.name}</Typography>
-                      <Typography variant="body2" sx={{ color: '#00d4ff' }}>Target: {ex.reps}</Typography>
+            {workoutData.warmup.map((ex, idx) => {
+              const eq = ex.equipment || 'Bodyweight';
+              return (
+                <Paper 
+                  key={ex.name} 
+                  draggable onDragStart={(e) => handleDragStart(e, 'warmup', idx)} onDragEnter={(e) => handleDragEnter(e, 'warmup', idx)} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
+                  onClick={() => toggleCellExpand(ex.name)} 
+                  sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(176, 106, 255, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'warmup' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                      <DragIndicatorIcon sx={{ color: 'rgba(255,255,255,0.2)', mt: 1, cursor: 'grab', display: { xs: 'none', sm: 'block' } }} />
+                      <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, eq, !!completedExercises[ex.name], 0, ex.reps, 1)} sx={{ p: 0, mt: 0.8 }} />
+                      <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                        <Typography sx={{ fontWeight: 700, textDecoration: completedExercises[ex.name] ? 'line-through' : 'none' }}>{ex.name}</Typography>
+                        <Typography variant="body2" sx={{ color: '#00d4ff' }}>Target: {ex.reps}</Typography>
+                      </Box>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                      <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('warmup', idx, 'up'); }} disabled={idx === 0}><KeyboardArrowUpIcon fontSize="small" /></IconButton>
+                      <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('warmup', idx, 'down'); }} disabled={idx === workoutData.warmup.length - 1}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
+                      <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'warmup', index: idx }); }}><SwapHorizIcon fontSize="small" /></IconButton>
                     </Box>
                   </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('warmup', idx, 'up'); }} disabled={idx === 0}><KeyboardArrowUpIcon fontSize="small" /></IconButton>
-                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('warmup', idx, 'down'); }} disabled={idx === workoutData.warmup.length - 1}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
-                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'warmup', index: idx }); }}><SwapHorizIcon fontSize="small" /></IconButton>
-                  </Box>
-                </Box>
-                <Collapse in={expandedCells[ex.name]}><Box sx={{ pl: { xs: 4, sm: 5 }, mt: 2 }}>{renderLiftHistory(ex.name)}</Box></Collapse>
-              </Paper>
-            ))}
+                  <Collapse in={expandedCells[ex.name]}>
+                    <Box sx={{ pl: { xs: 4, sm: 5 }, pr: 2, pb: 1 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2, mb: 1, p: 1.5, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase' }}>Equipment</Typography>
+                        <Select size="small" value={eq} onChange={(e) => updateEquipment('warmup', idx, e.target.value)} onClick={(e) => e.stopPropagation()} sx={{ height: 30, fontSize: '0.8rem', borderRadius: 2, bgcolor: 'rgba(255,255,255,0.05)', '& fieldset': { border: 'none' } }}>
+                          {EQUIPMENT_TYPES.map(type => <MenuItem key={type.value} value={type.value} sx={{ fontSize: '0.8rem' }}>{type.emoji} {type.value}</MenuItem>)}
+                        </Select>
+                      </Box>
+                      {renderLiftHistory(ex.name, eq)}
+                    </Box>
+                  </Collapse>
+                </Paper>
+              )
+            })}
 
             <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.1)' }} />
 
             {workoutData.mainBlock.map((ex, idx) => {
+               const eq = ex.equipment || 'Bodyweight';
                const repsMax = ex.repsMax || (ex.setsReps ? parseInt((ex as any).setsReps.split('x')[1]) : 999);
                const repsLabel = repsMax >= 99 ? `${ex.repsMin}+` : `${ex.repsMin}-${repsMax}`;
                const targetRepsGhost = repsMax >= 99 ? `${ex.repsMin}+` : repsMax;
-               
                const sets = ex.sets || 3;
-               {/* Find max E1RM from history for targets in expanded view */}
-               const exerciseLifts = allLiftsDB.filter(l => l.exerciseName === ex.name);
-               const maxE1rmDB = exerciseLifts.length > 0 ? Math.max(...exerciseLifts.map(l => l.e1rm ?? 0)) : 0;
+               
+               const eqLifts = allLiftsDB.filter(l => l.exerciseName === ex.name && (l.equipmentType || 'Bodyweight') === eq);
+               const bestE1RM_Display = eqLifts.length > 0 ? Math.max(...eqLifts.map(l => Number(toDisplay(l.e1rm ?? 0)))) : 0;
 
                return (
                 <Paper 
@@ -410,59 +462,79 @@ export default function Coach() {
                   onClick={() => toggleCellExpand(ex.name)} 
                   sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(176, 106, 255, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'main' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
                 >
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
                       <DragIndicatorIcon sx={{ color: 'rgba(255,255,255,0.2)', mt: 1, cursor: 'grab', display: { xs: 'none', sm: 'block' } }} />
-                      <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, !!completedExercises[ex.name], '', targetRepsGhost, sets)} sx={{ color: '#b06aff', p: 0, mt: 0.8 }} />
+                      <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, eq, !!completedExercises[ex.name], '', targetRepsGhost, sets)} sx={{ color: '#b06aff', p: 0, mt: 0.8 }} />
                       <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                         <Typography sx={{ fontWeight: 700, textDecoration: completedExercises[ex.name] ? 'line-through' : 'none' }}>{ex.name} {loggedExercises[ex.name] && <Typography component="span" sx={{ fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(176, 106, 255, 0.2)', color: '#b06aff', px: 1, py: 0.3, borderRadius: 2, ml: 1 }}>Logged</Typography>}</Typography>
-                        {/* VERY CLEAN MAIN VIEW CAPTION - High clarity */}
-                        <Typography variant="caption" sx={{ color: '#8a8a9a', mt: 0.2 }}>{sets} Sets | Baselines: {maxE1rmDB > 0 ? "Avail." : "Set"}</Typography>
+                        <Typography variant="caption" sx={{ color: '#8a8a9a', mt: 0.2 }}>{sets} Sets | Baselines: {bestE1RM_Display > 0 ? "Avail." : "Set"}</Typography>
                       </Box>
                     </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', ml: 1, flexShrink: 0 }}>
                       <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('main', idx, 'up'); }} disabled={idx === 0} sx={{ color: 'rgba(255,255,255,0.5)' }}><KeyboardArrowUpIcon fontSize="small" /></IconButton>
                       <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('main', idx, 'down'); }} disabled={idx === workoutData.mainBlock.length - 1} sx={{ color: 'rgba(255,255,255,0.5)' }}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
                       <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'main', index: idx }); }} sx={{ color: 'rgba(255,255,255,0.5)' }}><SwapHorizIcon fontSize="small" /></IconButton>
                     </Box>
                   </Box>
-                  {/* targets calculator panel now disclosed here when user needs it */}
-                  <Collapse in={expandedCells[ex.name]}><Box sx={{ pl: { xs: 4, sm: 5 } }}>{renderLiftHistory(ex.name, maxE1rmDB)}</Box></Collapse>
+                  <Collapse in={expandedCells[ex.name]}>
+                    <Box sx={{ pl: { xs: 4, sm: 5 }, pr: 2, pb: 1 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2, mb: 1, p: 1.5, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase' }}>Equipment</Typography>
+                        <Select size="small" value={eq} onChange={(e) => updateEquipment('main', idx, e.target.value)} onClick={(e) => e.stopPropagation()} sx={{ height: 30, fontSize: '0.8rem', borderRadius: 2, bgcolor: 'rgba(255,255,255,0.05)', '& fieldset': { border: 'none' } }}>
+                          {EQUIPMENT_TYPES.map(type => <MenuItem key={type.value} value={type.value} sx={{ fontSize: '0.8rem' }}>{type.emoji} {type.value}</MenuItem>)}
+                        </Select>
+                      </Box>
+                      {renderLiftHistory(ex.name, eq, bestE1RM_Display)}
+                    </Box>
+                  </Collapse>
                 </Paper>
                )
             })}
 
             <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.1)' }} />
 
-            {workoutData.cooldown.map((ex, idx) => (
-              <Paper 
-                key={ex.name} 
-                draggable onDragStart={(e) => handleDragStart(e, 'cooldown', idx)} onDragEnter={(e) => handleDragEnter(e, 'cooldown', idx)} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
-                onClick={() => toggleCellExpand(ex.name)} 
-                sx={{ p: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(176, 106, 255, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'cooldown' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
-              >
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                    <DragIndicatorIcon sx={{ color: 'rgba(255,255,255,0.2)', mt: 1, cursor: 'grab', display: { xs: 'none', sm: 'block' } }} />
-                    <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, !!completedExercises[ex.name], 0, ex.reps, 1)} sx={{ p: 0, mt: 0.8 }} />
-                    <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                      <Typography sx={{ fontWeight: 700, textDecoration: completedExercises[ex.name] ? 'line-through' : 'none' }}>{ex.name}</Typography>
-                      <Typography variant="body2" sx={{ color: '#00d4ff' }}>Target: {ex.reps}</Typography>
+            {workoutData.cooldown.map((ex, idx) => {
+              const eq = ex.equipment || 'Bodyweight';
+              return (
+                <Paper 
+                  key={ex.name} 
+                  draggable onDragStart={(e) => handleDragStart(e, 'cooldown', idx)} onDragEnter={(e) => handleDragEnter(e, 'cooldown', idx)} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
+                  onClick={() => toggleCellExpand(ex.name)} 
+                  sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(176, 106, 255, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'cooldown' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                      <DragIndicatorIcon sx={{ color: 'rgba(255,255,255,0.2)', mt: 1, cursor: 'grab', display: { xs: 'none', sm: 'block' } }} />
+                      <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, eq, !!completedExercises[ex.name], 0, ex.reps, 1)} sx={{ p: 0, mt: 0.8 }} />
+                      <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                        <Typography sx={{ fontWeight: 700, textDecoration: completedExercises[ex.name] ? 'line-through' : 'none' }}>{ex.name}</Typography>
+                        <Typography variant="body2" sx={{ color: '#00d4ff' }}>Target: {ex.reps}</Typography>
+                      </Box>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                      <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('cooldown', idx, 'up'); }} disabled={idx === 0}><KeyboardArrowUpIcon fontSize="small" /></IconButton>
+                      <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('cooldown', idx, 'down'); }} disabled={idx === workoutData.cooldown!.length - 1}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
+                      <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'cooldown', index: idx }); }}><SwapHorizIcon fontSize="small" /></IconButton>
                     </Box>
                   </Box>
-                  <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('cooldown', idx, 'up'); }} disabled={idx === 0}><KeyboardArrowUpIcon fontSize="small" /></IconButton>
-                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('cooldown', idx, 'down'); }} disabled={idx === workoutData.cooldown!.length - 1}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
-                    <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'cooldown', index: idx }); }}><SwapHorizIcon fontSize="small" /></IconButton>
-                  </Box>
-                </Box>
-                <Collapse in={expandedCells[ex.name]}><Box sx={{ pl: { xs: 4, sm: 5 }, mt: 2 }}>{renderLiftHistory(ex.name)}</Box></Collapse>
-              </Paper>
-            ))}
+                  <Collapse in={expandedCells[ex.name]}>
+                    <Box sx={{ pl: { xs: 4, sm: 5 }, pr: 2, pb: 1 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2, mb: 1, p: 1.5, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase' }}>Equipment</Typography>
+                        <Select size="small" value={eq} onChange={(e) => updateEquipment('cooldown', idx, e.target.value)} onClick={(e) => e.stopPropagation()} sx={{ height: 30, fontSize: '0.8rem', borderRadius: 2, bgcolor: 'rgba(255,255,255,0.05)', '& fieldset': { border: 'none' } }}>
+                          {EQUIPMENT_TYPES.map(type => <MenuItem key={type.value} value={type.value} sx={{ fontSize: '0.8rem' }}>{type.emoji} {type.value}</MenuItem>)}
+                        </Select>
+                      </Box>
+                      {renderLiftHistory(ex.name, eq)}
+                    </Box>
+                  </Collapse>
+                </Paper>
+              )
+            })}
           </Box>
         )}
 
-        {/* SWAP DIALOG */}
         <Dialog open={!!swapTarget} onClose={() => setSwapTarget(null)} fullWidth maxWidth="xs">
           <DialogTitle>Swap Exercise</DialogTitle>
           <DialogContent>

@@ -1,6 +1,6 @@
 // src/pages/Manual.tsx
 import React, { useState, useMemo, useEffect } from 'react';
-import { Box, Typography, Paper, Button, Checkbox, Divider, TextField, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Collapse, CircularProgress, Chip, MenuItem, FormControl, InputLabel, Select } from '@mui/material';
+import { Box, Typography, Paper, Button, Checkbox, Divider, TextField, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Collapse, CircularProgress, Chip, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import { useAction, useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import ConstructionIcon from '@mui/icons-material/Construction';
@@ -20,10 +20,19 @@ import { useNavigate } from 'react-router-dom';
 interface WorkoutJSON { 
   title: string; 
   focus: string; 
-  warmup?: { name: string; reps: string }[]; 
-  mainBlock: { name: string; sets: number; repsMin: number; repsMax: number; rest: string; notes: string; setsReps?: string }[]; 
-  cooldown?: { name: string; reps: string }[]; 
+  warmup?: { name: string; reps: string; equipment?: string }[]; 
+  mainBlock: { name: string; sets: number; repsMin: number; repsMax: number; rest: string; notes: string; setsReps?: string; equipment?: string }[]; 
+  cooldown?: { name: string; reps: string; equipment?: string }[]; 
 }
+
+const EQUIPMENT_TYPES = [
+  { value: 'Barbell', emoji: '🏋️' },
+  { value: 'Dumbbell', emoji: '🫳' },
+  { value: 'Smith', emoji: '🦾' },
+  { value: 'Machine/Cable', emoji: '⚙️' },
+  { value: 'Bodyweight', emoji: '🤸' },
+  { value: 'Other', emoji: '⚡' },
+];
 
 const parseAIJSON = (rawStr: string) => {
   try {
@@ -47,6 +56,8 @@ export default function Manual() {
       return saved ? JSON.parse(saved) || [] : [];
     } catch (e) { return []; }
   });
+
+  const [setupEquipment, setSetupEquipment] = useState<Record<string, string>>({});
   
   const [workoutData, setWorkoutData] = useState<WorkoutJSON | null>(() => {
     try {
@@ -66,6 +77,7 @@ export default function Manual() {
   });
 
   const equipment = 'Full Gym Access'; 
+  const [style, setStyle] = useState<string>('Hypertrophy (9+ reps)'); 
   
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [activeSubcategory, setActiveSubcategory] = useState<string>('All');
@@ -156,7 +168,16 @@ export default function Manual() {
   }, [exercisesDB, swapSearch]);
 
   const handleToggleExerciseSelection = (name: string) => {
-    setSelectedExercisesList(prev => prev.includes(name) ? prev.filter(e => e !== name) : [...prev, name]);
+    if (selectedExercisesList.includes(name)) {
+      setSelectedExercisesList(prev => prev.filter(e => e !== name));
+    } else {
+      setSelectedExercisesList(prev => [...prev, name]);
+      // Set default equipment for this new selection based on history
+      const lastLift = allLiftsDB.filter(l => l.exerciseName === name).sort((a,b)=>b.timestamp-a.timestamp)[0];
+      let eq = lastLift?.equipmentType || 'Barbell';
+      if (eq === 'Machine' || eq === 'Cable') eq = 'Machine/Cable';
+      setSetupEquipment(prev => ({...prev, [name]: eq}));
+    }
   };
 
   const handleStartWorkout = async (useAI: boolean) => {
@@ -165,7 +186,9 @@ export default function Manual() {
     const repsMax = 15;
     const rest = '90s - 120s';
 
-    const mainBlock = selectedExercisesList.map(name => ({ name, sets: 3, repsMin, repsMax, rest, notes: "Manual selection" }));
+    const mainBlock = selectedExercisesList.map(name => ({ 
+      name, equipment: setupEquipment[name] || 'Barbell', sets: 3, repsMin, repsMax, rest, notes: "Manual selection" 
+    }));
 
     if (!useAI) {
       setWorkoutData({ title: "Custom Built Protocol", focus: "General Training", warmup: [], mainBlock, cooldown: [] });
@@ -177,7 +200,20 @@ export default function Manual() {
     try {
       const aiResponse = await generateWarmupCooldown({ equipment, style: "General Training", mainBlock: selectedExercisesList });
       const parsed = parseAIJSON(aiResponse);
-      setWorkoutData({ title: "Custom Built Protocol", focus: "General Training", warmup: parsed.warmup || [], mainBlock, cooldown: parsed.cooldown || [] });
+      
+      const applyEq = (list: any[]) => list?.map(ex => {
+         const lastLift = allLiftsDB.filter(l => l.exerciseName === ex.name).sort((a,b)=>b.timestamp-a.timestamp)[0];
+         let eq = lastLift?.equipmentType || 'Bodyweight';
+         if (eq === 'Machine' || eq === 'Cable') eq = 'Machine/Cable';
+         return { ...ex, equipment: eq };
+      });
+
+      setWorkoutData({ 
+        title: "Custom Built Protocol", focus: "General Training", 
+        warmup: applyEq(parsed.warmup) || [], 
+        mainBlock, 
+        cooldown: applyEq(parsed.cooldown) || [] 
+      });
       setPhase('WORKOUT');
     } finally { setIsGenerating(false); }
   };
@@ -185,12 +221,32 @@ export default function Manual() {
   const handleSwapExercise = (newName: string) => {
     if (!workoutData || !swapTarget) return;
     const newWorkout = { ...workoutData };
-    if (swapTarget.section === 'main' && newWorkout.mainBlock) newWorkout.mainBlock[swapTarget.index].name = newName;
-    else if (swapTarget.section === 'warmup' && newWorkout.warmup) newWorkout.warmup[swapTarget.index].name = newName;
-    else if (swapTarget.section === 'cooldown' && newWorkout.cooldown) newWorkout.cooldown[swapTarget.index].name = newName;
+    const lastLift = allLiftsDB.filter(l => l.exerciseName === newName).sort((a,b)=>b.timestamp-a.timestamp)[0];
+    let eq = lastLift?.equipmentType || 'Barbell';
+    if (eq === 'Machine' || eq === 'Cable') eq = 'Machine/Cable';
+
+    if (swapTarget.section === 'main' && newWorkout.mainBlock) {
+      newWorkout.mainBlock[swapTarget.index].name = newName;
+      newWorkout.mainBlock[swapTarget.index].equipment = eq;
+    } else if (swapTarget.section === 'warmup' && newWorkout.warmup) {
+      newWorkout.warmup[swapTarget.index].name = newName;
+      newWorkout.warmup[swapTarget.index].equipment = eq;
+    } else if (swapTarget.section === 'cooldown' && newWorkout.cooldown) {
+      newWorkout.cooldown[swapTarget.index].name = newName;
+      newWorkout.cooldown[swapTarget.index].equipment = eq;
+    }
     setWorkoutData(newWorkout);
     setSwapTarget(null);
     setSwapSearch('');
+  };
+
+  const updateEquipment = (section: 'warmup'|'main'|'cooldown', index: number, eq: string) => {
+    if (!workoutData) return;
+    const newWorkout = { ...workoutData };
+    if (section === 'main' && newWorkout.mainBlock) newWorkout.mainBlock[index].equipment = eq;
+    else if (section === 'warmup' && newWorkout.warmup) newWorkout.warmup[index].equipment = eq;
+    else if (section === 'cooldown' && newWorkout.cooldown) newWorkout.cooldown[index].equipment = eq;
+    setWorkoutData(newWorkout);
   };
 
   const moveExercise = (section: 'warmup'|'main'|'cooldown', index: number, direction: 'up'|'down') => {
@@ -240,6 +296,7 @@ export default function Manual() {
     setLoggedExercises({});
     setExpandedCells({});
     setSelectedExercisesList([]);
+    setSetupEquipment({});
     setPhase('SETUP');
   };
 
@@ -247,16 +304,14 @@ export default function Manual() {
     setExpandedCells(prev => ({ ...prev, [exerciseName]: !prev[exerciseName] }));
   };
 
-  const openLogger = (exerciseName: string, suggestedWeight?: number | string, suggestedReps?: number | string, suggestedSets?: number | string) => {
+  const openLogger = (exerciseName: string, equipment: string, suggestedWeight?: number | string, suggestedReps?: number | string, suggestedSets?: number | string) => {
     setActiveLoggingExercise(exerciseName);
     setLogTimestamp(Date.now());
     const dbMatch = exercisesDB?.find(ex => String(ex?.name || '').toLowerCase() === exerciseName.toLowerCase());
-    const lastLift = allLiftsDB.filter(l => String(l?.exerciseName || '').toLowerCase() === exerciseName.toLowerCase()).sort((a,b) => b.timestamp - a.timestamp)[0];
-    let eq = lastLift?.equipmentType || 'Barbell';
-    if (eq === 'Machine' || eq === 'Cable') eq = 'Machine/Cable';
+    const lastLift = allLiftsDB.filter(l => String(l?.exerciseName || '').toLowerCase() === exerciseName.toLowerCase() && (l.equipmentType || 'Barbell') === equipment).sort((a,b) => b.timestamp - a.timestamp)[0];
 
     setLogCategory(dbMatch?.category || 'Custom');
-    setLogEquipment(eq);
+    setLogEquipment(equipment);
     
     setGhostWeight(suggestedWeight !== undefined && suggestedWeight !== '' ? suggestedWeight : (lastLift?.weight ? toDisplay(lastLift.weight) : ''));
     setGhostReps(suggestedReps !== undefined && suggestedReps !== '' ? suggestedReps : (lastLift?.reps || ''));
@@ -272,12 +327,12 @@ export default function Manual() {
 
   const handleCloseModal = () => setLogModalOpen(false);
 
-  const handleCheckboxClick = (e: React.MouseEvent, exerciseName: string, isCurrentlyDone: boolean, targetWeight?: number | string, targetReps?: number | string, targetSets?: number | string) => {
+  const handleCheckboxClick = (e: React.MouseEvent, exerciseName: string, equipment: string, isCurrentlyDone: boolean, targetWeight?: number | string, targetReps?: number | string, targetSets?: number | string) => {
     e.stopPropagation(); 
     if (isCurrentlyDone) setCompletedExercises(prev => ({ ...prev, [exerciseName]: false }));
     else {
       setCompletedExercises(prev => ({ ...prev, [exerciseName]: true }));
-      openLogger(exerciseName, targetWeight, targetReps, targetSets);
+      openLogger(exerciseName, equipment, targetWeight, targetReps, targetSets);
     }
   };
 
@@ -298,8 +353,8 @@ export default function Manual() {
     } finally { setIsSavingLog(false); }
   };
 
-  const renderLiftHistory = (exerciseName: string, maxE1rm?: number) => {
-    const history = allLiftsDB.filter(l => String(l?.exerciseName || '').toLowerCase() === exerciseName.toLowerCase()).sort((a,b) => b.timestamp - a.timestamp).slice(0, 3);
+  const renderLiftHistory = (exerciseName: string, equipment: string, bestE1RM_Display?: number) => {
+    const history = allLiftsDB.filter(l => String(l?.exerciseName || '').toLowerCase() === exerciseName.toLowerCase() && (l.equipmentType || 'Barbell') === equipment).sort((a,b) => b.timestamp - a.timestamp).slice(0, 3);
     
     const navToProgress = (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -307,21 +362,21 @@ export default function Manual() {
       navigate('/progress');
     };
 
-    const e4RM = maxE1rm ? maxE1rm * (33 / 36) : 0;
-    const e8RM = maxE1rm ? maxE1rm * (29 / 36) : 0;
+    const e4RM = bestE1RM_Display ? bestE1RM_Display * (33 / 36) : 0;
+    const e8RM = bestE1RM_Display ? bestE1RM_Display * (29 / 36) : 0;
 
     return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 1 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
         
-        {/* CALCULATED LOADING TARGETS PANEL - High disclosure inside expanded cell */}
-        {maxE1rm && maxE1rm > 0 ? (
+        {/* CALCULATED LOADING TARGETS PANEL */}
+        {bestE1RM_Display && bestE1RM_Display > 0 ? (
           <Paper sx={{ p: 2, bgcolor: 'rgba(0,0,0,0.3)', borderRadius: 2, display: 'flex', justifyContent: 'center', gap: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
             <Box sx={{ flex: 1, textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.1)', pr: 2 }}>
-              <Typography sx={{ fontWeight: 800, fontSize: '1.2rem', color: '#00d4ff' }}>{displayWeight(Math.round(e4RM))}</Typography>
+              <Typography sx={{ fontWeight: 800, fontSize: '1.2rem', color: '#00d4ff' }}>{Math.round(e4RM)} {unit}</Typography>
               <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase' }}>Target (4 Reps)</Typography>
             </Box>
             <Box sx={{ flex: 1, textAlign: 'center' }}>
-              <Typography sx={{ fontWeight: 800, fontSize: '1.2rem', color: '#d2a8ff' }}>{displayWeight(Math.round(e8RM))}</Typography>
+              <Typography sx={{ fontWeight: 800, fontSize: '1.2rem', color: '#d2a8ff' }}>{Math.round(e8RM)} {unit}</Typography>
               <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase' }}>Target (8 Reps)</Typography>
             </Box>
           </Paper>
@@ -339,7 +394,7 @@ export default function Manual() {
               </Box>
             ))
           ) : (
-             <Typography variant="body2" sx={{ color: '#8a8a9a', fontStyle: 'italic', textAlign: 'center', py: 1 }}>No history found.</Typography>
+             <Typography variant="body2" sx={{ color: '#8a8a9a', fontStyle: 'italic', textAlign: 'center', py: 1 }}>No history found for {equipment}.</Typography>
           )}
           <Button fullWidth size="small" onClick={navToProgress} sx={{ mt: 1.5, color: '#00e096', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', borderTop: '1px solid rgba(255,255,255,0.05)', pt: 1 }}>
             Full Progress Chart 📈
@@ -381,10 +436,23 @@ export default function Manual() {
               <Box sx={{ maxHeight: 320, overflowY: 'auto', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 2 }}>
                 {displayedExercises.map((ex, idx) => {
                   const safeName = String(ex?.name || 'Unnamed Exercise');
+                  const isSelected = selectedExercisesList.includes(safeName);
                   return (
-                    <Box key={ex?._id || idx} onClick={() => handleToggleExerciseSelection(safeName)} sx={{ display: 'flex', alignItems: 'center', p: 1, cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
-                      <Checkbox checked={selectedExercisesList.includes(safeName)} sx={{ color: '#00e096' }} />
-                      <Box><Typography sx={{ fontWeight: 600 }}>{safeName}</Typography></Box>
+                    <Box key={ex?._id || idx} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1, borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                      <Box onClick={() => handleToggleExerciseSelection(safeName)} sx={{ display: 'flex', alignItems: 'center', cursor: 'pointer', flex: 1 }}>
+                        <Checkbox checked={isSelected} sx={{ color: '#00e096' }} />
+                        <Typography sx={{ fontWeight: 600 }}>{safeName}</Typography>
+                      </Box>
+                      {isSelected && (
+                        <Select
+                          size="small"
+                          value={setupEquipment[safeName] || 'Barbell'}
+                          onChange={(e) => setSetupEquipment(prev => ({...prev, [safeName]: e.target.value}))}
+                          sx={{ height: 28, fontSize: '0.75rem', borderRadius: 2, minWidth: 110, bgcolor: 'rgba(255,255,255,0.05)', '& fieldset': { border: 'none' } }}
+                        >
+                          {EQUIPMENT_TYPES.map(eq => <MenuItem key={eq.value} value={eq.value} sx={{ fontSize: '0.8rem' }}>{eq.emoji} {eq.value}</MenuItem>)}
+                        </Select>
+                      )}
                     </Box>
                   )
                 })}
@@ -403,31 +471,44 @@ export default function Manual() {
             {workoutData.warmup && workoutData.warmup.length > 0 && (
               <Box>
                 <Typography variant="h6" sx={{ fontWeight: 800, color: '#00e096', mb: 1 }}>1. Warm-up (AI)</Typography>
-                {workoutData.warmup.map((ex, idx) => (
-                  <Paper 
-                    key={ex.name} 
-                    draggable onDragStart={(e) => handleDragStart(e, 'warmup', idx)} onDragEnter={(e) => handleDragEnter(e, 'warmup', idx)} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
-                    onClick={() => toggleCellExpand(ex.name)} 
-                    sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(0, 224, 150, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'warmup' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                        <DragIndicatorIcon sx={{ color: 'rgba(255,255,255,0.2)', mt: 1, cursor: 'grab', display: { xs: 'none', sm: 'block' } }} />
-                        <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, !!completedExercises[ex.name], '', ex.reps, 1)} sx={{ color: '#00e096', p: 0, mt: 0.8 }} />
-                        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                          <Typography sx={{ fontWeight: 700, textDecoration: completedExercises[ex.name] ? 'line-through' : 'none' }}>{ex.name}</Typography>
-                          <Typography variant="body2" sx={{ color: '#00e096' }}>Target: {ex.reps}</Typography>
+                {workoutData.warmup.map((ex, idx) => {
+                  const eq = ex.equipment || 'Bodyweight';
+                  return (
+                    <Paper 
+                      key={ex.name} 
+                      draggable onDragStart={(e) => handleDragStart(e, 'warmup', idx)} onDragEnter={(e) => handleDragEnter(e, 'warmup', idx)} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
+                      onClick={() => toggleCellExpand(ex.name)} 
+                      sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(0, 224, 150, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'warmup' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                          <DragIndicatorIcon sx={{ color: 'rgba(255,255,255,0.2)', mt: 1, cursor: 'grab', display: { xs: 'none', sm: 'block' } }} />
+                          <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, eq, !!completedExercises[ex.name], 0, ex.reps, 1)} sx={{ color: '#00e096', p: 0, mt: 0.8 }} />
+                          <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                            <Typography sx={{ fontWeight: 700, textDecoration: completedExercises[ex.name] ? 'line-through' : 'none' }}>{ex.name}</Typography>
+                            <Typography variant="body2" sx={{ color: '#00e096' }}>Target: {ex.reps}</Typography>
+                          </Box>
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                          <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('warmup', idx, 'up'); }} disabled={idx === 0}><KeyboardArrowUpIcon fontSize="small" /></IconButton>
+                          <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('warmup', idx, 'down'); }} disabled={idx === workoutData.warmup?.length - 1}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
+                          <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'warmup', index: idx }); }}><SwapHorizIcon fontSize="small" /></IconButton>
                         </Box>
                       </Box>
-                      <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('warmup', idx, 'up'); }} disabled={idx === 0}><KeyboardArrowUpIcon fontSize="small" /></IconButton>
-                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('warmup', idx, 'down'); }} disabled={idx === workoutData.warmup?.length - 1}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
-                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'warmup', index: idx }); }}><SwapHorizIcon fontSize="small" /></IconButton>
-                      </Box>
-                    </Box>
-                    <Collapse in={expandedCells[ex.name]}><Box sx={{ pl: { xs: 4, sm: 5 }, mt: 2 }}>{renderLiftHistory(ex.name)}</Box></Collapse>
-                  </Paper>
-                ))}
+                      <Collapse in={expandedCells[ex.name]}>
+                        <Box sx={{ pl: { xs: 4, sm: 5 }, pr: 2, pb: 1 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2, mb: 1, p: 1.5, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
+                            <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase' }}>Equipment</Typography>
+                            <Select size="small" value={eq} onChange={(e) => updateEquipment('warmup', idx, e.target.value)} onClick={(e) => e.stopPropagation()} sx={{ height: 30, fontSize: '0.8rem', borderRadius: 2, bgcolor: 'rgba(255,255,255,0.05)', '& fieldset': { border: 'none' } }}>
+                              {EQUIPMENT_TYPES.map(type => <MenuItem key={type.value} value={type.value} sx={{ fontSize: '0.8rem' }}>{type.emoji} {type.value}</MenuItem>)}
+                            </Select>
+                          </Box>
+                          {renderLiftHistory(ex.name, eq)}
+                        </Box>
+                      </Collapse>
+                    </Paper>
+                  )
+                })}
                 <Divider sx={{ my: 2 }} />
               </Box>
             )}
@@ -435,17 +516,17 @@ export default function Manual() {
             <Box>
               <Typography variant="h6" sx={{ fontWeight: 800, color: '#00e096', mb: 1 }}>{workoutData.warmup && workoutData.warmup.length > 0 ? '2.' : '1.'} Main Block</Typography>
               {workoutData.mainBlock?.map((ex, idx) => {
+                const eq = ex.equipment || 'Barbell';
+                const repsMax = ex.repsMax || (ex.setsReps ? parseInt((ex as any).setsReps.split('x')[1]) : 999);
+                const repsLabel = repsMax >= 99 ? `${ex.repsMin}+` : `${ex.repsMin}-${repsMax}`;
+                const targetRepsGhost = repsMax >= 99 ? `${ex.repsMin}+` : repsMax;
                 const sets = ex.sets || 3;
                 
-                {/* Find max E1RM from history for targets in expanded view */}
-                const exerciseLifts = allLiftsDB.filter(l => l.exerciseName === ex.name);
-                const maxE1rmDB = exerciseLifts.length > 0 ? Math.max(...exerciseLifts.map(l => l.e1rm ?? 0)) : 0;
-                
-                const e4RM_DB = maxE1rmDB * (33 / 36);
-                const e8RM_DB = maxE1rmDB * (29 / 36);
-                
-                const loadText = maxE1rmDB > 0 ? `e4RM: ${displayWeight(Math.round(e4RM_DB))} | e8RM: ${displayWeight(Math.round(e8RM_DB))}` : 'Baseline';
-                
+                const eqLifts = allLiftsDB.filter(l => l.exerciseName === ex.name && (l.equipmentType || 'Barbell') === eq);
+                const bestE1RM_Display = eqLifts.length > 0 ? Math.max(...eqLifts.map(l => Number(toDisplay(l.e1rm ?? 0)))) : 0;
+                const hist = eqLifts.filter(l => l.reps >= (ex.repsMin || 0) && l.reps <= repsMax).sort((a,b)=>b.timestamp-a.timestamp)[0];
+                const overloaded = hist?.weight ? Math.round((hist.weight * 1.05)/5)*5 : null;
+
                 return (
                   <Paper 
                     key={ex.name} 
@@ -456,12 +537,10 @@ export default function Manual() {
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
                         <DragIndicatorIcon sx={{ color: 'rgba(255,255,255,0.2)', mt: 1, cursor: 'grab', display: { xs: 'none', sm: 'block' } }} />
-                        {/* checkbox handles default suggested load logic if targets exist */}
-                        <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, !!completedExercises[ex.name], '', '', sets)} sx={{ color: '#00e096', p: 0, mt: 0.8 }} />
+                        <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, eq, !!completedExercises[ex.name], overloaded || '', targetRepsGhost, sets)} sx={{ color: '#00e096', p: 0, mt: 0.8 }} />
                         <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                           <Typography sx={{ fontWeight: 700, textDecoration: completedExercises[ex.name] ? 'line-through' : 'none' }}>{ex.name} {loggedExercises[ex.name] && <Typography component="span" sx={{ fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(0, 224, 150, 0.2)', color: '#00e096', px: 1, py: 0.3, borderRadius: 2, ml: 1 }}>Logged</Typography>}</Typography>
-                          {/* Main view caption now very clean */}
-                          <Typography variant="caption" sx={{ color: '#8a8a9a', mt: 0.2 }}>{sets} Sets | Baselines: {maxE1rmDB > 0 ? "Avail." : "Set"}</Typography>
+                          <Typography variant="caption" sx={{ color: '#8a8a9a', mt: 0.2 }}>{sets} Sets | Baselines: {bestE1RM_Display > 0 ? "Avail." : "Set"}</Typography>
                         </Box>
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'center', ml: 1, flexShrink: 0 }}>
@@ -470,8 +549,17 @@ export default function Manual() {
                         <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'main', index: idx }); }} sx={{ color: 'rgba(255,255,255,0.5)' }}><SwapHorizIcon fontSize="small" /></IconButton>
                       </Box>
                     </Box>
-                    {/* targets calculator panel now disclosed here when user needs it */}
-                    <Collapse in={expandedCells[ex.name]}><Box sx={{ pl: { xs: 4, sm: 5 } }}>{renderLiftHistory(ex.name, maxE1rmDB)}</Box></Collapse>
+                    <Collapse in={expandedCells[ex.name]}>
+                      <Box sx={{ pl: { xs: 4, sm: 5 }, pr: 2, pb: 1 }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2, mb: 1, p: 1.5, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
+                          <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase' }}>Equipment</Typography>
+                          <Select size="small" value={eq} onChange={(e) => updateEquipment('main', idx, e.target.value)} onClick={(e) => e.stopPropagation()} sx={{ height: 30, fontSize: '0.8rem', borderRadius: 2, bgcolor: 'rgba(255,255,255,0.05)', '& fieldset': { border: 'none' } }}>
+                            {EQUIPMENT_TYPES.map(type => <MenuItem key={type.value} value={type.value} sx={{ fontSize: '0.8rem' }}>{type.emoji} {type.value}</MenuItem>)}
+                          </Select>
+                        </Box>
+                        {renderLiftHistory(ex.name, eq, bestE1RM_Display)}
+                      </Box>
+                    </Collapse>
                   </Paper>
                 );
               })}
@@ -481,36 +569,50 @@ export default function Manual() {
               <Box>
                 <Divider sx={{ my: 2 }} />
                 <Typography variant="h6" sx={{ fontWeight: 800, color: '#00e096', mb: 1 }}>3. Cooldown (AI)</Typography>
-                {workoutData.cooldown.map((ex, idx) => (
-                  <Paper 
-                    key={ex.name} 
-                    draggable onDragStart={(e) => handleDragStart(e, 'cooldown', idx)} onDragEnter={(e) => handleDragEnter(e, 'cooldown', idx)} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
-                    onClick={() => toggleCellExpand(ex.name)} 
-                    sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(0, 224, 150, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'cooldown' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
-                  >
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
-                        <DragIndicatorIcon sx={{ color: 'rgba(255,255,255,0.2)', mt: 1, cursor: 'grab', display: { xs: 'none', sm: 'block' } }} />
-                        <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, !!completedExercises[ex.name], 0, ex.reps, 1)} sx={{ color: '#00e096', p: 0, mt: 0.8 }} />
-                        <Box sx={{ display: 'flex', flexDirection: 'column' }}>
-                          <Typography sx={{ fontWeight: 700, textDecoration: completedExercises[ex.name] ? 'line-through' : 'none' }}>{ex.name}</Typography>
-                          <Typography variant="body2" sx={{ color: '#00d4ff' }}>Target: {ex.reps}</Typography>
+                {workoutData.cooldown.map((ex, idx) => {
+                  const eq = ex.equipment || 'Bodyweight';
+                  return (
+                    <Paper 
+                      key={ex.name} 
+                      draggable onDragStart={(e) => handleDragStart(e, 'cooldown', idx)} onDragEnter={(e) => handleDragEnter(e, 'cooldown', idx)} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
+                      onClick={() => toggleCellExpand(ex.name)} 
+                      sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(0, 224, 150, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'cooldown' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+                          <DragIndicatorIcon sx={{ color: 'rgba(255,255,255,0.2)', mt: 1, cursor: 'grab', display: { xs: 'none', sm: 'block' } }} />
+                          <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, eq, !!completedExercises[ex.name], 0, ex.reps, 1)} sx={{ color: '#00e096', p: 0, mt: 0.8 }} />
+                          <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                            <Typography sx={{ fontWeight: 700, textDecoration: completedExercises[ex.name] ? 'line-through' : 'none' }}>{ex.name}</Typography>
+                            <Typography variant="body2" sx={{ color: '#00d4ff' }}>Target: {ex.reps}</Typography>
+                          </Box>
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                          <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('cooldown', idx, 'up'); }} disabled={idx === 0}><KeyboardArrowUpIcon fontSize="small" /></IconButton>
+                          <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('cooldown', idx, 'down'); }} disabled={idx === workoutData.cooldown?.length - 1}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
+                          <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'cooldown', index: idx }); }}><SwapHorizIcon fontSize="small" /></IconButton>
                         </Box>
                       </Box>
-                      <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('cooldown', idx, 'up'); }} disabled={idx === 0}><KeyboardArrowUpIcon fontSize="small" /></IconButton>
-                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('cooldown', idx, 'down'); }} disabled={idx === workoutData.cooldown?.length - 1}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
-                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'cooldown', index: idx }); }}><SwapHorizIcon fontSize="small" /></IconButton>
-                      </Box>
-                    </Box>
-                    <Collapse in={expandedCells[ex.name]}><Box sx={{ pl: { xs: 4, sm: 5 }, mt: 2 }}>{renderLiftHistory(ex.name)}</Box></Collapse>
-                  </Paper>
-                ))}
+                      <Collapse in={expandedCells[ex.name]}>
+                        <Box sx={{ pl: { xs: 4, sm: 5 }, pr: 2, pb: 1 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2, mb: 1, p: 1.5, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
+                            <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase' }}>Equipment</Typography>
+                            <Select size="small" value={eq} onChange={(e) => updateEquipment('cooldown', idx, e.target.value)} onClick={(e) => e.stopPropagation()} sx={{ height: 30, fontSize: '0.8rem', borderRadius: 2, bgcolor: 'rgba(255,255,255,0.05)', '& fieldset': { border: 'none' } }}>
+                              {EQUIPMENT_TYPES.map(type => <MenuItem key={type.value} value={type.value} sx={{ fontSize: '0.8rem' }}>{type.emoji} {type.value}</MenuItem>)}
+                            </Select>
+                          </Box>
+                          {renderLiftHistory(ex.name, eq)}
+                        </Box>
+                      </Collapse>
+                    </Paper>
+                  )
+                })}
               </Box>
             )}
           </Box>
         )}
 
+        {/* SWAP DIALOG */}
         <Dialog open={!!swapTarget} onClose={() => setSwapTarget(null)} fullWidth maxWidth="xs">
           <DialogTitle>Swap Exercise</DialogTitle>
           <DialogContent>
