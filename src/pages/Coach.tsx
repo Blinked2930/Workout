@@ -11,7 +11,6 @@ import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import TerminalIcon from '@mui/icons-material/Terminal';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { enGB } from 'date-fns/locale';
@@ -235,10 +234,8 @@ export default function Coach() {
     } finally { setIsProcessing(false); }
   };
 
-  const renderLiftHistory = (exerciseName: string, minReps?: number, maxReps?: number) => {
-    let history = allLiftsDB.filter(l => String(l?.exerciseName || '').toLowerCase() === exerciseName.toLowerCase()).sort((a,b) => b.timestamp - a.timestamp);
-    if (minReps !== undefined && maxReps !== undefined) history = history.filter(l => l.reps >= minReps && l.reps <= maxReps);
-    history = history.slice(0, 3);
+  const renderLiftHistory = (exerciseName: string, maxE1rm?: number) => {
+    const history = allLiftsDB.filter(l => String(l?.exerciseName || '').toLowerCase() === exerciseName.toLowerCase()).sort((a,b) => b.timestamp - a.timestamp).slice(0, 3);
 
     const navToProgress = (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -246,24 +243,44 @@ export default function Coach() {
       navigate('/progress');
     };
 
-    if (history.length === 0) return (
-      <Box sx={{ bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, p: 1.5, mt: 1, textAlign: 'center' }}>
-        <Typography variant="body2" sx={{ color: '#8a8a9a', fontStyle: 'italic', mb: 1 }}>No history found matching this rep range.</Typography>
-        <Button size="small" onClick={navToProgress} sx={{ color: '#b06aff', fontSize: '0.7rem', fontWeight: 800 }}>Full Progress 📈</Button>
-      </Box>
-    );
+    const e4RM = maxE1rm ? maxE1rm * (33 / 36) : 0;
+    const e8RM = maxE1rm ? maxE1rm * (29 / 36) : 0;
 
     return (
-      <Box sx={{ bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, p: 1.5, mt: 1 }}>
-        {history.map((lift, i) => (
-          <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
-            <Typography variant="body2" sx={{ color: i === 0 ? '#b06aff' : '#d2a8ff' }}>{displayWeight(lift.weight)} × {lift.reps} reps</Typography>
-            <Typography variant="body2" sx={{ color: '#8a8a9a' }}>{new Date(lift.timestamp).toLocaleDateString()}</Typography>
-          </Box>
-        ))}
-        <Button fullWidth size="small" onClick={navToProgress} sx={{ mt: 1, color: '#b06aff', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', borderTop: '1px solid rgba(255,255,255,0.05)', pt: 1.5 }}>
-          Full Progress 📈
-        </Button>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mt: 1 }}>
+        
+        {/* CALCULATED LOADING TARGETS PANEL - Purple accents inside expanded cell */}
+        {maxE1rm && maxE1rm > 0 ? (
+          <Paper sx={{ p: 2, bgcolor: 'rgba(0,0,0,0.3)', borderRadius: 2, display: 'flex', justifyContent: 'center', gap: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
+            <Box sx={{ flex: 1, textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.1)', pr: 2 }}>
+              <Typography sx={{ fontWeight: 800, fontSize: '1.2rem', color: '#00d4ff' }}>{displayWeight(Math.round(e4RM))}</Typography>
+              <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase' }}>Target (4 Reps)</Typography>
+            </Box>
+            <Box sx={{ flex: 1, textAlign: 'center' }}>
+              <Typography sx={{ fontWeight: 800, fontSize: '1.2rem', color: '#b06aff' }}>{displayWeight(Math.round(e8RM))}</Typography>
+              <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase' }}>Target (8 Reps)</Typography>
+            </Box>
+          </Paper>
+        ) : (
+          <Paper sx={{ p: 1.5, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, textAlign: 'center' }}><Typography sx={{ fontStyle: 'italic', color: 'text.secondary', fontSize: '0.8rem' }}>Set baseline lift to generate targets.</Typography></Paper>
+        )}
+
+        {/* RAW HISTORY LIST */}
+        <Box sx={{ bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, p: 1.5 }}>
+          {history.length > 0 ? (
+            history.map((lift, i) => (
+              <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
+                <Typography variant="body2" sx={{ color: i === 0 ? '#b06aff' : '#8a8a8a' }}>{displayWeight(lift.weight)} × {lift.reps} reps</Typography>
+                <Typography variant="body2" sx={{ color: '#555566' }}>{new Date(lift.timestamp).toLocaleDateString()}</Typography>
+              </Box>
+            ))
+          ) : (
+             <Typography variant="body2" sx={{ color: '#8a8a9a', fontStyle: 'italic', textAlign: 'center', py: 1 }}>No history found.</Typography>
+          )}
+          <Button fullWidth size="small" onClick={navToProgress} sx={{ mt: 1.5, color: '#00d4ff', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', borderTop: '1px solid rgba(255,255,255,0.05)', pt: 1 }}>
+            Full Progress Chart 📈
+          </Button>
+        </Box>
       </Box>
     );
   };
@@ -382,11 +399,9 @@ export default function Coach() {
                const targetRepsGhost = repsMax >= 99 ? `${ex.repsMin}+` : repsMax;
                
                const sets = ex.sets || 3;
+               {/* Find max E1RM from history for targets in expanded view */}
                const exerciseLifts = allLiftsDB.filter(l => l.exerciseName === ex.name);
                const maxE1rmDB = exerciseLifts.length > 0 ? Math.max(...exerciseLifts.map(l => l.e1rm ?? 0)) : 0;
-               const e4RM_DB = maxE1rmDB * (33 / 36);
-               const e8RM_DB = maxE1rmDB * (29 / 36);
-               const loadText = maxE1rmDB > 0 ? `e4RM: ${displayWeight(Math.round(e4RM_DB))} | e8RM: ${displayWeight(Math.round(e8RM_DB))}` : 'Baseline';
 
                return (
                 <Paper 
@@ -401,7 +416,8 @@ export default function Coach() {
                       <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, !!completedExercises[ex.name], '', targetRepsGhost, sets)} sx={{ color: '#b06aff', p: 0, mt: 0.8 }} />
                       <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                         <Typography sx={{ fontWeight: 700, textDecoration: completedExercises[ex.name] ? 'line-through' : 'none' }}>{ex.name} {loggedExercises[ex.name] && <Typography component="span" sx={{ fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(176, 106, 255, 0.2)', color: '#b06aff', px: 1, py: 0.3, borderRadius: 2, ml: 1 }}>Logged</Typography>}</Typography>
-                        <Typography variant="caption" sx={{ color: '#00d4ff', mt: 0.5, display: 'block' }}>{sets} Sets | {repsLabel} Reps | Load: {loadText}</Typography>
+                        {/* VERY CLEAN MAIN VIEW CAPTION - High clarity */}
+                        <Typography variant="caption" sx={{ color: '#8a8a9a', mt: 0.2 }}>{sets} Sets | Baselines: {maxE1rmDB > 0 ? "Avail." : "Set"}</Typography>
                       </Box>
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
@@ -410,7 +426,8 @@ export default function Coach() {
                       <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'main', index: idx }); }} sx={{ color: 'rgba(255,255,255,0.5)' }}><SwapHorizIcon fontSize="small" /></IconButton>
                     </Box>
                   </Box>
-                  <Collapse in={expandedCells[ex.name]}><Box sx={{ pl: { xs: 4, sm: 5 }, mt: 2 }}>{renderLiftHistory(ex.name, ex.repsMin, repsMax)}</Box></Collapse>
+                  {/* targets calculator panel now disclosed here when user needs it */}
+                  <Collapse in={expandedCells[ex.name]}><Box sx={{ pl: { xs: 4, sm: 5 } }}>{renderLiftHistory(ex.name, maxE1rmDB)}</Box></Collapse>
                 </Paper>
                )
             })}
@@ -445,6 +462,7 @@ export default function Coach() {
           </Box>
         )}
 
+        {/* SWAP DIALOG */}
         <Dialog open={!!swapTarget} onClose={() => setSwapTarget(null)} fullWidth maxWidth="xs">
           <DialogTitle>Swap Exercise</DialogTitle>
           <DialogContent>
