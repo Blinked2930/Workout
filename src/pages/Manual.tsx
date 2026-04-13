@@ -1,6 +1,6 @@
 // src/pages/Manual.tsx
 import React, { useState, useMemo, useEffect } from 'react';
-import { Box, Typography, Paper, Button, Checkbox, Divider, TextField, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Collapse, CircularProgress, Chip, MenuItem } from '@mui/material';
+import { Box, Typography, Paper, Button, Checkbox, Divider, TextField, Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Collapse, CircularProgress, Chip, MenuItem, FormControl, InputLabel, Select } from '@mui/material';
 import { useAction, useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import ConstructionIcon from '@mui/icons-material/Construction';
@@ -10,6 +10,7 @@ import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { enGB } from 'date-fns/locale';
@@ -269,6 +270,8 @@ export default function Manual() {
     setLogModalOpen(true);
   };
 
+  const handleCloseModal = () => setLogModalOpen(false);
+
   const handleCheckboxClick = (e: React.MouseEvent, exerciseName: string, isCurrentlyDone: boolean, targetWeight?: number | string, targetReps?: number | string, targetSets?: number | string) => {
     e.stopPropagation(); 
     if (isCurrentlyDone) setCompletedExercises(prev => ({ ...prev, [exerciseName]: false }));
@@ -437,6 +440,11 @@ export default function Manual() {
                 {/* Find max E1RM from history for targets in expanded view */}
                 const exerciseLifts = allLiftsDB.filter(l => l.exerciseName === ex.name);
                 const maxE1rmDB = exerciseLifts.length > 0 ? Math.max(...exerciseLifts.map(l => l.e1rm ?? 0)) : 0;
+                
+                const e4RM_DB = maxE1rmDB * (33 / 36);
+                const e8RM_DB = maxE1rmDB * (29 / 36);
+                
+                const loadText = maxE1rmDB > 0 ? `e4RM: ${displayWeight(Math.round(e4RM_DB))} | e8RM: ${displayWeight(Math.round(e8RM_DB))}` : 'Baseline';
                 
                 return (
                   <Paper 
