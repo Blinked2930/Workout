@@ -16,6 +16,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { enGB } from 'date-fns/locale';
 import { useUnit } from '../context/UnitContext';
+import { useNavigate } from 'react-router-dom';
 
 interface SuggestionJSON { focusTitle: string; reasoning: string; }
 interface WorkoutJSON { 
@@ -38,6 +39,7 @@ const parseAIJSON = (rawStr: string) => {
 
 export default function Coach() {
   const { unit, displayWeight, toDisplay, toDB } = useUnit();
+  const navigate = useNavigate();
 
   const [phase, setPhase] = useState<'SETUP' | 'REVIEW' | 'WORKOUT'>('SETUP');
   const [time, setTime] = useState<number>(45);
@@ -237,7 +239,20 @@ export default function Coach() {
     let history = allLiftsDB.filter(l => String(l?.exerciseName || '').toLowerCase() === exerciseName.toLowerCase()).sort((a,b) => b.timestamp - a.timestamp);
     if (minReps !== undefined && maxReps !== undefined) history = history.filter(l => l.reps >= minReps && l.reps <= maxReps);
     history = history.slice(0, 3);
-    if (history.length === 0) return <Typography variant="body2" sx={{ color: '#8a8a9a', fontStyle: 'italic', p: 2 }}>No history found matching this rep range.</Typography>;
+
+    const navToProgress = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      localStorage.setItem('progress_exercise', exerciseName);
+      navigate('/progress');
+    };
+
+    if (history.length === 0) return (
+      <Box sx={{ bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, p: 1.5, mt: 1, textAlign: 'center' }}>
+        <Typography variant="body2" sx={{ color: '#8a8a9a', fontStyle: 'italic', mb: 1 }}>No history found matching this rep range.</Typography>
+        <Button size="small" onClick={navToProgress} sx={{ color: '#00d4ff', fontSize: '0.7rem', fontWeight: 800 }}>Full Progress 📈</Button>
+      </Box>
+    );
+
     return (
       <Box sx={{ bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, p: 1.5, mt: 1 }}>
         {history.map((lift, i) => (
@@ -246,6 +261,9 @@ export default function Coach() {
             <Typography variant="body2" sx={{ color: '#8a8a9a' }}>{new Date(lift.timestamp).toLocaleDateString()}</Typography>
           </Box>
         ))}
+        <Button fullWidth size="small" onClick={navToProgress} sx={{ mt: 1, color: '#00d4ff', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', borderTop: '1px solid rgba(255,255,255,0.05)', pt: 1.5 }}>
+          Full Progress 📈
+        </Button>
       </Box>
     );
   };
@@ -359,10 +377,9 @@ export default function Coach() {
             <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.1)' }} />
 
             {workoutData.mainBlock.map((ex, idx) => {
-               const repsMax = ex.repsMax || (ex.setsReps ? parseInt(ex.setsReps.split('x')[1]) : 999);
+               const repsMax = ex.repsMax || (ex.setsReps ? parseInt((ex as any).setsReps.split('x')[1]) : 999);
                const repsLabel = repsMax >= 99 ? `${ex.repsMin}+` : `${ex.repsMin}-${repsMax}`;
                const targetRepsGhost = repsMax >= 99 ? `${ex.repsMin}+` : repsMax;
-               
                const sets = ex.sets || 3;
                const hist = allLiftsDB.filter(l => l.exerciseName === ex.name && l.reps >= (ex.repsMin || 0) && l.reps <= repsMax).sort((a,b)=>b.timestamp-a.timestamp)[0];
                const overloaded = hist?.weight ? Math.round((hist.weight * 1.05)/5)*5 : null;
@@ -383,10 +400,10 @@ export default function Coach() {
                         <Typography variant="caption" sx={{ color: '#00d4ff', mt: 0.5, display: 'block' }}>{sets} Sets | {repsLabel} Reps | Load: {overloaded ? displayWeight(overloaded) : 'Baseline'}</Typography>
                       </Box>
                     </Box>
-                    <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-                      <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('main', idx, 'up'); }} disabled={idx === 0}><KeyboardArrowUpIcon fontSize="small" /></IconButton>
-                      <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('main', idx, 'down'); }} disabled={idx === workoutData.mainBlock.length - 1}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
-                      <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'main', index: idx }); }}><SwapHorizIcon fontSize="small" /></IconButton>
+                    <Box sx={{ display: 'flex', alignItems: 'center', ml: 1, flexShrink: 0 }}>
+                      <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('main', idx, 'up'); }} disabled={idx === 0} sx={{ color: 'rgba(255,255,255,0.5)' }}><KeyboardArrowUpIcon fontSize="small" /></IconButton>
+                      <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('main', idx, 'down'); }} disabled={idx === workoutData.mainBlock.length - 1} sx={{ color: 'rgba(255,255,255,0.5)' }}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
+                      <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'main', index: idx }); }} sx={{ color: 'rgba(255,255,255,0.5)' }}><SwapHorizIcon fontSize="small" /></IconButton>
                     </Box>
                   </Box>
                   <Collapse in={expandedCells[ex.name]}><Box sx={{ pl: { xs: 4, sm: 5 }, mt: 2 }}>{renderLiftHistory(ex.name, ex.repsMin, repsMax)}</Box></Collapse>
@@ -424,6 +441,7 @@ export default function Coach() {
           </Box>
         )}
 
+        {/* SWAP DIALOG */}
         <Dialog open={!!swapTarget} onClose={() => setSwapTarget(null)} fullWidth maxWidth="xs">
           <DialogTitle>Swap Exercise</DialogTitle>
           <DialogContent>
@@ -441,6 +459,7 @@ export default function Coach() {
           </DialogContent>
         </Dialog>
 
+        {/* LOG MODAL */}
         <Dialog open={logModalOpen} onClose={() => setLogModalOpen(false)}>
           <DialogTitle sx={{ fontWeight: 800, color: '#00d4ff' }}>Log Set</DialogTitle>
           <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
@@ -453,9 +472,9 @@ export default function Coach() {
                 </Select>
              </FormControl>
              <Box sx={{ display: 'flex', gap: 1 }}>
-                <TextField fullWidth type="number" label={`Weight (${unit})`} placeholder={ghostWeight ? `Target: ${ghostWeight}` : ''} value={logWeight} onChange={e => setLogWeight(e.target.value)} />
-                <TextField fullWidth type="number" label="Reps" placeholder={ghostReps ? `Target: ${ghostReps}` : ''} value={logReps} onChange={e => setLogReps(e.target.value)} />
-                <TextField fullWidth type="number" label="Sets" placeholder={ghostSets ? `Target: ${ghostSets}` : ''} value={logSets} onChange={e => setLogSets(e.target.value)} />
+                <TextField fullWidth type="text" inputMode="decimal" label={`Weight (${unit})`} placeholder={ghostWeight ? `Target: ${ghostWeight}` : ''} value={logWeight} onChange={e => setLogWeight(e.target.value)} />
+                <TextField fullWidth type="text" inputMode="numeric" label="Reps" placeholder={ghostReps ? `Target: ${ghostReps}` : ''} value={logReps} onChange={e => setLogReps(e.target.value)} />
+                <TextField fullWidth type="text" inputMode="numeric" label="Sets" placeholder={ghostSets ? `Target: ${ghostSets}` : ''} value={logSets} onChange={e => setLogSets(e.target.value)} />
              </Box>
              <TextField fullWidth label="Notes (optional)" size="small" multiline rows={2} value={logNotes} onChange={e => setLogNotes(e.target.value)} sx={{ mt: 2 }} />
           </DialogContent>

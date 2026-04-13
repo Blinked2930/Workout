@@ -16,6 +16,7 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { enGB } from 'date-fns/locale';
 import { useUnit } from '../context/UnitContext'; 
+import { useNavigate } from 'react-router-dom';
 
 interface WorkoutJSON { 
   title: string; 
@@ -34,8 +35,8 @@ const parseAIJSON = (rawStr: string) => {
 
 export default function Manual() {
   const { unit, displayWeight, toDisplay, toDB } = useUnit(); 
+  const navigate = useNavigate();
   
-  // IRONCLAD MEMORY CACHE (Prevents JSON crashes)
   const [phase, setPhase] = useState<'SETUP' | 'WORKOUT'>(() => {
     try { return (localStorage.getItem('manual_phase') as any) || 'SETUP'; } 
     catch (e) { return 'SETUP'; }
@@ -304,7 +305,20 @@ export default function Manual() {
     let history = allLiftsDB.filter(l => String(l?.exerciseName || '').toLowerCase() === exerciseName.toLowerCase()).sort((a,b) => b.timestamp - a.timestamp);
     if (minReps !== undefined && maxReps !== undefined) history = history.filter(l => l.reps >= minReps && l.reps <= maxReps);
     history = history.slice(0, 3);
-    if (history.length === 0) return <Typography variant="body2" sx={{ color: '#8a8a9a', fontStyle: 'italic', p: 2 }}>No previous logs found matching this rep range.</Typography>;
+    
+    const navToProgress = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      localStorage.setItem('progress_exercise', exerciseName);
+      navigate('/progress');
+    };
+
+    if (history.length === 0) return (
+      <Box sx={{ bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, p: 1.5, mt: 1, textAlign: 'center' }}>
+        <Typography variant="body2" sx={{ color: '#8a8a9a', fontStyle: 'italic', mb: 1 }}>No history found matching this rep range.</Typography>
+        <Button size="small" onClick={navToProgress} sx={{ color: '#00e096', fontSize: '0.7rem', fontWeight: 800 }}>Full Progress 📈</Button>
+      </Box>
+    );
+
     return (
       <Box sx={{ bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, p: 1.5, mt: 1 }}>
         {history.map((lift, i) => (
@@ -313,6 +327,9 @@ export default function Manual() {
             <Typography variant="body2" sx={{ color: '#8a8a9a' }}>{new Date(lift.timestamp).toLocaleDateString()}</Typography>
           </Box>
         ))}
+        <Button fullWidth size="small" onClick={navToProgress} sx={{ mt: 1, color: '#00e096', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', borderTop: '1px solid rgba(255,255,255,0.05)', pt: 1.5 }}>
+          Full Progress 📈
+        </Button>
       </Box>
     );
   };
@@ -399,7 +416,7 @@ export default function Manual() {
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
                         <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('warmup', idx, 'up'); }} disabled={idx === 0}><KeyboardArrowUpIcon fontSize="small" /></IconButton>
-                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('warmup', idx, 'down'); }} disabled={idx === workoutData.warmup?.length - 1}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
+                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('warmup', idx, 'down'); }} disabled={idx === workoutData.warmup!.length - 1}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
                         <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'warmup', index: idx }); }}><SwapHorizIcon fontSize="small" /></IconButton>
                       </Box>
                     </Box>
@@ -412,7 +429,7 @@ export default function Manual() {
 
             <Box>
               <Typography variant="h6" sx={{ fontWeight: 800, color: '#00e096', mb: 1 }}>{workoutData.warmup && workoutData.warmup.length > 0 ? '2.' : '1.'} Main Block</Typography>
-              {workoutData.mainBlock?.map((ex, idx) => {
+              {workoutData.mainBlock.map((ex, idx) => {
                 const repsMax = ex.repsMax || (ex.setsReps ? parseInt((ex as any).setsReps.split('x')[1]) : 999);
                 const repsLabel = repsMax >= 99 ? `${ex.repsMin}+` : `${ex.repsMin}-${repsMax}`;
                 const targetRepsGhost = repsMax >= 99 ? `${ex.repsMin}+` : repsMax;
@@ -438,7 +455,7 @@ export default function Manual() {
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'center', ml: 1, flexShrink: 0 }}>
                         <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('main', idx, 'up'); }} disabled={idx === 0} sx={{ color: 'rgba(255,255,255,0.5)' }}><KeyboardArrowUpIcon fontSize="small" /></IconButton>
-                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('main', idx, 'down'); }} disabled={idx === workoutData.mainBlock?.length - 1} sx={{ color: 'rgba(255,255,255,0.5)' }}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
+                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('main', idx, 'down'); }} disabled={idx === workoutData.mainBlock.length - 1} sx={{ color: 'rgba(255,255,255,0.5)' }}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
                         <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'main', index: idx }); }} sx={{ color: 'rgba(255,255,255,0.5)' }}><SwapHorizIcon fontSize="small" /></IconButton>
                       </Box>
                     </Box>
@@ -457,7 +474,7 @@ export default function Manual() {
                     key={ex.name} 
                     draggable onDragStart={(e) => handleDragStart(e, 'cooldown', idx)} onDragEnter={(e) => handleDragEnter(e, 'cooldown', idx)} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
                     onClick={() => toggleCellExpand(ex.name)} 
-                    sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(0, 224, 150, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'cooldown' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
+                    sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(176, 106, 255, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'cooldown' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
                   >
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
@@ -470,7 +487,7 @@ export default function Manual() {
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
                         <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('cooldown', idx, 'up'); }} disabled={idx === 0}><KeyboardArrowUpIcon fontSize="small" /></IconButton>
-                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('cooldown', idx, 'down'); }} disabled={idx === workoutData.cooldown?.length - 1}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
+                        <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('cooldown', idx, 'down'); }} disabled={idx === workoutData.cooldown!.length - 1}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
                         <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'cooldown', index: idx }); }}><SwapHorizIcon fontSize="small" /></IconButton>
                       </Box>
                     </Box>
@@ -482,7 +499,6 @@ export default function Manual() {
           </Box>
         )}
 
-        {/* SWAP DIALOG */}
         <Dialog open={!!swapTarget} onClose={() => setSwapTarget(null)} fullWidth maxWidth="xs">
           <DialogTitle>Swap Exercise</DialogTitle>
           <DialogContent>
@@ -520,7 +536,7 @@ export default function Manual() {
              <TextField fullWidth label="Notes (optional)" size="small" multiline rows={2} value={logNotes} onChange={e => setLogNotes(e.target.value)} sx={{ mt: 2 }} />
           </DialogContent>
           <DialogActions sx={{ p: 2 }}>
-             <Button fullWidth variant="contained" onClick={handleSaveLogToDB} disabled={isSavingLog}>Save</Button>
+             <Button fullWidth variant="contained" onClick={handleSaveLogToDB} disabled={isSavingLog} sx={{ bgcolor: '#00e096', color: '#000' }}>Save Log</Button>
           </DialogActions>
         </Dialog>
       </Box>
