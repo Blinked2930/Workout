@@ -370,7 +370,7 @@ export default function Manual() {
         
         {/* CALCULATED LOADING TARGETS PANEL */}
         {bestE1RM_Display && bestE1RM_Display > 0 ? (
-          <Paper sx={{ p: 2, bgcolor: 'rgba(0,0,0,0.3)', borderRadius: 2, display: 'flex', justifyContent: 'center', gap: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
+          <Paper sx={{ p: 2, mt: 1, bgcolor: 'rgba(0,0,0,0.3)', borderRadius: 2, display: 'flex', justifyContent: 'center', gap: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
             <Box sx={{ flex: 1, textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.1)', pr: 2 }}>
               <Typography sx={{ fontWeight: 800, fontSize: '1.2rem', color: '#00d4ff' }}>{Math.round(e4RM)} {unit}</Typography>
               <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase' }}>Target (4 Reps)</Typography>
@@ -381,7 +381,7 @@ export default function Manual() {
             </Box>
           </Paper>
         ) : (
-          <Paper sx={{ p: 1.5, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, textAlign: 'center' }}><Typography sx={{ fontStyle: 'italic', color: 'text.secondary', fontSize: '0.8rem' }}>Set baseline lift to generate targets.</Typography></Paper>
+          <Paper sx={{ p: 1.5, mt: 1, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, textAlign: 'center' }}><Typography sx={{ fontStyle: 'italic', color: 'text.secondary', fontSize: '0.8rem' }}>Set baseline lift to generate targets.</Typography></Paper>
         )}
 
         {/* RAW HISTORY LIST */}
@@ -496,14 +496,14 @@ export default function Manual() {
                         </Box>
                       </Box>
                       <Collapse in={expandedCells[ex.name]}>
-                        <Box sx={{ pl: { xs: 4, sm: 5 }, pr: 2, pb: 1 }}>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2, mb: 1, p: 1.5, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <Box sx={{ pl: { xs: 4, sm: 5 }, pr: 2, pb: 2 }}>
+                          {renderLiftHistory(ex.name, eq)}
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1, p: 1.5, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
                             <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase' }}>Equipment</Typography>
                             <Select size="small" value={eq} onChange={(e) => updateEquipment('warmup', idx, e.target.value)} onClick={(e) => e.stopPropagation()} sx={{ height: 30, fontSize: '0.8rem', borderRadius: 2, bgcolor: 'rgba(255,255,255,0.05)', '& fieldset': { border: 'none' } }}>
                               {EQUIPMENT_TYPES.map(type => <MenuItem key={type.value} value={type.value} sx={{ fontSize: '0.8rem' }}>{type.emoji} {type.value}</MenuItem>)}
                             </Select>
                           </Box>
-                          {renderLiftHistory(ex.name, eq)}
                         </Box>
                       </Collapse>
                     </Paper>
@@ -550,14 +550,14 @@ export default function Manual() {
                       </Box>
                     </Box>
                     <Collapse in={expandedCells[ex.name]}>
-                      <Box sx={{ pl: { xs: 4, sm: 5 }, pr: 2, pb: 1 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2, mb: 1, p: 1.5, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
+                      <Box sx={{ pl: { xs: 4, sm: 5 }, pr: 2, pb: 2 }}>
+                        {renderLiftHistory(ex.name, eq, bestE1RM_Display)}
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1, p: 1.5, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
                           <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase' }}>Equipment</Typography>
                           <Select size="small" value={eq} onChange={(e) => updateEquipment('main', idx, e.target.value)} onClick={(e) => e.stopPropagation()} sx={{ height: 30, fontSize: '0.8rem', borderRadius: 2, bgcolor: 'rgba(255,255,255,0.05)', '& fieldset': { border: 'none' } }}>
                             {EQUIPMENT_TYPES.map(type => <MenuItem key={type.value} value={type.value} sx={{ fontSize: '0.8rem' }}>{type.emoji} {type.value}</MenuItem>)}
                           </Select>
                         </Box>
-                        {renderLiftHistory(ex.name, eq, bestE1RM_Display)}
                       </Box>
                     </Collapse>
                   </Paper>
@@ -594,14 +594,14 @@ export default function Manual() {
                         </Box>
                       </Box>
                       <Collapse in={expandedCells[ex.name]}>
-                        <Box sx={{ pl: { xs: 4, sm: 5 }, pr: 2, pb: 1 }}>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2, mb: 1, p: 1.5, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <Box sx={{ pl: { xs: 4, sm: 5 }, pr: 2, pb: 2 }}>
+                          {renderLiftHistory(ex.name, eq)}
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1, p: 1.5, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
                             <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase' }}>Equipment</Typography>
                             <Select size="small" value={eq} onChange={(e) => updateEquipment('cooldown', idx, e.target.value)} onClick={(e) => e.stopPropagation()} sx={{ height: 30, fontSize: '0.8rem', borderRadius: 2, bgcolor: 'rgba(255,255,255,0.05)', '& fieldset': { border: 'none' } }}>
                               {EQUIPMENT_TYPES.map(type => <MenuItem key={type.value} value={type.value} sx={{ fontSize: '0.8rem' }}>{type.emoji} {type.value}</MenuItem>)}
                             </Select>
                           </Box>
-                          {renderLiftHistory(ex.name, eq)}
                         </Box>
                       </Collapse>
                     </Paper>
