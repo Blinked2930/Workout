@@ -76,7 +76,9 @@ export default function Progress() {
   const [metric, setMetric] = useState(() => localStorage.getItem('progress_metric') || 'e1rm');
   const [equipmentOverride, setEquipmentOverride] = useState<string | null>(null);
 
-  const [editSet, setEditSet] = useState<any | null>(null);
+  // UNIFIED SMART FORM STATE
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [logModalOpen, setLogModalOpen] = useState(false);
   
   const [ghostWeight, setGhostWeight] = useState<string | number>('');
@@ -201,6 +203,7 @@ export default function Progress() {
 
   const handleOpenNewLog = () => {
     const lastLift = historyForSelected.length > 0 ? historyForSelected[historyForSelected.length - 1] : null;
+    setEditingId(null);
     setLogEquipment(activeEquipment || 'Barbell');
     
     setGhostWeight(lastLift?.weight ? toDisplay(lastLift.weight) : '');
@@ -216,66 +219,84 @@ export default function Progress() {
     setLogModalOpen(true);
   };
 
-  const handleSaveNewLog = async () => {
+  const handleEditOpen = (entry: any) => {
+    setEditingId(entry._id);
+    setLogEquipment(entry.equipmentType || 'Barbell');
+    setLogWeight(entry.weight > 0 ? toDisplay(entry.weight).toString() : '');
+    setLogReps(entry.reps.toString());
+    setLogSets(entry.sets.toString());
+    setLogNotes(entry.notes || '');
+    setLogTimestamp(entry.timestamp);
+    
+    setGhostWeight('');
+    setGhostReps('');
+    setGhostSets('');
+    
+    setLogModalOpen(true);
+  };
+
+  const handleSaveLogToDB = async () => {
     if (!selectedExercise) return;
     setIsSavingLog(true);
     try {
-      const dbMatch = exercises?.find(ex => ex.name.toLowerCase() === selectedExercise.toLowerCase());
-      
-      const finalWeight = logWeight !== '' ? parseFloat(String(logWeight)) : parseFloat(String(ghostWeight));
-      const finalReps = logReps !== '' ? parseInt(String(logReps)) : parseInt(String(ghostReps));
-      const finalSets = logSets !== '' ? parseInt(String(logSets)) : parseInt(String(ghostSets));
+      const finalWeight = logWeight !== '' ? parseFloat(String(logWeight)) : parseFloat(String(ghostWeight).replace(/[^\d.-]/g, ''));
+      const finalReps = logReps !== '' ? parseInt(String(logReps)) : parseInt(String(ghostReps).replace(/[^\d.-]/g, ''));
+      const finalSets = logSets !== '' ? parseInt(String(logSets)) : parseInt(String(ghostSets).replace(/[^\d.-]/g, ''));
 
-      await logSetMutation({
-        exerciseName: selectedExercise,
-        category: dbMatch?.category || 'Custom',
-        equipmentType: logEquipment,
-        weight: toDB(finalWeight || 0),
-        reps: finalReps || 0,
-        sets: finalSets || 1,
-        notes: logNotes || undefined,
-        timestamp: logTimestamp,
-      });
+      const dbWeight = toDB(finalWeight || 0);
+      const targetTimestamp = isNaN(new Date(logTimestamp).getTime()) ? Date.now() : new Date(logTimestamp).getTime();
+
+      if (editingId) {
+        await updateSetMutation({
+          id: editingId as any,
+          equipmentType: logEquipment,
+          weight: dbWeight,
+          reps: finalReps || 0,
+          sets: finalSets || 1,
+          notes: logNotes || undefined,
+          timestamp: targetTimestamp,
+        });
+        setSuccessMsg('Set updated! 🔄');
+      } else {
+        const dbMatch = exercises?.find(ex => ex.name.toLowerCase() === selectedExercise.toLowerCase());
+        await logSetMutation({
+          exerciseName: selectedExercise,
+          category: dbMatch?.category || 'Custom',
+          equipmentType: logEquipment,
+          weight: dbWeight,
+          reps: finalReps || 0,
+          sets: finalSets || 1,
+          notes: logNotes || undefined,
+          timestamp: targetTimestamp,
+        });
+        setSuccessMsg('Set logged successfully! 💪');
+      }
       setLogModalOpen(false);
-      setSuccessMsg('Set logged successfully! 💪');
+      setEditingId(null);
     } catch (err) {
       console.error(err);
-      setErrorMsg('Failed to log set.');
+      setErrorMsg('Failed to save set.');
     } finally { setIsSavingLog(false); }
   };
 
-  const handleUpdate = async () => {
-    if (!editSet) return;
+  const confirmDelete = async () => {
+    if (!deleteConfirmId) return;
     try {
-      const weightVal = toDB(parseFloat(editSet.weight) || 0); 
-      const targetTimestamp = isNaN(new Date(editSet.timestamp).getTime()) ? Date.now() : new Date(editSet.timestamp).getTime();
-      await updateSetMutation({
-        id: editSet._id,
-        weight: weightVal,
-        reps: parseInt(editSet.reps) || 0,
-        sets: parseInt(editSet.sets) || 1,
-        rir: editSet.rir !== '' && editSet.rir !== null && editSet.rir !== undefined ? parseInt(editSet.rir) : undefined,
-        notes: editSet.notes || undefined,
-        equipmentType: editSet.equipmentType,
-        timestamp: targetTimestamp,
-      });
-      setEditSet(null);
-      setSuccessMsg('Entry updated! 🔄');
-    } catch (err) { setErrorMsg('Failed to update set.'); }
-  };
-
-  const handleDelete = async () => {
-    if (!editSet) return;
-    try {
-      await deleteSetMutation({ id: editSet._id });
-      setEditSet(null);
+      await deleteSetMutation({ id: deleteConfirmId as any });
       setSuccessMsg('Entry deleted! 🗑️');
-    } catch (err) { setErrorMsg('Failed to delete set.'); }
+    } catch (err) {
+      console.error(err);
+      setErrorMsg('Failed to delete set.');
+    } finally {
+      setDeleteConfirmId(null);
+      setLogModalOpen(false);
+      setEditingId(null);
+    }
   };
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={enGB}>
-      <Box sx={{ px: { xs: 2, md: 4 }, pt: { xs: 3, md: 5 }, pb: 2, maxWidth: { xs: 480, md: 900 }, mx: 'auto' }}>
+      <Box sx={{ px: { xs: 2, md: 4 }, pt: { xs: 3, md: 5 }, pb: 10, maxWidth: { xs: 480, md: 900 }, mx: 'auto' }}>
         <Box sx={{ mb: 3 }}>
           <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#00d4ff', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 0.5 }}>Over Time</Typography>
           <Typography variant="h4" sx={{ fontWeight: 800, lineHeight: 1.1 }}>Progress<br /><Box component="span" sx={{ color: '#00d4ff' }}>Charts 📈</Box></Typography>
@@ -436,7 +457,7 @@ export default function Progress() {
                   <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.1em', mb: 1.5 }}>Session History (Tap to Edit)</Typography>
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                     {[...chartData].reverse().map((entry, i) => (
-                      <Paper key={i} onClick={() => setEditSet(entry.rawSet)} sx={{ px: 2, py: 1.5, borderRadius: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', '&:hover': { bgcolor: 'rgba(255,255,255,0.03)' } }}>
+                      <Paper key={i} onClick={() => handleEditOpen(entry.rawSet)} sx={{ px: 2, py: 1.5, borderRadius: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', '&:hover': { bgcolor: 'rgba(255,255,255,0.03)' } }}>
                         <Box>
                           <Typography sx={{ fontWeight: 700, fontSize: '0.9rem' }}>
                             {entry.weight > 0 ? `${entry.weight} ${unit}` : 'Bodyweight'}
@@ -467,10 +488,11 @@ export default function Progress() {
           </Paper>
         )}
 
-        <Dialog open={logModalOpen} onClose={() => setLogModalOpen(false)} PaperProps={{ sx: { bgcolor: '#16171a', borderRadius: 4, border: '1px solid rgba(255,255,255,0.1)', width: '100%', maxWidth: 400 } }}>
+        {/* UNIFIED LOG/EDIT MODAL */}
+        <Dialog open={logModalOpen} onClose={() => { setLogModalOpen(false); setEditingId(null); }} PaperProps={{ sx: { bgcolor: '#16171a', borderRadius: 4, border: '1px solid rgba(255,255,255,0.1)', width: '100%', maxWidth: 400 } }}>
           <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
-            <Typography sx={{ fontWeight: 800, color: '#00d4ff' }}>Log Completed Set</Typography>
-            <IconButton onClick={() => setLogModalOpen(false)} size="small" sx={{ color: '#8a8a9a' }}><CloseIcon /></IconButton>
+            <Typography sx={{ fontWeight: 800, color: '#00d4ff' }}>{editingId ? 'Edit Entry ✏️' : 'Log Completed Set'}</Typography>
+            <IconButton onClick={() => { setLogModalOpen(false); setEditingId(null); }} size="small" sx={{ color: '#8a8a9a' }}><CloseIcon /></IconButton>
           </DialogTitle>
           <DialogContent>
             <Typography variant="h5" sx={{ fontWeight: 900, mb: 2 }}>{selectedExercise}</Typography>
@@ -482,40 +504,24 @@ export default function Progress() {
               </Select>
             </FormControl>
             <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
-              <TextField fullWidth type="number" label={`Weight (${unit})`} placeholder={ghostWeight ? `Last: ${ghostWeight}` : ''} value={logWeight} onChange={e => setLogWeight(e.target.value)} />
-              <TextField fullWidth type="number" label="Reps" placeholder={ghostReps ? `Last: ${ghostReps}` : ''} value={logReps} onChange={e => setLogReps(e.target.value)} />
-              <TextField fullWidth type="number" label="Sets" placeholder={ghostSets ? `Last: ${ghostSets}` : ''} value={logSets} onChange={e => setLogSets(e.target.value)} />
+              <TextField fullWidth type="text" inputMode="decimal" label={`Weight (${unit})`} placeholder={ghostWeight ? `Target: ${ghostWeight}` : ''} value={logWeight} onChange={e => setLogWeight(e.target.value)} />
+              <TextField fullWidth type="text" inputMode="numeric" label="Reps" placeholder={ghostReps ? `Target: ${ghostReps}` : ''} value={logReps} onChange={e => setLogReps(e.target.value)} />
+              <TextField fullWidth type="text" inputMode="numeric" label="Sets" placeholder={ghostSets ? `Target: ${ghostSets}` : ''} value={logSets} onChange={e => setLogSets(e.target.value)} />
             </Box>
             <TextField fullWidth label="Notes (optional)" size="small" multiline rows={2} value={logNotes} onChange={e => setLogNotes(e.target.value)} sx={{ mt: 2 }} />
           </DialogContent>
           <DialogActions sx={{ p: 2 }}>
-            <Button fullWidth variant="contained" onClick={handleSaveNewLog} disabled={isSavingLog}>Save</Button>
+            {editingId && <Button color="error" onClick={() => setDeleteConfirmId(editingId)} sx={{ fontWeight: 700, mr: 'auto' }}>Delete</Button>}
+            <Button fullWidth variant="contained" onClick={handleSaveLogToDB} disabled={isSavingLog} sx={{ bgcolor: '#b06aff', color: '#fff' }}>{editingId ? 'Update ✅' : 'Save Log ✅'}</Button>
           </DialogActions>
         </Dialog>
 
-        <Dialog open={!!editSet} onClose={() => setEditSet(null)} fullWidth maxWidth="sm">
-          <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}><Typography variant="h6" sx={{ fontWeight: 800 }}>Edit Entry</Typography><IconButton onClick={() => setEditSet(null)} size="small"><CloseIcon /></IconButton></DialogTitle>
-          <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
-            <DateTimePicker label="Date & Time" value={new Date(editSet?.timestamp || Date.now())} onChange={(v) => v && setEditSet({...editSet, timestamp: v.getTime()})} format="MMM d, yyyy '·' h:mm a" slotProps={{ textField: { size: 'small', fullWidth: true, sx: { mt: 1 } } }} />
-            <Box>
-              <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: 'text.secondary', mb: 1, textTransform: 'uppercase' }}>Equipment</Typography>
-              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                {EQUIPMENT_TYPES.map(eq => (
-                  <Chip key={eq.value} label={`${eq.emoji} ${eq.value}`} onClick={() => setEditSet({...editSet, equipmentType: eq.value})} sx={{ cursor: 'pointer', fontWeight: 700, bgcolor: editSet?.equipmentType === eq.value ? 'rgba(0,212,255,0.15)' : 'rgba(255,255,255,0.05)', color: editSet?.equipmentType === eq.value ? '#00d4ff' : 'text.secondary', border: editSet?.equipmentType === eq.value ? '1px solid rgba(0,212,255,0.4)' : '1px solid transparent' }} />
-                ))}
-              </Box>
-            </Box>
-            <TextField label={editSet?.equipmentType === 'Dumbbell' ? `Weight Per Side (${unit})` : `Weight (${unit})`} type="number" size="small" fullWidth value={editSet?.weight ? toDisplay(editSet.weight) : ''} onChange={e => setEditSet({...editSet, weight: toDB(parseFloat(e.target.value))})} />
-            <Box sx={{ display: 'flex', gap: 1.5 }}>
-              <TextField label="Reps" type="number" size="small" fullWidth value={editSet?.reps ?? ''} onChange={e => setEditSet({...editSet, reps: e.target.value})} />
-              <TextField label="Sets" type="number" size="small" fullWidth value={editSet?.sets ?? ''} onChange={e => setEditSet({...editSet, sets: e.target.value})} />
-              <TextField label="RIR" type="number" size="small" fullWidth value={editSet?.rir ?? ''} onChange={e => setEditSet({...editSet, rir: e.target.value})} />
-            </Box>
-            <TextField label="Notes" size="small" multiline rows={2} fullWidth value={editSet?.notes ?? ''} onChange={e => setEditSet({...editSet, notes: e.target.value})} />
-          </DialogContent>
-          <DialogActions sx={{ p: 3, gap: 1 }}>
-            <Button color="error" onClick={handleDelete} sx={{ fontWeight: 700 }}>Delete</Button>
-            <Button variant="contained" fullWidth onClick={handleUpdate} sx={{ fontWeight: 800 }}>Save Changes</Button>
+        {/* DELETE CONFIRMATION */}
+        <Dialog open={!!deleteConfirmId} onClose={() => setDeleteConfirmId(null)}>
+          <DialogTitle sx={{ fontWeight: 800 }}>Delete Set?</DialogTitle>
+          <DialogActions sx={{ p: 2 }}>
+            <Button onClick={() => setDeleteConfirmId(null)}>Cancel</Button>
+            <Button color="error" variant="contained" onClick={confirmDelete}>Delete</Button>
           </DialogActions>
         </Dialog>
 
