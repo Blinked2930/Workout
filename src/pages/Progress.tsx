@@ -76,9 +76,7 @@ export default function Progress() {
   const [metric, setMetric] = useState(() => localStorage.getItem('progress_metric') || 'e1rm');
   const [equipmentOverride, setEquipmentOverride] = useState<string | null>(null);
 
-  // UNIFIED SMART FORM STATE
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [editSet, setEditSet] = useState<any | null>(null);
   const [logModalOpen, setLogModalOpen] = useState(false);
   
   const [ghostWeight, setGhostWeight] = useState<string | number>('');
@@ -170,11 +168,12 @@ export default function Progress() {
     }));
   }, [historyForSelected, activeEquipment, isBW, toDisplay]);
 
-  const bestE1RM = chartData.length ? Math.max(...chartData.map(d => d.e1rm)) : 0;
+  // CHANGED: Base targeting off Current (most recent) session, not All-Time Best
+  const currentE1RM = chartData.length ? chartData[chartData.length - 1].e1rm : 0;
   const heaviestLift = chartData.length ? Math.max(...chartData.map(d => d.weight)) : 0;
   const bestVolume = chartData.length ? Math.max(...chartData.map(d => d.volume)) : 0;
-  const e4RM = bestE1RM * (33 / 36);
-  const e8RM = bestE1RM * (29 / 36);
+  const e4RM = currentE1RM * (33 / 36);
+  const e8RM = currentE1RM * (29 / 36);
 
   const strengthLifts = chartData.filter(d => d.weight > 0 && d.reps >= 4 && d.reps <= 8).reverse();
   const hyperLifts = chartData.filter(d => d.weight > 0 && d.reps >= 9).reverse();
@@ -239,6 +238,8 @@ export default function Progress() {
     if (!selectedExercise) return;
     setIsSavingLog(true);
     try {
+      const dbMatch = exercises?.find(ex => ex.name.toLowerCase() === selectedExercise.toLowerCase());
+      
       const finalWeight = logWeight !== '' ? parseFloat(String(logWeight)) : parseFloat(String(ghostWeight).replace(/[^\d.-]/g, ''));
       const finalReps = logReps !== '' ? parseInt(String(logReps)) : parseInt(String(ghostReps).replace(/[^\d.-]/g, ''));
       const finalSets = logSets !== '' ? parseInt(String(logSets)) : parseInt(String(ghostSets).replace(/[^\d.-]/g, ''));
@@ -258,7 +259,6 @@ export default function Progress() {
         });
         setSuccessMsg('Set updated! 🔄');
       } else {
-        const dbMatch = exercises?.find(ex => ex.name.toLowerCase() === selectedExercise.toLowerCase());
         await logSetMutation({
           exerciseName: selectedExercise,
           category: dbMatch?.category || 'Custom',
@@ -377,7 +377,7 @@ export default function Progress() {
             {!isBW ? (
               <>
                 <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(3,1fr)', md: 'repeat(3,1fr)' }, gap: 1.5, mb: 1.5 }}>
-                  {[ { label: 'e1RM', value: bestE1RM.toFixed(0), color: '#00d4ff', hi: true }, { label: 'e4RM', value: e4RM.toFixed(0), color: '#f0f0f0' }, { label: 'e8RM', value: e8RM.toFixed(0), color: '#f0f0f0' } ].map(s => (
+                  {[ { label: 'Current e1RM', value: currentE1RM.toFixed(0), color: '#00d4ff', hi: true }, { label: 'e4RM', value: e4RM.toFixed(0), color: '#f0f0f0' }, { label: 'e8RM', value: e8RM.toFixed(0), color: '#f0f0f0' } ].map(s => (
                     <Paper key={s.label} sx={{ p: 1.5, borderRadius: 3, textAlign: 'center', bgcolor: s.hi ? 'rgba(0,212,255,0.05)' : undefined, border: s.hi ? '1px solid rgba(0,212,255,0.1)' : undefined }}>
                       <Typography sx={{ fontSize: '1.3rem', fontWeight: 800, color: s.color }}>{s.value}</Typography>
                       <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase' }}>{s.label}</Typography>
