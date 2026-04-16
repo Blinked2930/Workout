@@ -273,7 +273,7 @@ export default function Coach() {
     } finally { setIsProcessing(false); }
   };
 
-  const renderLiftHistory = (exerciseName: string, equipment: string, bestE1RM_Display?: number) => {
+  const renderLiftHistory = (exerciseName: string, equipment: string, recentE1RM_Display?: number) => {
     const history = allLiftsDB.filter(l => String(l?.exerciseName || '').toLowerCase() === exerciseName.toLowerCase() && (l.equipmentType || 'Bodyweight') === equipment).sort((a,b) => b.timestamp - a.timestamp).slice(0, 3);
 
     const navToProgress = (e: React.MouseEvent) => {
@@ -282,14 +282,14 @@ export default function Coach() {
       navigate('/progress');
     };
 
-    const e4RM = bestE1RM_Display ? bestE1RM_Display * (33 / 36) : 0;
-    const e8RM = bestE1RM_Display ? bestE1RM_Display * (29 / 36) : 0;
+    const e4RM = recentE1RM_Display ? recentE1RM_Display * (33 / 36) : 0;
+    const e8RM = recentE1RM_Display ? recentE1RM_Display * (29 / 36) : 0;
 
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
         
         {/* CALCULATED LOADING TARGETS PANEL */}
-        {bestE1RM_Display && bestE1RM_Display > 0 ? (
+        {recentE1RM_Display && recentE1RM_Display > 0 ? (
           <Paper sx={{ p: 2, mt: 1, bgcolor: 'rgba(0,0,0,0.3)', borderRadius: 2, display: 'flex', justifyContent: 'center', gap: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
             <Box sx={{ flex: 1, textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.1)', pr: 2 }}>
               <Typography sx={{ fontWeight: 800, fontSize: '1.2rem', color: '#b06aff' }}>{Math.round(e4RM)} {unit}</Typography>
@@ -429,9 +429,9 @@ export default function Coach() {
                     </Box>
                   </Box>
                   <Collapse in={expandedCells[ex.name]}>
-                    <Box sx={{ pl: { xs: 4, sm: 5 }, pr: 2, pb: 2 }}>
+                    <Box sx={{ pl: { xs: 4, sm: 5 }, pr: 2, pb: 1 }}>
                       {renderLiftHistory(ex.name, eq)}
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1, p: 1.5, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2, mb: 1, p: 1.5, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
                         <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase' }}>Equipment</Typography>
                         <Select size="small" value={eq} onChange={(e) => updateEquipment('warmup', idx, e.target.value)} onClick={(e) => e.stopPropagation()} sx={{ height: 30, fontSize: '0.8rem', borderRadius: 2, bgcolor: 'rgba(255,255,255,0.05)', '& fieldset': { border: 'none' } }}>
                           {EQUIPMENT_TYPES.map(type => <MenuItem key={type.value} value={type.value} sx={{ fontSize: '0.8rem' }}>{type.emoji} {type.value}</MenuItem>)}
@@ -446,14 +446,15 @@ export default function Coach() {
             <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.1)' }} />
 
             {workoutData.mainBlock.map((ex, idx) => {
-               const eq = ex.equipment || 'Bodyweight';
+               const eq = ex.equipment || 'Barbell';
                const repsMax = ex.repsMax || (ex.setsReps ? parseInt((ex as any).setsReps.split('x')[1]) : 999);
                const repsLabel = repsMax >= 99 ? `${ex.repsMin}+` : `${ex.repsMin}-${repsMax}`;
                const targetRepsGhost = repsMax >= 99 ? `${ex.repsMin}+` : repsMax;
                const sets = ex.sets || 3;
                
                const eqLifts = allLiftsDB.filter(l => l.exerciseName === ex.name && (l.equipmentType || 'Bodyweight') === eq);
-               const bestE1RM_Display = eqLifts.length > 0 ? Math.max(...eqLifts.map(l => Number(toDisplay(l.e1rm ?? 0)))) : 0;
+               const recentEqLift = eqLifts.sort((a,b)=>b.timestamp-a.timestamp)[0];
+               const recentE1RM_Display = recentEqLift?.e1rm ? Number(toDisplay(recentEqLift.e1rm)) : 0;
 
                return (
                 <Paper 
@@ -468,7 +469,7 @@ export default function Coach() {
                       <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, eq, !!completedExercises[ex.name], '', targetRepsGhost, sets)} sx={{ color: '#b06aff', p: 0, mt: 0.8 }} />
                       <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                         <Typography sx={{ fontWeight: 700, textDecoration: completedExercises[ex.name] ? 'line-through' : 'none' }}>{ex.name} {loggedExercises[ex.name] && <Typography component="span" sx={{ fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(176, 106, 255, 0.2)', color: '#b06aff', px: 1, py: 0.3, borderRadius: 2, ml: 1 }}>Logged</Typography>}</Typography>
-                        <Typography variant="caption" sx={{ color: '#8a8a9a', mt: 0.2 }}>{sets} Sets | Baselines: {bestE1RM_Display > 0 ? "Avail." : "Set"}</Typography>
+                        <Typography variant="caption" sx={{ color: '#8a8a9a', mt: 0.2 }}>{sets} Sets | Baselines: {recentE1RM_Display > 0 ? "Avail." : "Set"}</Typography>
                       </Box>
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', ml: 1, flexShrink: 0 }}>
@@ -478,9 +479,9 @@ export default function Coach() {
                     </Box>
                   </Box>
                   <Collapse in={expandedCells[ex.name]}>
-                    <Box sx={{ pl: { xs: 4, sm: 5 }, pr: 2, pb: 2 }}>
-                      {renderLiftHistory(ex.name, eq, bestE1RM_Display)}
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1, p: 1.5, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <Box sx={{ pl: { xs: 4, sm: 5 }, pr: 2, pb: 1 }}>
+                      {renderLiftHistory(ex.name, eq, recentE1RM_Display)}
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2, mb: 1, p: 1.5, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
                         <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase' }}>Equipment</Typography>
                         <Select size="small" value={eq} onChange={(e) => updateEquipment('main', idx, e.target.value)} onClick={(e) => e.stopPropagation()} sx={{ height: 30, fontSize: '0.8rem', borderRadius: 2, bgcolor: 'rgba(255,255,255,0.05)', '& fieldset': { border: 'none' } }}>
                           {EQUIPMENT_TYPES.map(type => <MenuItem key={type.value} value={type.value} sx={{ fontSize: '0.8rem' }}>{type.emoji} {type.value}</MenuItem>)}
@@ -519,9 +520,9 @@ export default function Coach() {
                     </Box>
                   </Box>
                   <Collapse in={expandedCells[ex.name]}>
-                    <Box sx={{ pl: { xs: 4, sm: 5 }, pr: 2, pb: 2 }}>
+                    <Box sx={{ pl: { xs: 4, sm: 5 }, pr: 2, pb: 1 }}>
                       {renderLiftHistory(ex.name, eq)}
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1, p: 1.5, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2, mb: 1, p: 1.5, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
                         <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase' }}>Equipment</Typography>
                         <Select size="small" value={eq} onChange={(e) => updateEquipment('cooldown', idx, e.target.value)} onClick={(e) => e.stopPropagation()} sx={{ height: 30, fontSize: '0.8rem', borderRadius: 2, bgcolor: 'rgba(255,255,255,0.05)', '& fieldset': { border: 'none' } }}>
                           {EQUIPMENT_TYPES.map(type => <MenuItem key={type.value} value={type.value} sx={{ fontSize: '0.8rem' }}>{type.emoji} {type.value}</MenuItem>)}
@@ -535,6 +536,7 @@ export default function Coach() {
           </Box>
         )}
 
+        {/* SWAP DIALOG */}
         <Dialog open={!!swapTarget} onClose={() => setSwapTarget(null)} fullWidth maxWidth="xs">
           <DialogTitle>Swap Exercise</DialogTitle>
           <DialogContent>
