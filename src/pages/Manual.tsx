@@ -172,7 +172,6 @@ export default function Manual() {
       setSelectedExercisesList(prev => prev.filter(e => e !== name));
     } else {
       setSelectedExercisesList(prev => [...prev, name]);
-      // Set default equipment for this new selection based on history
       const lastLift = allLiftsDB.filter(l => l.exerciseName === name).sort((a,b)=>b.timestamp-a.timestamp)[0];
       let eq = lastLift?.equipmentType || 'Barbell';
       if (eq === 'Machine' || eq === 'Cable') eq = 'Machine/Cable';
@@ -353,7 +352,7 @@ export default function Manual() {
     } finally { setIsSavingLog(false); }
   };
 
-  const renderLiftHistory = (exerciseName: string, equipment: string, bestE1RM_Display?: number) => {
+  const renderLiftHistory = (exerciseName: string, equipment: string, recentE1RM_Display?: number) => {
     const history = allLiftsDB.filter(l => String(l?.exerciseName || '').toLowerCase() === exerciseName.toLowerCase() && (l.equipmentType || 'Barbell') === equipment).sort((a,b) => b.timestamp - a.timestamp).slice(0, 3);
     
     const navToProgress = (e: React.MouseEvent) => {
@@ -362,14 +361,13 @@ export default function Manual() {
       navigate('/progress');
     };
 
-    const e4RM = bestE1RM_Display ? bestE1RM_Display * (33 / 36) : 0;
-    const e8RM = bestE1RM_Display ? bestE1RM_Display * (29 / 36) : 0;
+    const e4RM = recentE1RM_Display ? recentE1RM_Display * (33 / 36) : 0;
+    const e8RM = recentE1RM_Display ? recentE1RM_Display * (29 / 36) : 0;
 
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
         
-        {/* CALCULATED LOADING TARGETS PANEL */}
-        {bestE1RM_Display && bestE1RM_Display > 0 ? (
+        {recentE1RM_Display && recentE1RM_Display > 0 ? (
           <Paper sx={{ p: 2, mt: 1, bgcolor: 'rgba(0,0,0,0.3)', borderRadius: 2, display: 'flex', justifyContent: 'center', gap: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
             <Box sx={{ flex: 1, textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.1)', pr: 2 }}>
               <Typography sx={{ fontWeight: 800, fontSize: '1.2rem', color: '#00d4ff' }}>{Math.round(e4RM)} {unit}</Typography>
@@ -384,7 +382,6 @@ export default function Manual() {
           <Paper sx={{ p: 1.5, mt: 1, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, textAlign: 'center' }}><Typography sx={{ fontStyle: 'italic', color: 'text.secondary', fontSize: '0.8rem' }}>Set baseline lift to generate targets.</Typography></Paper>
         )}
 
-        {/* RAW HISTORY LIST */}
         <Box sx={{ bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, p: 1.5 }}>
           {history.length > 0 ? (
             history.map((lift, i) => (
@@ -496,9 +493,9 @@ export default function Manual() {
                         </Box>
                       </Box>
                       <Collapse in={expandedCells[ex.name]}>
-                        <Box sx={{ pl: { xs: 4, sm: 5 }, pr: 2, pb: 2 }}>
+                        <Box sx={{ pl: { xs: 4, sm: 5 }, pr: 2, pb: 1 }}>
                           {renderLiftHistory(ex.name, eq)}
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1, p: 1.5, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2, mb: 1, p: 1.5, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
                             <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase' }}>Equipment</Typography>
                             <Select size="small" value={eq} onChange={(e) => updateEquipment('warmup', idx, e.target.value)} onClick={(e) => e.stopPropagation()} sx={{ height: 30, fontSize: '0.8rem', borderRadius: 2, bgcolor: 'rgba(255,255,255,0.05)', '& fieldset': { border: 'none' } }}>
                               {EQUIPMENT_TYPES.map(type => <MenuItem key={type.value} value={type.value} sx={{ fontSize: '0.8rem' }}>{type.emoji} {type.value}</MenuItem>)}
@@ -523,7 +520,9 @@ export default function Manual() {
                 const sets = ex.sets || 3;
                 
                 const eqLifts = allLiftsDB.filter(l => l.exerciseName === ex.name && (l.equipmentType || 'Barbell') === eq);
-                const bestE1RM_Display = eqLifts.length > 0 ? Math.max(...eqLifts.map(l => Number(toDisplay(l.e1rm ?? 0)))) : 0;
+                const recentEqLift = eqLifts.sort((a,b)=>b.timestamp-a.timestamp)[0];
+                const recentE1RM_Display = recentEqLift?.e1rm ? Number(toDisplay(recentEqLift.e1rm)) : 0;
+
                 const hist = eqLifts.filter(l => l.reps >= (ex.repsMin || 0) && l.reps <= repsMax).sort((a,b)=>b.timestamp-a.timestamp)[0];
                 const overloaded = hist?.weight ? Math.round((hist.weight * 1.05)/5)*5 : null;
 
@@ -540,7 +539,7 @@ export default function Manual() {
                         <Checkbox checked={!!completedExercises[ex.name]} onClick={(e) => handleCheckboxClick(e, ex.name, eq, !!completedExercises[ex.name], overloaded || '', targetRepsGhost, sets)} sx={{ color: '#00e096', p: 0, mt: 0.8 }} />
                         <Box sx={{ display: 'flex', flexDirection: 'column' }}>
                           <Typography sx={{ fontWeight: 700, textDecoration: completedExercises[ex.name] ? 'line-through' : 'none' }}>{ex.name} {loggedExercises[ex.name] && <Typography component="span" sx={{ fontSize: '0.65rem', fontWeight: 800, bgcolor: 'rgba(0, 224, 150, 0.2)', color: '#00e096', px: 1, py: 0.3, borderRadius: 2, ml: 1 }}>Logged</Typography>}</Typography>
-                          <Typography variant="caption" sx={{ color: '#8a8a9a', mt: 0.2 }}>{sets} Sets | Baselines: {bestE1RM_Display > 0 ? "Avail." : "Set"}</Typography>
+                          <Typography variant="caption" sx={{ color: '#8a8a9a', mt: 0.2 }}>{sets} Sets | Baselines: {recentE1RM_Display > 0 ? "Avail." : "Set"}</Typography>
                         </Box>
                       </Box>
                       <Box sx={{ display: 'flex', alignItems: 'center', ml: 1, flexShrink: 0 }}>
@@ -550,9 +549,9 @@ export default function Manual() {
                       </Box>
                     </Box>
                     <Collapse in={expandedCells[ex.name]}>
-                      <Box sx={{ pl: { xs: 4, sm: 5 }, pr: 2, pb: 2 }}>
-                        {renderLiftHistory(ex.name, eq, bestE1RM_Display)}
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1, p: 1.5, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
+                      <Box sx={{ pl: { xs: 4, sm: 5 }, pr: 2, pb: 1 }}>
+                        {renderLiftHistory(ex.name, eq, recentE1RM_Display)}
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2, mb: 1, p: 1.5, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
                           <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase' }}>Equipment</Typography>
                           <Select size="small" value={eq} onChange={(e) => updateEquipment('main', idx, e.target.value)} onClick={(e) => e.stopPropagation()} sx={{ height: 30, fontSize: '0.8rem', borderRadius: 2, bgcolor: 'rgba(255,255,255,0.05)', '& fieldset': { border: 'none' } }}>
                             {EQUIPMENT_TYPES.map(type => <MenuItem key={type.value} value={type.value} sx={{ fontSize: '0.8rem' }}>{type.emoji} {type.value}</MenuItem>)}
@@ -594,9 +593,9 @@ export default function Manual() {
                         </Box>
                       </Box>
                       <Collapse in={expandedCells[ex.name]}>
-                        <Box sx={{ pl: { xs: 4, sm: 5 }, pr: 2, pb: 2 }}>
+                        <Box sx={{ pl: { xs: 4, sm: 5 }, pr: 2, pb: 1 }}>
                           {renderLiftHistory(ex.name, eq)}
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1, p: 1.5, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2, mb: 1, p: 1.5, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
                             <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase' }}>Equipment</Typography>
                             <Select size="small" value={eq} onChange={(e) => updateEquipment('cooldown', idx, e.target.value)} onClick={(e) => e.stopPropagation()} sx={{ height: 30, fontSize: '0.8rem', borderRadius: 2, bgcolor: 'rgba(255,255,255,0.05)', '& fieldset': { border: 'none' } }}>
                               {EQUIPMENT_TYPES.map(type => <MenuItem key={type.value} value={type.value} sx={{ fontSize: '0.8rem' }}>{type.emoji} {type.value}</MenuItem>)}
