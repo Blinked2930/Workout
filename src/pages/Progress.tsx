@@ -76,7 +76,9 @@ export default function Progress() {
   const [metric, setMetric] = useState(() => localStorage.getItem('progress_metric') || 'e1rm');
   const [equipmentOverride, setEquipmentOverride] = useState<string | null>(null);
 
-  const [editSet, setEditSet] = useState<any | null>(null);
+  // FIX: Properly declared SMART FORM state variables
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [logModalOpen, setLogModalOpen] = useState(false);
   
   const [ghostWeight, setGhostWeight] = useState<string | number>('');
@@ -512,7 +514,7 @@ export default function Progress() {
           </DialogContent>
           <DialogActions sx={{ p: 2 }}>
             {editingId && <Button color="error" onClick={() => setDeleteConfirmId(editingId)} sx={{ fontWeight: 700, mr: 'auto' }}>Delete</Button>}
-            <Button fullWidth variant="contained" onClick={handleSaveLogToDB} disabled={isSavingLog} sx={{ bgcolor: '#b06aff', color: '#fff' }}>{editingId ? 'Update ✅' : 'Save Log ✅'}</Button>
+            <Button fullWidth variant="contained" onClick={handleSaveLogToDB} disabled={isSavingLog} sx={{ bgcolor: '#00d4ff', color: '#000' }}>{editingId ? 'Update ✅' : 'Save Log ✅'}</Button>
           </DialogActions>
         </Dialog>
 
