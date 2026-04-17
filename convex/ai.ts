@@ -81,6 +81,22 @@ export const suggestWorkoutFocus = action({
     customRequest: v.optional(v.string()), 
   },
   handler: async (ctx, args) => {
+    // 🛑 DEMO MODE SHORT-CIRCUIT 🛑
+    if (process.env.DEMO_MODE === "true") {
+      return {
+        suggestionText: JSON.stringify({
+          focusTitle: "Simulated Full Body Protocol",
+          reasoning: "Since you are exploring the public demo, I've bypassed the live AI to save API costs and generated a sample workout for you! In the real app, I analyze your actual muscle recovery and volume data to dynamically build this strategy."
+        }),
+        debugData: {
+          yesterdayBanned: "N/A (Demo Mode)",
+          weeklyMuscle: "N/A (Demo Mode)",
+          dateMath: "Simulated Timezone",
+          aiPrompt: "API Call Bypassed to save costs! 🛑"
+        }
+      };
+    }
+
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) throw new Error("GEMINI_API_KEY environment variable not set.");
 
@@ -249,6 +265,26 @@ export const generateWorkout = action({
     userTweaks: v.optional(v.string()), 
   },
   handler: async (ctx, args) => {
+    // 🛑 DEMO MODE SHORT-CIRCUIT 🛑
+    if (process.env.DEMO_MODE === "true") {
+      return JSON.stringify({
+        title: "Demo Protocol",
+        focus: "General Training",
+        warmup: [
+          { name: "Jumping Jacks", reps: "30s", equipment: "Bodyweight" },
+          { name: "Arm Circles", reps: "15 each way", equipment: "Bodyweight" }
+        ],
+        mainBlock: [
+          { name: "Bench Press", sets: 3, repsMin: 8, repsMax: 12, rest: "90s", notes: "Focus on a slow eccentric. (This is a simulated demo workout!)", equipment: "Barbell" },
+          { name: "Back Squat", sets: 3, repsMin: 6, repsMax: 8, rest: "120s", notes: "Drive through the heels.", equipment: "Barbell" },
+          { name: "Lat Pulldown", sets: 3, repsMin: 10, repsMax: 15, rest: "90s", notes: "Squeeze the lats at the bottom.", equipment: "Machine/Cable" }
+        ],
+        cooldown: [
+          { name: "Child's Pose", reps: "60s", equipment: "Bodyweight" }
+        ]
+      });
+    }
+
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) throw new Error("GEMINI_API_KEY environment variable not set.");
 
@@ -324,6 +360,19 @@ export const generateWarmupCooldown = action({
     mainBlock: v.array(v.string()),
   },
   handler: async (ctx, args) => {
+    // 🛑 DEMO MODE SHORT-CIRCUIT 🛑
+    if (process.env.DEMO_MODE === "true") {
+      return JSON.stringify({
+        warmup: [
+          { name: "Jumping Jacks", reps: "30s", equipment: "Bodyweight" },
+          { name: "Arm Circles", reps: "15 each way", equipment: "Bodyweight" }
+        ],
+        cooldown: [
+          { name: "Child's Pose", reps: "60s", equipment: "Bodyweight" }
+        ]
+      });
+    }
+
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) throw new Error("GEMINI_API_KEY environment variable not set.");
 
