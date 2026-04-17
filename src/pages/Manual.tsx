@@ -584,7 +584,7 @@ export default function Manual() {
                       key={ex.name} 
                       draggable onDragStart={(e) => handleDragStart(e, 'cooldown', idx)} onDragEnter={(e) => handleDragEnter(e, 'cooldown', idx)} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
                       onClick={() => toggleCellExpand(ex.name)} 
-                      sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(0, 224, 150, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'cooldown' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
+                      sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(176, 106, 255, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'cooldown' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
                     >
                       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                         <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
@@ -658,7 +658,7 @@ export default function Manual() {
              <TextField fullWidth label="Notes (optional)" size="small" multiline rows={2} value={logNotes} onChange={e => setLogNotes(e.target.value)} sx={{ mt: 2 }} />
           </DialogContent>
           <DialogActions sx={{ p: 2 }}>
-             <Button fullWidth variant="contained" onClick={handleSaveLogToDB} disabled={isProcessing} sx={{ bgcolor: '#00e096', color: '#000' }}>Save Log</Button>
+             <Button fullWidth variant="contained" onClick={handleSaveLogToDB} disabled={isSavingLog} sx={{ bgcolor: '#00e096', color: '#000' }}>Save Log</Button>
           </DialogActions>
         </Dialog>
       </Box>

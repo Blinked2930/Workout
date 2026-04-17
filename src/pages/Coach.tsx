@@ -11,6 +11,7 @@ import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import TerminalIcon from '@mui/icons-material/Terminal';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { enGB } from 'date-fns/locale';
@@ -239,9 +240,9 @@ export default function Coach() {
     setLogSets('');
     setLogNotes('');
 
-    setGhostWeight(suggestedWeight !== undefined && suggestedWeight !== '' ? suggestedWeight : (lastLift?.weight > 0 ? toDisplay(lastLift.weight) : ''));
-    setGhostReps(suggestedReps !== undefined && suggestedReps !== '' ? suggestedReps : (lastLift?.reps || ''));
-    setGhostSets(suggestedSets !== undefined ? suggestedSets : 3);
+    setGhostWeight(suggestedWeight ? `Target: ${suggestedWeight}` : (lastLift?.weight > 0 ? `Last: ${toDisplay(lastLift.weight)}` : 'Last: BW'));
+    setGhostReps(suggestedReps ? `Target: ${suggestedReps}` : (lastLift?.reps ? `Last: ${lastLift.reps}` : ''));
+    setGhostSets(suggestedSets ? `Target: ${suggestedSets}` : (lastLift?.sets ? `Last: ${lastLift.sets}` : ''));
     
     setLogModalOpen(true);
   };
