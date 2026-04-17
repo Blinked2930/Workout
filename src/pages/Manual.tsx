@@ -312,7 +312,7 @@ export default function Manual() {
     setLogCategory(dbMatch?.category || 'Custom');
     setLogEquipment(equipment);
     
-    setGhostWeight(suggestedWeight !== undefined && suggestedWeight !== '' ? suggestedWeight : (lastLift?.weight ? toDisplay(lastLift.weight) : ''));
+    setGhostWeight(suggestedWeight !== undefined && suggestedWeight !== '' ? suggestedWeight : (lastLift?.weight > 0 ? toDisplay(lastLift.weight) : ''));
     setGhostReps(suggestedReps !== undefined && suggestedReps !== '' ? suggestedReps : (lastLift?.reps || ''));
     setGhostSets(suggestedSets !== undefined ? suggestedSets : 3);
     
@@ -367,6 +367,10 @@ export default function Manual() {
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
         
+<<<<<<< HEAD
+=======
+        {/* CALCULATED LOADING TARGETS PANEL */}
+>>>>>>> ad1e8fc (fixes bodyweight problem)
         {recentE1RM_Display && recentE1RM_Display > 0 ? (
           <Paper sx={{ p: 2, mt: 1, bgcolor: 'rgba(0,0,0,0.3)', borderRadius: 2, display: 'flex', justifyContent: 'center', gap: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
             <Box sx={{ flex: 1, textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.1)', pr: 2 }}>
@@ -382,12 +386,23 @@ export default function Manual() {
           <Paper sx={{ p: 1.5, mt: 1, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, textAlign: 'center' }}><Typography sx={{ fontStyle: 'italic', color: 'text.secondary', fontSize: '0.8rem' }}>Set baseline lift to generate targets.</Typography></Paper>
         )}
 
+<<<<<<< HEAD
+=======
+        {/* RAW HISTORY LIST WITH NOTES */}
+>>>>>>> ad1e8fc (fixes bodyweight problem)
         <Box sx={{ bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, p: 1.5 }}>
           {history.length > 0 ? (
             history.map((lift, i) => (
-              <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
-                <Typography variant="body2" sx={{ color: i === 0 ? '#00e096' : '#8a8a9a' }}>{displayWeight(lift.weight)} × {lift.reps} reps</Typography>
-                <Typography variant="body2" sx={{ color: '#555566' }}>{new Date(lift.timestamp).toLocaleDateString()}</Typography>
+              <Box key={i} sx={{ display: 'flex', flexDirection: 'column', py: 0.5 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" sx={{ color: i === 0 ? '#00e096' : '#8a8a9a' }}>
+                    {lift.weight > 0 ? displayWeight(lift.weight) : (lift.equipmentType === 'Bodyweight' ? 'BW' : 'Unlabeled')} × {lift.reps} reps
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#555566' }}>{new Date(lift.timestamp).toLocaleDateString()}</Typography>
+                </Box>
+                {lift.notes && (
+                  <Typography variant="caption" sx={{ color: 'text.secondary', fontStyle: 'italic', mt: 0.25 }}>"{lift.notes}"</Typography>
+                )}
               </Box>
             ))
           ) : (
@@ -588,7 +603,7 @@ export default function Manual() {
                         </Box>
                         <Box sx={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
                           <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('cooldown', idx, 'up'); }} disabled={idx === 0}><KeyboardArrowUpIcon fontSize="small" /></IconButton>
-                          <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('cooldown', idx, 'down'); }} disabled={idx === workoutData.cooldown?.length - 1}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
+                          <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('cooldown', idx, 'down'); }} disabled={idx === workoutData.cooldown!.length - 1}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
                           <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'cooldown', index: idx }); }}><SwapHorizIcon fontSize="small" /></IconButton>
                         </Box>
                       </Box>

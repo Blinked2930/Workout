@@ -304,13 +304,20 @@ export default function Coach() {
           <Paper sx={{ p: 1.5, mt: 1, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, textAlign: 'center' }}><Typography sx={{ fontStyle: 'italic', color: 'text.secondary', fontSize: '0.8rem' }}>Set baseline lift to generate targets.</Typography></Paper>
         )}
 
-        {/* RAW HISTORY LIST */}
+        {/* RAW HISTORY LIST WITH NOTES */}
         <Box sx={{ bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, p: 1.5 }}>
           {history.length > 0 ? (
             history.map((lift, i) => (
-              <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
-                <Typography variant="body2" sx={{ color: i === 0 ? '#b06aff' : '#8a8a9a' }}>{displayWeight(lift.weight)} × {lift.reps} reps</Typography>
-                <Typography variant="body2" sx={{ color: '#555566' }}>{new Date(lift.timestamp).toLocaleDateString()}</Typography>
+              <Box key={i} sx={{ display: 'flex', flexDirection: 'column', py: 0.5 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" sx={{ color: i === 0 ? '#b06aff' : '#8a8a9a' }}>
+                    {lift.weight > 0 ? displayWeight(lift.weight) : (lift.equipmentType === 'Bodyweight' ? 'BW' : 'Unlabeled')} × {lift.reps} reps
+                  </Typography>
+                  <Typography variant="body2" sx={{ color: '#555566' }}>{new Date(lift.timestamp).toLocaleDateString()}</Typography>
+                </Box>
+                {lift.notes && (
+                  <Typography variant="caption" sx={{ color: 'text.secondary', fontStyle: 'italic', mt: 0.25 }}>"{lift.notes}"</Typography>
+                )}
               </Box>
             ))
           ) : (
@@ -442,7 +449,6 @@ export default function Coach() {
                 </Paper>
               )
             })}
-
             <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.1)' }} />
 
             {workoutData.mainBlock.map((ex, idx) => {
@@ -452,7 +458,11 @@ export default function Coach() {
                const targetRepsGhost = repsMax >= 99 ? `${ex.repsMin}+` : repsMax;
                const sets = ex.sets || 3;
                
+<<<<<<< HEAD
                const eqLifts = allLiftsDB.filter(l => l.exerciseName === ex.name && (l.equipmentType || 'Bodyweight') === eq);
+=======
+               const eqLifts = allLiftsDB.filter(l => l.exerciseName === ex.name && (l.equipmentType || 'Barbell') === eq);
+>>>>>>> ad1e8fc (fixes bodyweight problem)
                const recentEqLift = eqLifts.sort((a,b)=>b.timestamp-a.timestamp)[0];
                const recentE1RM_Display = recentEqLift?.e1rm ? Number(toDisplay(recentEqLift.e1rm)) : 0;
 
@@ -474,7 +484,7 @@ export default function Coach() {
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', ml: 1, flexShrink: 0 }}>
                       <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('main', idx, 'up'); }} disabled={idx === 0} sx={{ color: 'rgba(255,255,255,0.5)' }}><KeyboardArrowUpIcon fontSize="small" /></IconButton>
-                      <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('main', idx, 'down'); }} disabled={idx === workoutData.mainBlock.length - 1} sx={{ color: 'rgba(255,255,255,0.5)' }}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
+                      <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('main', idx, 'down'); }} disabled={idx === workoutData.mainBlock?.length - 1} sx={{ color: 'rgba(255,255,255,0.5)' }}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
                       <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'main', index: idx }); }} sx={{ color: 'rgba(255,255,255,0.5)' }}><SwapHorizIcon fontSize="small" /></IconButton>
                     </Box>
                   </Box>

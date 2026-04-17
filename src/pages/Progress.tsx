@@ -76,7 +76,10 @@ export default function Progress() {
   const [metric, setMetric] = useState(() => localStorage.getItem('progress_metric') || 'e1rm');
   const [equipmentOverride, setEquipmentOverride] = useState<string | null>(null);
 
+<<<<<<< HEAD
   // FIX: Properly declared SMART FORM state variables
+=======
+>>>>>>> ad1e8fc (fixes bodyweight problem)
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [logModalOpen, setLogModalOpen] = useState(false);
@@ -170,7 +173,10 @@ export default function Progress() {
     }));
   }, [historyForSelected, activeEquipment, isBW, toDisplay]);
 
+<<<<<<< HEAD
   // CHANGED: Base targeting off Current (most recent) session, not All-Time Best
+=======
+>>>>>>> ad1e8fc (fixes bodyweight problem)
   const currentE1RM = chartData.length ? chartData[chartData.length - 1].e1rm : 0;
   const heaviestLift = chartData.length ? Math.max(...chartData.map(d => d.weight)) : 0;
   const bestVolume = chartData.length ? Math.max(...chartData.map(d => d.volume)) : 0;
@@ -460,14 +466,17 @@ export default function Progress() {
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                     {[...chartData].reverse().map((entry, i) => (
                       <Paper key={i} onClick={() => handleEditOpen(entry.rawSet)} sx={{ px: 2, py: 1.5, borderRadius: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', '&:hover': { bgcolor: 'rgba(255,255,255,0.03)' } }}>
-                        <Box>
+                        <Box sx={{ flex: 1, pr: 2 }}>
                           <Typography sx={{ fontWeight: 700, fontSize: '0.9rem' }}>
-                            {entry.weight > 0 ? `${entry.weight} ${unit}` : 'Bodyweight'}
+                            {entry.rawSet.weight > 0 ? `${displayWeight(entry.rawSet.weight)} ${unit}` : (entry.rawSet.equipmentType === 'Bodyweight' ? 'Bodyweight' : 'Unlabeled')}
                             <Box component="span" sx={{ color: 'text.secondary', fontWeight: 400 }}>{' '}× {entry.reps} reps × {entry.sets} sets</Box>
                           </Typography>
                           <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>{entry.date}</Typography>
+                          {entry.rawSet.notes && (
+                            <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary', fontStyle: 'italic', mt: 0.5 }}>"{entry.rawSet.notes}"</Typography>
+                          )}
                         </Box>
-                        <Box sx={{ textAlign: 'right' }}>
+                        <Box sx={{ textAlign: 'right', flexShrink: 0 }}>
                           {isBW ? (
                             <><Typography sx={{ fontWeight: 800, fontSize: '0.9rem', color: '#00d4ff' }}>{entry.totalReps}</Typography><Typography sx={{ fontSize: '0.65rem', color: 'text.secondary' }}>Total Reps</Typography></>
                           ) : (

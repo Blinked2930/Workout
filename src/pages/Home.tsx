@@ -63,7 +63,6 @@ export default function Home() {
   const [exerciseSearch, setExerciseSearch] = useState('');
   const [showList, setShowList] = useState(false);
   
-  // GHOST PLACEHOLDERS
   const [ghostWeight, setGhostWeight] = useState<string | number>('');
   const [ghostReps, setGhostReps] = useState<string | number>('');
   const [ghostSets, setGhostSets] = useState<string | number>('');
@@ -167,7 +166,6 @@ export default function Home() {
     setExerciseName(ex.name); setExerciseCategory(ex.category);
     setExerciseSubcat(ex.subcategory ?? ''); setExerciseSearch(ex.name);
     
-    // FETCH LAST DATA FOR GHOST PLACEHOLDERS
     if (!editingId && allLifts) {
       const lastLift = allLifts.filter(l => l.exerciseName === ex.name).sort((a,b) => b.timestamp - a.timestamp)[0];
       if (lastLift) {
@@ -183,7 +181,6 @@ export default function Home() {
   };
 
   const handleSubmit = async () => {
-    // Check if the user filled it OR if we have ghost data to fallback on
     const finalWeight = weight !== '' ? parseFloat(String(weight)) : parseFloat(String(ghostWeight));
     const finalReps = reps !== '' ? parseInt(String(reps)) : parseInt(String(ghostReps));
     const finalSets = sets !== '' ? parseInt(String(sets)) : parseInt(String(ghostSets));
@@ -264,7 +261,7 @@ export default function Home() {
                               {lift.sets} × {lift.reps}
                             </Typography>
                             <Typography sx={{ fontSize: '0.85rem', color: 'text.secondary' }}>
-                              @ {lift.weight > 0 ? displayWeight(lift.weight) : 'BW'}
+                              @ {lift.weight > 0 ? displayWeight(lift.weight) : (lift.equipmentType === 'Bodyweight' ? 'BW' : 'Unlabeled')}
                             </Typography>
                             {lift.rir !== undefined && (
                               <Chip label={`RIR ${lift.rir}`} size="small" sx={{ height: 18, fontSize: '0.65rem', fontWeight: 700, bgcolor: 'rgba(255,255,255,0.1)', color: 'text.secondary' }} />
@@ -343,24 +340,31 @@ export default function Home() {
                     ))}
                   </Box>
                 </Box>
-                <TextField label={`Weight (${unit})`} type="number" size="small" fullWidth placeholder={ghostWeight ? `Last: ${ghostWeight}` : "0 = pure bodyweight"} value={weight} onChange={e => setWeight(e.target.value)} helperText={equipment === 'Dumbbell' ? `Enter weight of ONE dumbbell.` : "Enter total weight. Leave blank for bodyweight."} />
+                <TextField label={`Weight (${unit})`} type="text" inputMode="decimal" size="small" fullWidth placeholder={ghostWeight ? `Last: ${ghostWeight}` : "Leave blank if unknown/bodyweight"} value={weight} onChange={e => setWeight(e.target.value)} helperText={equipment === 'Dumbbell' ? `Enter weight of ONE dumbbell.` : "Enter total weight."} />
                 <Box sx={{ display: 'flex', gap: 1.5 }}>
-                  <TextField label="Reps *" type="number" size="small" fullWidth placeholder={ghostReps ? `Last: ${ghostReps}` : ''} value={reps} onChange={e => setReps(e.target.value)} />
-                  <TextField label="Sets" type="number" size="small" fullWidth placeholder={ghostSets ? `Last: ${ghostSets}` : ''} value={sets} onChange={e => setSets(e.target.value)} />
-                  <TextField label="RIR" type="number" size="small" fullWidth value={rir} onChange={e => setRir(e.target.value)} />
+                  <TextField label="Reps *" type="text" inputMode="numeric" size="small" fullWidth placeholder={ghostReps ? `Last: ${ghostReps}` : ''} value={reps} onChange={e => setReps(e.target.value)} />
+                  <TextField label="Sets" type="text" inputMode="numeric" size="small" fullWidth placeholder={ghostSets ? `Last: ${ghostSets}` : ''} value={sets} onChange={e => setSets(e.target.value)} />
+                  <TextField label="RIR" type="text" inputMode="numeric" size="small" fullWidth value={rir} onChange={e => setRir(e.target.value)} />
                 </Box>
                 <TextField label="Notes (optional)" size="small" fullWidth multiline rows={2} value={notes} onChange={e => setNotes(e.target.value)} />
               </>
             )}
           </DialogContent>
           <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
-            {editingId && <Button color="error" onClick={() => setDeleteConfirmId(editingId)} sx={{ fontWeight: 700, mr: 'auto' }}>Delete</Button>}
+            {editingId && (
+              <Button color="error" onClick={() => setDeleteConfirmId(editingId)} sx={{ fontWeight: 700, mr: 'auto' }}>
+                Delete
+              </Button>
+            )}
             <Button onClick={() => setOpen(false)} sx={{ color: 'text.secondary' }}>Cancel</Button>
-            <Button variant="contained" onClick={handleSubmit} disabled={!exerciseName} sx={{ px: 3, py: 1.5 }}>{editingId ? 'Update ✅' : 'Save Set ✅'}</Button>
+            <Button variant="contained" onClick={handleSubmit} disabled={!exerciseName || (!reps && !ghostReps)} sx={{ px: 3, py: 1.5 }}>
+              {editingId ? 'Update ✅' : 'Save Set ✅'}
+            </Button>
           </DialogActions>
         </LocalizationProvider>
       </Dialog>
       
+      {/* Delete Confirmation */}
       <Dialog open={!!deleteConfirmId} onClose={() => setDeleteConfirmId(null)}>
         <DialogTitle sx={{ fontWeight: 800 }}>Delete Set?</DialogTitle>
         <DialogActions sx={{ p: 2 }}>
