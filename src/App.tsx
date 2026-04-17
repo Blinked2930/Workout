@@ -282,6 +282,12 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState(false);
 
   useEffect(() => {
+    // 🛑 DEMO MODE AUTO-BYPASS 🛑
+    if (import.meta.env.VITE_IS_DEMO === 'true') {
+      setIsAuthenticated(true);
+      return;
+    }
+
     if (localStorage.getItem('liftlog_auth') === 'true') setIsAuthenticated(true);
   }, []);
 
