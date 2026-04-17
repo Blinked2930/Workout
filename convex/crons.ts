@@ -1,4 +1,3 @@
-// convex/crons.ts
 import { cronJobs } from "convex/server";
 import { api } from "./_generated/api";
 
