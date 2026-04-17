@@ -288,7 +288,6 @@ export default function Coach() {
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
         
-        {/* CALCULATED LOADING TARGETS PANEL */}
         {recentE1RM_Display && recentE1RM_Display > 0 ? (
           <Paper sx={{ p: 2, mt: 1, bgcolor: 'rgba(0,0,0,0.3)', borderRadius: 2, display: 'flex', justifyContent: 'center', gap: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
             <Box sx={{ flex: 1, textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.1)', pr: 2 }}>
@@ -304,7 +303,6 @@ export default function Coach() {
           <Paper sx={{ p: 1.5, mt: 1, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, textAlign: 'center' }}><Typography sx={{ fontStyle: 'italic', color: 'text.secondary', fontSize: '0.8rem' }}>Set baseline lift to generate targets.</Typography></Paper>
         )}
 
-        {/* RAW HISTORY LIST WITH NOTES */}
         <Box sx={{ bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, p: 1.5 }}>
           {history.length > 0 ? (
             history.map((lift, i) => (
@@ -449,6 +447,7 @@ export default function Coach() {
                 </Paper>
               )
             })}
+
             <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.1)' }} />
 
             {workoutData.mainBlock.map((ex, idx) => {
@@ -458,11 +457,7 @@ export default function Coach() {
                const targetRepsGhost = repsMax >= 99 ? `${ex.repsMin}+` : repsMax;
                const sets = ex.sets || 3;
                
-<<<<<<< HEAD
                const eqLifts = allLiftsDB.filter(l => l.exerciseName === ex.name && (l.equipmentType || 'Bodyweight') === eq);
-=======
-               const eqLifts = allLiftsDB.filter(l => l.exerciseName === ex.name && (l.equipmentType || 'Barbell') === eq);
->>>>>>> ad1e8fc (fixes bodyweight problem)
                const recentEqLift = eqLifts.sort((a,b)=>b.timestamp-a.timestamp)[0];
                const recentE1RM_Display = recentEqLift?.e1rm ? Number(toDisplay(recentEqLift.e1rm)) : 0;
 
@@ -484,7 +479,7 @@ export default function Coach() {
                     </Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', ml: 1, flexShrink: 0 }}>
                       <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('main', idx, 'up'); }} disabled={idx === 0} sx={{ color: 'rgba(255,255,255,0.5)' }}><KeyboardArrowUpIcon fontSize="small" /></IconButton>
-                      <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('main', idx, 'down'); }} disabled={idx === workoutData.mainBlock?.length - 1} sx={{ color: 'rgba(255,255,255,0.5)' }}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
+                      <IconButton size="small" onClick={(e) => { e.stopPropagation(); moveExercise('main', idx, 'down'); }} disabled={idx === workoutData.mainBlock.length - 1} sx={{ color: 'rgba(255,255,255,0.5)' }}><KeyboardArrowDownIcon fontSize="small" /></IconButton>
                       <IconButton size="small" onClick={(e) => { e.stopPropagation(); setSwapTarget({ section: 'main', index: idx }); }} sx={{ color: 'rgba(255,255,255,0.5)' }}><SwapHorizIcon fontSize="small" /></IconButton>
                     </Box>
                   </Box>
