@@ -76,7 +76,6 @@ export default function Progress() {
   const [metric, setMetric] = useState(() => localStorage.getItem('progress_metric') || 'e1rm');
   const [equipmentOverride, setEquipmentOverride] = useState<string | null>(null);
 
-  // FIX: Properly declared SMART FORM state variables
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [logModalOpen, setLogModalOpen] = useState(false);
@@ -170,7 +169,6 @@ export default function Progress() {
     }));
   }, [historyForSelected, activeEquipment, isBW, toDisplay]);
 
-  // CHANGED: Base targeting off Current (most recent) session, not All-Time Best
   const currentE1RM = chartData.length ? chartData[chartData.length - 1].e1rm : 0;
   const heaviestLift = chartData.length ? Math.max(...chartData.map(d => d.weight)) : 0;
   const bestVolume = chartData.length ? Math.max(...chartData.map(d => d.volume)) : 0;

@@ -367,10 +367,7 @@ export default function Manual() {
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
         
-<<<<<<< HEAD
-=======
         {/* CALCULATED LOADING TARGETS PANEL */}
->>>>>>> ad1e8fc (fixes bodyweight problem)
         {recentE1RM_Display && recentE1RM_Display > 0 ? (
           <Paper sx={{ p: 2, mt: 1, bgcolor: 'rgba(0,0,0,0.3)', borderRadius: 2, display: 'flex', justifyContent: 'center', gap: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
             <Box sx={{ flex: 1, textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.1)', pr: 2 }}>
@@ -386,10 +383,7 @@ export default function Manual() {
           <Paper sx={{ p: 1.5, mt: 1, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, textAlign: 'center' }}><Typography sx={{ fontStyle: 'italic', color: 'text.secondary', fontSize: '0.8rem' }}>Set baseline lift to generate targets.</Typography></Paper>
         )}
 
-<<<<<<< HEAD
-=======
         {/* RAW HISTORY LIST WITH NOTES */}
->>>>>>> ad1e8fc (fixes bodyweight problem)
         <Box sx={{ bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, p: 1.5 }}>
           {history.length > 0 ? (
             history.map((lift, i) => (
@@ -664,7 +658,7 @@ export default function Manual() {
              <TextField fullWidth label="Notes (optional)" size="small" multiline rows={2} value={logNotes} onChange={e => setLogNotes(e.target.value)} sx={{ mt: 2 }} />
           </DialogContent>
           <DialogActions sx={{ p: 2 }}>
-             <Button fullWidth variant="contained" onClick={handleSaveLogToDB} disabled={isSavingLog} sx={{ bgcolor: '#00e096', color: '#000' }}>Save Log</Button>
+             <Button fullWidth variant="contained" onClick={handleSaveLogToDB} disabled={isProcessing} sx={{ bgcolor: '#00e096', color: '#000' }}>Save Log</Button>
           </DialogActions>
         </Dialog>
       </Box>

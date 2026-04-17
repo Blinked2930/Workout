@@ -239,9 +239,9 @@ export default function Coach() {
     setLogSets('');
     setLogNotes('');
 
-    setGhostWeight(suggestedWeight ? `Target: ${suggestedWeight}` : (lastLift?.weight > 0 ? `Last: ${toDisplay(lastLift.weight)}` : 'Last: BW'));
-    setGhostReps(suggestedReps ? `Target: ${suggestedReps}` : (lastLift?.reps ? `Last: ${lastLift.reps}` : ''));
-    setGhostSets(suggestedSets ? `Target: ${suggestedSets}` : (lastLift?.sets ? `Last: ${lastLift.sets}` : ''));
+    setGhostWeight(suggestedWeight !== undefined && suggestedWeight !== '' ? suggestedWeight : (lastLift?.weight > 0 ? toDisplay(lastLift.weight) : ''));
+    setGhostReps(suggestedReps !== undefined && suggestedReps !== '' ? suggestedReps : (lastLift?.reps || ''));
+    setGhostSets(suggestedSets !== undefined ? suggestedSets : 3);
     
     setLogModalOpen(true);
   };
@@ -288,6 +288,7 @@ export default function Coach() {
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
         
+        {/* CALCULATED LOADING TARGETS PANEL */}
         {recentE1RM_Display && recentE1RM_Display > 0 ? (
           <Paper sx={{ p: 2, mt: 1, bgcolor: 'rgba(0,0,0,0.3)', borderRadius: 2, display: 'flex', justifyContent: 'center', gap: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
             <Box sx={{ flex: 1, textAlign: 'center', borderRight: '1px solid rgba(255,255,255,0.1)', pr: 2 }}>
@@ -303,6 +304,7 @@ export default function Coach() {
           <Paper sx={{ p: 1.5, mt: 1, bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, textAlign: 'center' }}><Typography sx={{ fontStyle: 'italic', color: 'text.secondary', fontSize: '0.8rem' }}>Set baseline lift to generate targets.</Typography></Paper>
         )}
 
+        {/* RAW HISTORY LIST WITH NOTES */}
         <Box sx={{ bgcolor: 'rgba(0,0,0,0.2)', borderRadius: 2, p: 1.5 }}>
           {history.length > 0 ? (
             history.map((lift, i) => (
