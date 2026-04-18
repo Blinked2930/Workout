@@ -16,6 +16,7 @@ import type * as demo from "../demo.js";
 import type * as exercises from "../exercises.js";
 import type * as files from "../files.js";
 import type * as lifts from "../lifts.js";
+import type * as migrate from "../migrate.js";
 import type * as seed from "../seed.js";
 import type * as users from "../users.js";
 import type * as weeklyGoals from "../weeklyGoals.js";
@@ -35,6 +36,7 @@ declare const fullApi: ApiFromModules<{
   exercises: typeof exercises;
   files: typeof files;
   lifts: typeof lifts;
+  migrate: typeof migrate;
   seed: typeof seed;
   users: typeof users;
   weeklyGoals: typeof weeklyGoals;

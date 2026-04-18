@@ -1,6 +1,6 @@
 import { mutation } from "./_generated/server";
 
-// Expanded library to support full 5-exercise workout days
+// Added Core, Forearms, and Neck to complete the 13-muscle spectrum
 const EXERCISES_DATA = [
   ["Cable cross over", "Push", "Chest", false, { chest: 1 }],
   ["Bench press", "Push", "Chest", false, { chest: 1, shoulders: 0.5 }],
@@ -24,7 +24,6 @@ const EXERCISES_DATA = [
   ["Ring Flys", "Push", "Chest", true, { chest: 1 }],
   ["RTO Push-Ups", "Push", "Chest", true, { chest: 1, shoulders: 0.5, core: 0.5 }],
   ["Pseudo Planche Push-Ups", "Push", "Chest", true, { chest: 1, shoulders: 1, core: 0.5 }],
-  // PPL Essentials
   ["Back Squat", "Legs", "Quads", false, { quads: 1, glutes: 0.8, core: 0.5 }],
   ["Romanian Deadlift", "Legs", "Hamstrings", false, { hamstrings: 1, glutes: 0.8 }],
   ["Leg Press", "Legs", "Quads", false, { quads: 1, glutes: 0.5 }],
@@ -34,7 +33,27 @@ const EXERCISES_DATA = [
   ["Lat Pulldown", "Pull", "Back", false, { back: 1, biceps: 0.4 }],
   ["Barbell Row", "Pull", "Back", false, { back: 1, biceps: 0.4 }],
   ["Face Pull", "Pull", "Shoulders", false, { back: 0.5, shoulders: 0.8, upperTraps: 0.4 }],
-  ["Bicep Curl", "Pull", "Biceps", false, { biceps: 1 }]
+  ["Bicep Curl", "Pull", "Biceps", false, { biceps: 1 }],
+  // New Additions for Full Muscle Coverage
+  ["Hanging Leg Raise", "Extra", "Core", true, { core: 1 }],
+  ["Farmers Walk", "Extra", "Forearms", false, { forearms: 1, upperTraps: 0.5, core: 0.5 }],
+  ["Neck Extension", "Extra", "Neck", false, { neck: 1 }]
+];
+
+const DEFAULT_GOALS = [
+  { muscleGroup: "chest", lowGoal: 10, highGoal: 20 },
+  { muscleGroup: "back", lowGoal: 10, highGoal: 20 },
+  { muscleGroup: "quads", lowGoal: 8, highGoal: 15 },
+  { muscleGroup: "hamstrings", lowGoal: 6, highGoal: 12 },
+  { muscleGroup: "glutes", lowGoal: 4, highGoal: 10 },
+  { muscleGroup: "shoulders", lowGoal: 8, highGoal: 16 },
+  { muscleGroup: "triceps", lowGoal: 6, highGoal: 12 },
+  { muscleGroup: "biceps", lowGoal: 6, highGoal: 12 },
+  { muscleGroup: "calves", lowGoal: 6, highGoal: 12 },
+  { muscleGroup: "core", lowGoal: 4, highGoal: 10 },
+  { muscleGroup: "upperTraps", lowGoal: 4, highGoal: 10 },
+  { muscleGroup: "forearms", lowGoal: 2, highGoal: 6 },
+  { muscleGroup: "neck", lowGoal: 2, highGoal: 6 },
 ];
 
 export const resetAndSeedDemo = mutation({
@@ -44,8 +63,6 @@ export const resetAndSeedDemo = mutation({
       console.log("Not in DEMO_MODE. Aborting.");
       return "Aborted: Not Demo Environment";
     }
-
-    console.log("DEMO_MODE active. Generating massive realistic workout history...");
 
     // 1. WIPE EVERYTHING
     const liftSets = await ctx.db.query("liftSets").collect();
@@ -57,7 +74,10 @@ export const resetAndSeedDemo = mutation({
     const exercises = await ctx.db.query("exercises").collect();
     for (const ex of exercises) await ctx.db.delete(ex._id);
 
-    // 2. SEED EXERCISE DATABASE
+    const weeklyGoals = await ctx.db.query("weeklyGoals").collect();
+    for (const wg of weeklyGoals) await ctx.db.delete(wg._id);
+
+    // 2. SEED EXERCISES & GOALS
     for (const row of EXERCISES_DATA) {
       await ctx.db.insert("exercises", {
         name: row[0] as string, category: row[1] as string, subcategory: row[2] as string,
@@ -65,101 +85,48 @@ export const resetAndSeedDemo = mutation({
       });
     }
 
-    // 3. SEED REALISTIC 30-DAY HISTORY (5 Exercises per Workout)
+    for (const goal of DEFAULT_GOALS) {
+      await ctx.db.insert("weeklyGoals", goal);
+    }
+
+    // 3. SEED 30-DAY HISTORY
     const now = Date.now();
     const msPerDay = 24 * 60 * 60 * 1000;
     
     for (let week = 0; week < 4; week++) {
       const weekOffset = (4 - week) * 7 * msPerDay; 
       
-      // ==========================================
-      // MONDAY: HEAVY PUSH DAY (5 Exercises)
-      // ==========================================
+      // MONDAY: PUSH + CORE
       const pushTime = now - weekOffset + (1 * msPerDay);
-      await ctx.db.insert("liftSets", {
-        exerciseName: "Bench press", category: "Push", subcategory: "Chest", equipmentType: "Barbell",
-        weight: 185 + (week * 5), reps: 8, sets: 4, volume: (185 + (week * 5)) * 8 * 4, e1rm: (185 + (week * 5)) * (36 / (37 - 8)), timestamp: pushTime
-      });
-      await ctx.db.insert("liftSets", {
-        exerciseName: "Incline DB bench", category: "Push", subcategory: "Chest", equipmentType: "Dumbbell",
-        weight: 65 + (week * 5), reps: 10, sets: 3, volume: (65 + (week * 5)) * 10 * 3, e1rm: (65 + (week * 5)) * (36 / (37 - 10)), timestamp: pushTime + 1000
-      });
-      await ctx.db.insert("liftSets", {
-        exerciseName: "Pec Deck Machine", category: "Push", subcategory: "Chest", equipmentType: "Machine/Cable",
-        weight: 120 + (week * 5), reps: 12, sets: 3, volume: (120 + (week * 5)) * 12 * 3, e1rm: (120 + (week * 5)) * (36 / (37 - 12)), timestamp: pushTime + 2000
-      });
-      await ctx.db.insert("liftSets", {
-        exerciseName: "Close-Grip Bench Press", category: "Push", subcategory: "Triceps", equipmentType: "Barbell",
-        weight: 135 + (week * 5), reps: 10, sets: 3, volume: (135 + (week * 5)) * 10 * 3, e1rm: (135 + (week * 5)) * (36 / (37 - 10)), timestamp: pushTime + 3000
-      });
-      await ctx.db.insert("liftSets", {
-        exerciseName: "Dips - Chest Focused", category: "Push", subcategory: "Chest", equipmentType: "Bodyweight",
-        weight: 0, reps: 8 + week, sets: 3, volume: 0, e1rm: 0, timestamp: pushTime + 4000
-      });
+      await ctx.db.insert("liftSets", { exerciseName: "Bench press", category: "Push", subcategory: "Chest", equipmentType: "Barbell", weight: 185 + (week * 5), reps: 8, sets: 4, volume: (185 + (week * 5)) * 8 * 4, timestamp: pushTime });
+      await ctx.db.insert("liftSets", { exerciseName: "Incline DB bench", category: "Push", subcategory: "Chest", equipmentType: "Dumbbell", weight: 65 + (week * 5), reps: 10, sets: 3, volume: (65 + (week * 5)) * 10 * 3, timestamp: pushTime + 1000 });
+      await ctx.db.insert("liftSets", { exerciseName: "Pec Deck Machine", category: "Push", subcategory: "Chest", equipmentType: "Machine/Cable", weight: 120 + (week * 5), reps: 12, sets: 3, volume: (120 + (week * 5)) * 12 * 3, timestamp: pushTime + 2000 });
+      await ctx.db.insert("liftSets", { exerciseName: "Close-Grip Bench Press", category: "Push", subcategory: "Triceps", equipmentType: "Barbell", weight: 135 + (week * 5), reps: 10, sets: 3, volume: (135 + (week * 5)) * 10 * 3, timestamp: pushTime + 3000 });
+      await ctx.db.insert("liftSets", { exerciseName: "Hanging Leg Raise", category: "Extra", subcategory: "Core", equipmentType: "Bodyweight", weight: 0, reps: 12 + week, sets: 3, volume: 0, timestamp: pushTime + 4000 });
 
-      // TUESDAY: CARDIO (Zone 2)
-      await ctx.db.insert("cardioSessions", {
-        timestamp: now - weekOffset + (2 * msPerDay), movementType: "Running",
-        duration: 45, distance: 4.2, rpe: 4, zone: "Zone 2", notes: "Easy neighborhood jog."
-      });
+      // TUESDAY: CARDIO
+      await ctx.db.insert("cardioSessions", { timestamp: now - weekOffset + (2 * msPerDay), movementType: "Running", duration: 45, distance: 4.2, rpe: 4, zone: "Zone 2" });
 
-      // ==========================================
-      // WEDNESDAY: LEGS DAY (5 Exercises)
-      // ==========================================
+      // WEDNESDAY: LEGS + NECK
       const legTime = now - weekOffset + (3 * msPerDay);
-      await ctx.db.insert("liftSets", {
-        exerciseName: "Back Squat", category: "Legs", subcategory: "Quads", equipmentType: "Barbell",
-        weight: 225 + (week * 10), reps: 6, sets: 4, volume: (225 + (week * 10)) * 6 * 4, e1rm: (225 + (week * 10)) * (36 / (37 - 6)), timestamp: legTime
-      });
-      await ctx.db.insert("liftSets", {
-        exerciseName: "Romanian Deadlift", category: "Legs", subcategory: "Hamstrings", equipmentType: "Barbell",
-        weight: 185 + (week * 5), reps: 8, sets: 3, volume: (185 + (week * 5)) * 8 * 3, e1rm: (185 + (week * 5)) * (36 / (37 - 8)), timestamp: legTime + 1000
-      });
-      await ctx.db.insert("liftSets", {
-        exerciseName: "Leg Press", category: "Legs", subcategory: "Quads", equipmentType: "Machine/Cable",
-        weight: 360 + (week * 10), reps: 10, sets: 3, volume: (360 + (week * 10)) * 10 * 3, e1rm: (360 + (week * 10)) * (36 / (37 - 10)), timestamp: legTime + 2000
-      });
-      await ctx.db.insert("liftSets", {
-        exerciseName: "Leg Extension", category: "Legs", subcategory: "Quads", equipmentType: "Machine/Cable",
-        weight: 110 + (week * 5), reps: 15, sets: 3, volume: (110 + (week * 5)) * 15 * 3, e1rm: (110 + (week * 5)) * (36 / (37 - 15)), timestamp: legTime + 3000
-      });
-      await ctx.db.insert("liftSets", {
-        exerciseName: "Calf Raise", category: "Legs", subcategory: "Calves", equipmentType: "Machine/Cable",
-        weight: 100, reps: 20, sets: 4, volume: 100 * 20 * 4, e1rm: 100 * (36 / (37 - 20)), timestamp: legTime + 4000
-      });
+      await ctx.db.insert("liftSets", { exerciseName: "Back Squat", category: "Legs", subcategory: "Quads", equipmentType: "Barbell", weight: 225 + (week * 10), reps: 6, sets: 4, volume: (225 + (week * 10)) * 6 * 4, timestamp: legTime });
+      await ctx.db.insert("liftSets", { exerciseName: "Romanian Deadlift", category: "Legs", subcategory: "Hamstrings", equipmentType: "Barbell", weight: 185 + (week * 5), reps: 8, sets: 3, volume: (185 + (week * 5)) * 8 * 3, timestamp: legTime + 1000 });
+      await ctx.db.insert("liftSets", { exerciseName: "Leg Press", category: "Legs", subcategory: "Quads", equipmentType: "Machine/Cable", weight: 360 + (week * 10), reps: 10, sets: 3, volume: (360 + (week * 10)) * 10 * 3, timestamp: legTime + 2000 });
+      await ctx.db.insert("liftSets", { exerciseName: "Calf Raise", category: "Legs", subcategory: "Calves", equipmentType: "Machine/Cable", weight: 100, reps: 20, sets: 4, volume: 100 * 20 * 4, timestamp: legTime + 3000 });
+      await ctx.db.insert("liftSets", { exerciseName: "Neck Extension", category: "Extra", subcategory: "Neck", equipmentType: "Other", weight: 25, reps: 15, sets: 3, volume: 25 * 15 * 3, timestamp: legTime + 4000 });
 
-      // ==========================================
-      // FRIDAY: PULL DAY (5 Exercises)
-      // ==========================================
+      // FRIDAY: PULL + FOREARMS
       const pullTime = now - weekOffset + (5 * msPerDay);
-      await ctx.db.insert("liftSets", {
-        exerciseName: "Pull-up", category: "Pull", subcategory: "Back", equipmentType: "Bodyweight",
-        weight: 0, reps: 6 + week, sets: 4, volume: 0, e1rm: 0, timestamp: pullTime, notes: "Strict form."
-      });
-      await ctx.db.insert("liftSets", {
-        exerciseName: "Barbell Row", category: "Pull", subcategory: "Back", equipmentType: "Barbell",
-        weight: 135 + (week * 5), reps: 10, sets: 3, volume: (135 + (week * 5)) * 10 * 3, e1rm: (135 + (week * 5)) * (36 / (37 - 10)), timestamp: pullTime + 1000
-      });
-      await ctx.db.insert("liftSets", {
-        exerciseName: "Lat Pulldown", category: "Pull", subcategory: "Back", equipmentType: "Machine/Cable",
-        weight: 120 + (week * 5), reps: 12, sets: 3, volume: (120 + (week * 5)) * 12 * 3, e1rm: (120 + (week * 5)) * (36 / (37 - 12)), timestamp: pullTime + 2000
-      });
-      await ctx.db.insert("liftSets", {
-        exerciseName: "Face Pull", category: "Pull", subcategory: "Shoulders", equipmentType: "Machine/Cable",
-        weight: 50 + (week * 2.5), reps: 15, sets: 3, volume: (50 + (week * 2.5)) * 15 * 3, e1rm: (50 + (week * 2.5)) * (36 / (37 - 15)), timestamp: pullTime + 3000
-      });
-      await ctx.db.insert("liftSets", {
-        exerciseName: "Bicep Curl", category: "Pull", subcategory: "Biceps", equipmentType: "Dumbbell",
-        weight: 30 + (week * 2.5), reps: 12, sets: 3, volume: (30 + (week * 2.5)) * 12 * 3, e1rm: (30 + (week * 2.5)) * (36 / (37 - 12)), timestamp: pullTime + 4000
-      });
+      await ctx.db.insert("liftSets", { exerciseName: "Pull-up", category: "Pull", subcategory: "Back", equipmentType: "Bodyweight", weight: 0, reps: 6 + week, sets: 4, volume: 0, timestamp: pullTime });
+      await ctx.db.insert("liftSets", { exerciseName: "Barbell Row", category: "Pull", subcategory: "Back", equipmentType: "Barbell", weight: 135 + (week * 5), reps: 10, sets: 3, volume: (135 + (week * 5)) * 10 * 3, timestamp: pullTime + 1000 });
+      await ctx.db.insert("liftSets", { exerciseName: "Lat Pulldown", category: "Pull", subcategory: "Back", equipmentType: "Machine/Cable", weight: 120 + (week * 5), reps: 12, sets: 3, volume: (120 + (week * 5)) * 12 * 3, timestamp: pullTime + 2000 });
+      await ctx.db.insert("liftSets", { exerciseName: "Face Pull", category: "Pull", subcategory: "Shoulders", equipmentType: "Machine/Cable", weight: 50 + (week * 2.5), reps: 15, sets: 3, volume: (50 + (week * 2.5)) * 15 * 3, timestamp: pullTime + 3000 });
+      await ctx.db.insert("liftSets", { exerciseName: "Farmers Walk", category: "Extra", subcategory: "Forearms", equipmentType: "Dumbbell", weight: 100, reps: 1, sets: 3, volume: 100 * 3, timestamp: pullTime + 4000 });
 
-      // SATURDAY: CARDIO (HIIT)
-      await ctx.db.insert("cardioSessions", {
-        timestamp: now - weekOffset + (6 * msPerDay), movementType: "Cycling",
-        duration: 20, distance: 6.5, rpe: 9, zone: "Zone 5", notes: "Norwegian 4x4s."
-      });
+      // SATURDAY: CARDIO
+      await ctx.db.insert("cardioSessions", { timestamp: now - weekOffset + (6 * msPerDay), movementType: "Cycling", duration: 20, distance: 6.5, rpe: 9, zone: "Zone 5" });
     }
 
-    return "Massive 5-exercise-per-day Demo database successfully seeded!";
+    return "Demo database fully loaded with goals, full muscle coverage, and complete history!";
   },
 });
