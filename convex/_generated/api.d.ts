@@ -11,6 +11,8 @@
 import type * as ai from "../ai.js";
 import type * as api_ from "../api.js";
 import type * as cardio from "../cardio.js";
+import type * as crons from "../crons.js";
+import type * as demo from "../demo.js";
 import type * as exercises from "../exercises.js";
 import type * as files from "../files.js";
 import type * as lifts from "../lifts.js";
@@ -28,6 +30,8 @@ declare const fullApi: ApiFromModules<{
   ai: typeof ai;
   api: typeof api_;
   cardio: typeof cardio;
+  crons: typeof crons;
+  demo: typeof demo;
   exercises: typeof exercises;
   files: typeof files;
   lifts: typeof lifts;
