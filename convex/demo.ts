@@ -1,3 +1,4 @@
+// convex/demo.ts
 import { mutation } from "./_generated/server";
 
 // Aggressively consolidated list: Equipment variations are merged by movement pattern
@@ -109,16 +110,14 @@ export const resetAndSeedDemo = mutation({
       await ctx.db.insert("liftSets", { exerciseName: "Calf Raise", category: "Legs", subcategory: "Calves", equipmentType: "Machine/Cable", weight: 100, reps: 20, sets: 4, volume: 100 * 20 * 4, timestamp: legTime + 3000 });
       await ctx.db.insert("liftSets", { exerciseName: "Neck Extension", category: "Extra", subcategory: "Neck", equipmentType: "Other", weight: 25, reps: 15, sets: 3, volume: 25 * 15 * 3, timestamp: legTime + 4000 });
 
-      // DAY 5: CARDIO (2 days before baseTime)
-      await ctx.db.insert("cardioSessions", { timestamp: baseTime - (2 * msPerDay), movementType: "Cycling", duration: 20, distance: 6.5, rpe: 9, zone: "Zone 5" });
-      
-      // DAY 7 ("TODAY"): PULL + FOREARMS (Exactly at baseTime)
+      // DAY 7 ("TODAY"): PULL + FOREARMS + CARDIO (Exactly at baseTime)
       const pullTime = baseTime;
       await ctx.db.insert("liftSets", { exerciseName: "Pull-up", category: "Pull", subcategory: "Back", equipmentType: "Bodyweight", weight: 0, reps: 6 + week, sets: 4, volume: 0, timestamp: pullTime });
       await ctx.db.insert("liftSets", { exerciseName: "Row", category: "Pull", subcategory: "Back", equipmentType: "Barbell", weight: 135 + (week * 5), reps: 10, sets: 3, volume: (135 + (week * 5)) * 10 * 3, timestamp: pullTime + 1000 });
       await ctx.db.insert("liftSets", { exerciseName: "Lat Pulldown", category: "Pull", subcategory: "Back", equipmentType: "Machine/Cable", weight: 120 + (week * 5), reps: 12, sets: 3, volume: (120 + (week * 5)) * 12 * 3, timestamp: pullTime + 2000 });
       await ctx.db.insert("liftSets", { exerciseName: "Face Pull", category: "Pull", subcategory: "Shoulders", equipmentType: "Machine/Cable", weight: 50 + (week * 2.5), reps: 15, sets: 3, volume: (50 + (week * 2.5)) * 15 * 3, timestamp: pullTime + 3000 });
       await ctx.db.insert("liftSets", { exerciseName: "Farmers Walk", category: "Extra", subcategory: "Forearms", equipmentType: "Dumbbell", weight: 100, reps: 1, sets: 3, volume: 100 * 3, timestamp: pullTime + 4000 });
+      await ctx.db.insert("cardioSessions", { timestamp: baseTime + 5000, movementType: "Cycling", duration: 20, distance: 6.5, rpe: 9, zone: "Zone 5" });
     }
 
     return "Demo database fully loaded with goals, full muscle coverage, and complete history anchored to today!";

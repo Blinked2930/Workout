@@ -10,32 +10,34 @@ import CloseIcon from '@mui/icons-material/Close';
 
 // Maps exercise muscleWeights schema keys → weeklyGoals muscleGroup names
 const SCHEMA_TO_GOAL: Record<string, string> = {
-  chest:      'Chest',
-  shoulders:  'Shoulders',
-  triceps:    'Triceps - Isolation',
-  back:       'Back',
-  upperTraps: 'Upper Traps',
-  biceps:     'Biceps - Isolation',
-  glutes:     'Glute',
-  quads:      'Quads',
-  hamstrings: 'Hamstrings',
-  calves:     'Calves',
-  forearms:   'Forearms',
-  neck:       'Neck',
-  core:       'Core',
+  chest:      'chest',
+  shoulders:  'shoulders',
+  triceps:    'triceps',
+  back:       'back',
+  upperTraps: 'upperTraps',
+  biceps:     'biceps',
+  glutes:     'glutes',
+  quads:      'quads',
+  hamstrings: 'hamstrings',
+  calves:     'calves',
+  forearms:   'forearms',
+  neck:       'neck',
+  core:       'core',
 };
 
 const MUSCLE_EMOJI: Record<string, string> = {
-  Chest: '🫁', Shoulders: '🏔️', 'Triceps - Isolation': '💪',
-  Back: '🔙', 'Upper Traps': '🦬', 'Biceps - Isolation': '🦾',
-  Glute: '🍑', Quads: '🦵', Hamstrings: '🦿', Calves: '⬇️',
-  Forearms: '🤜', Neck: '🦒', Core: '🎯',
+  chest: '🫁', shoulders: '🏔️', triceps: '💪',
+  back: '🔙', upperTraps: '🦬', biceps: '🦾',
+  glutes: '🍑', quads: '🦵', hamstrings: '🦿', calves: '⬇️',
+  forearms: '🤜', neck: '🦒', core: '🎯',
 };
 
+// UI mapping to show properly capitalized strings
 const MUSCLE_SHORT: Record<string, string> = {
-  'Triceps - Isolation': 'Triceps',
-  'Biceps - Isolation': 'Biceps',
-  'Upper Traps': 'U. Traps',
+  chest: 'Chest', shoulders: 'Shoulders', triceps: 'Triceps',
+  back: 'Back', upperTraps: 'U. Traps', biceps: 'Biceps',
+  glutes: 'Glutes', quads: 'Quads', hamstrings: 'Hamstrings', calves: 'Calves',
+  forearms: 'Forearms', neck: 'Neck', core: 'Core',
 };
 
 // Color thresholds for progress
@@ -64,7 +66,7 @@ function GoalEditDialog({ goal, open, onClose, onSave }: {
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth>
       <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography sx={{ fontWeight: 800 }}>
-          {MUSCLE_EMOJI[goal?.muscleGroup ?? ''] ?? '💪'} {goal?.muscleGroup}
+          {MUSCLE_EMOJI[goal?.muscleGroup ?? ''] ?? '💪'} {MUSCLE_SHORT[goal?.muscleGroup ?? ''] ?? goal?.muscleGroup}
         </Typography>
         <IconButton size="small" onClick={onClose}><CloseIcon /></IconButton>
       </DialogTitle>
