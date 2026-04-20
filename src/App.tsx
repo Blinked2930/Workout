@@ -128,6 +128,86 @@ const NAV_HUBS = [
   { label: 'DB', emoji: '🗂️', path: '/exercises' },
 ];
 
+function DemoModal() {
+  const isDemo = import.meta.env.VITE_IS_DEMO === 'true';
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    // Only show if we are in demo mode AND the user hasn't seen it this session
+    if (isDemo && sessionStorage.getItem('liftlog_demo_seen') !== 'true') {
+      setOpen(true);
+    }
+  }, [isDemo]);
+
+  const handleClose = () => {
+    sessionStorage.setItem('liftlog_demo_seen', 'true');
+    setOpen(false);
+  };
+
+  if (!isDemo) return null;
+
+  return (
+    <Dialog 
+      open={open} 
+      // Force them to interact with the button to close it
+      disableEscapeKeyDown
+      PaperProps={{
+        sx: {
+          p: { xs: 3, md: 4 },
+          borderRadius: 4,
+          textAlign: 'center',
+          maxWidth: 400,
+          background: 'radial-gradient(ellipse at top, #1a1b1f 0%, #12141a 100%)',
+          border: '1px solid rgba(0, 212, 255, 0.2)',
+          boxShadow: '0 8px 32px rgba(0, 212, 255, 0.15)',
+        }
+      }}
+    >
+      <Box sx={{ mb: 2 }}>
+        <Typography sx={{ fontSize: '3rem', lineHeight: 1 }}>💪</Typography>
+      </Box>
+      <Typography variant="h4" sx={{ fontWeight: 800, mb: 1 }}>
+        LiftLog<Box component="span" sx={{ color: '#00d4ff' }}>PAW</Box>
+      </Typography>
+      <Typography sx={{ color: 'text.secondary', fontSize: '0.95rem', mb: 3 }}>
+        A progressive web app built for deep focus and structured training.
+      </Typography>
+      
+      <Box sx={{ p: 2, bgcolor: 'rgba(255,255,255,0.03)', borderRadius: 2, mb: 4, border: '1px solid rgba(255,255,255,0.05)' }}>
+        <Typography sx={{ fontSize: '0.75rem', color: '#ffb800', fontWeight: 800, mb: 0.5, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+          Sandbox Environment
+        </Typography>
+        <Typography sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>
+          Feel free to log sets, create exercises, and explore. Sessions are isolated and the database is automatically wiped and re-seeded periodically.
+        </Typography>
+      </Box>
+
+      <Button 
+        fullWidth 
+        variant="contained" 
+        size="large" 
+        onClick={handleClose}
+        sx={{ 
+          py: 1.5, 
+          fontSize: '1.05rem',
+          background: 'linear-gradient(135deg, #00d4ff 0%, #0099cc 100%)',
+          color: '#0d0d0f',
+          mb: 2
+        }}
+      >
+        Try the Live Demo ➔
+      </Button>
+      
+      <Button 
+        onClick={() => window.location.href = 'https://workout.emmettfrett.com'}
+        sx={{ color: 'text.secondary', fontSize: '0.8rem', fontWeight: 600, '&:hover': { color: '#00d4ff', background: 'transparent' } }}
+      >
+        Are you the owner? Sign In
+      </Button>
+    </Dialog>
+  );
+}
+
 function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -177,6 +257,8 @@ function AppShell() {
       background: 'radial-gradient(ellipse at top, #12141a 0%, #0d0d0f 60%)',
     }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@700;800;900&display=swap');`}</style>
+
+      <DemoModal />
 
       {/* Global Settings Button */}
       <IconButton 
