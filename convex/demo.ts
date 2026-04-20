@@ -90,18 +90,18 @@ export const resetAndSeedDemo = mutation({
       // Older weeks step backwards by 7-day increments.
       const baseTime = now - ((3 - week) * 7 * msPerDay); 
       
-      // MONDAY: PUSH + CORE (5 days before baseTime)
-      const pushTime = baseTime - (5 * msPerDay);
+      // DAY 1: PUSH + CORE (6 days before baseTime)
+      const pushTime = baseTime - (6 * msPerDay);
       await ctx.db.insert("liftSets", { exerciseName: "Bench Press", category: "Push", subcategory: "Chest", equipmentType: "Barbell", weight: 185 + (week * 5), reps: 8, sets: 4, volume: (185 + (week * 5)) * 8 * 4, timestamp: pushTime });
       await ctx.db.insert("liftSets", { exerciseName: "Incline Bench Press", category: "Push", subcategory: "Chest", equipmentType: "Dumbbell", weight: 65 + (week * 5), reps: 10, sets: 3, volume: (65 + (week * 5)) * 10 * 3, timestamp: pushTime + 1000 });
       await ctx.db.insert("liftSets", { exerciseName: "Chest Fly", category: "Push", subcategory: "Chest", equipmentType: "Machine/Cable", weight: 120 + (week * 5), reps: 12, sets: 3, volume: (120 + (week * 5)) * 12 * 3, timestamp: pushTime + 2000 });
       await ctx.db.insert("liftSets", { exerciseName: "Close-Grip Bench Press", category: "Push", subcategory: "Triceps", equipmentType: "Barbell", weight: 135 + (week * 5), reps: 10, sets: 3, volume: (135 + (week * 5)) * 10 * 3, timestamp: pushTime + 3000 });
       await ctx.db.insert("liftSets", { exerciseName: "Hanging Leg Raise", category: "Extra", subcategory: "Core", equipmentType: "Bodyweight", weight: 0, reps: 12 + week, sets: 3, volume: 0, timestamp: pushTime + 4000 });
 
-      // TUESDAY: CARDIO (4 days before baseTime)
-      await ctx.db.insert("cardioSessions", { timestamp: baseTime - (4 * msPerDay), movementType: "Running", duration: 45, distance: 4.2, rpe: 4, zone: "Zone 2" });
+      // DAY 2: CARDIO (5 days before baseTime)
+      await ctx.db.insert("cardioSessions", { timestamp: baseTime - (5 * msPerDay), movementType: "Running", duration: 45, distance: 4.2, rpe: 4, zone: "Zone 2" });
 
-      // WEDNESDAY: LEGS + NECK (3 days before baseTime)
+      // DAY 4: LEGS + NECK (3 days before baseTime)
       const legTime = baseTime - (3 * msPerDay);
       await ctx.db.insert("liftSets", { exerciseName: "Squat", category: "Legs", subcategory: "Quads", equipmentType: "Barbell", weight: 225 + (week * 10), reps: 6, sets: 4, volume: (225 + (week * 10)) * 6 * 4, timestamp: legTime });
       await ctx.db.insert("liftSets", { exerciseName: "Romanian Deadlift", category: "Legs", subcategory: "Hamstrings", equipmentType: "Barbell", weight: 185 + (week * 5), reps: 8, sets: 3, volume: (185 + (week * 5)) * 8 * 3, timestamp: legTime + 1000 });
@@ -109,18 +109,18 @@ export const resetAndSeedDemo = mutation({
       await ctx.db.insert("liftSets", { exerciseName: "Calf Raise", category: "Legs", subcategory: "Calves", equipmentType: "Machine/Cable", weight: 100, reps: 20, sets: 4, volume: 100 * 20 * 4, timestamp: legTime + 3000 });
       await ctx.db.insert("liftSets", { exerciseName: "Neck Extension", category: "Extra", subcategory: "Neck", equipmentType: "Other", weight: 25, reps: 15, sets: 3, volume: 25 * 15 * 3, timestamp: legTime + 4000 });
 
-      // FRIDAY: PULL + FOREARMS (1 day before baseTime)
-      const pullTime = baseTime - (1 * msPerDay);
+      // DAY 5: CARDIO (2 days before baseTime)
+      await ctx.db.insert("cardioSessions", { timestamp: baseTime - (2 * msPerDay), movementType: "Cycling", duration: 20, distance: 6.5, rpe: 9, zone: "Zone 5" });
+      
+      // DAY 7 ("TODAY"): PULL + FOREARMS (Exactly at baseTime)
+      const pullTime = baseTime;
       await ctx.db.insert("liftSets", { exerciseName: "Pull-up", category: "Pull", subcategory: "Back", equipmentType: "Bodyweight", weight: 0, reps: 6 + week, sets: 4, volume: 0, timestamp: pullTime });
       await ctx.db.insert("liftSets", { exerciseName: "Row", category: "Pull", subcategory: "Back", equipmentType: "Barbell", weight: 135 + (week * 5), reps: 10, sets: 3, volume: (135 + (week * 5)) * 10 * 3, timestamp: pullTime + 1000 });
       await ctx.db.insert("liftSets", { exerciseName: "Lat Pulldown", category: "Pull", subcategory: "Back", equipmentType: "Machine/Cable", weight: 120 + (week * 5), reps: 12, sets: 3, volume: (120 + (week * 5)) * 12 * 3, timestamp: pullTime + 2000 });
       await ctx.db.insert("liftSets", { exerciseName: "Face Pull", category: "Pull", subcategory: "Shoulders", equipmentType: "Machine/Cable", weight: 50 + (week * 2.5), reps: 15, sets: 3, volume: (50 + (week * 2.5)) * 15 * 3, timestamp: pullTime + 3000 });
       await ctx.db.insert("liftSets", { exerciseName: "Farmers Walk", category: "Extra", subcategory: "Forearms", equipmentType: "Dumbbell", weight: 100, reps: 1, sets: 3, volume: 100 * 3, timestamp: pullTime + 4000 });
-
-      // SATURDAY: CARDIO (Exactly at baseTime)
-      await ctx.db.insert("cardioSessions", { timestamp: baseTime, movementType: "Cycling", duration: 20, distance: 6.5, rpe: 9, zone: "Zone 5" });
     }
 
-    return "Demo database fully loaded with goals, full muscle coverage, and complete history!";
+    return "Demo database fully loaded with goals, full muscle coverage, and complete history anchored to today!";
   },
 });
