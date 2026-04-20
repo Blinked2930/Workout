@@ -51,9 +51,9 @@ export const resetAndSeedDemo = mutation({
   args: {},
   handler: async (ctx) => {
     // THE IRONCLAD DEADBOLT
-    const deploymentName = process.env.CONVEX_DEPLOYMENT_NAME;
-    if (!deploymentName?.includes("giddy-anaconda-476")) {
-      throw new Error(`CRITICAL: Attempted to run demo seed on PROD`);
+    const cloudUrl = process.env.CONVEX_CLOUD_URL;
+    if (!cloudUrl?.includes("giddy-anaconda-476")) {
+      throw new Error(`CRITICAL: Attempted to run demo seed on PROD. Cloud URL was: ${cloudUrl}`);
     }
 
     // 1. WIPE EVERYTHING
