@@ -167,7 +167,7 @@ function DemoModal() {
         <Typography sx={{ fontSize: '3rem', lineHeight: 1 }}>💪</Typography>
       </Box>
       <Typography variant="h4" sx={{ fontWeight: 800, mb: 1 }}>
-        LiftLog<Box component="span" sx={{ color: '#00d4ff' }}>PAW</Box>
+        RepVault<Box component="span" sx={{ color: '#00d4ff' }}>PAW</Box>
       </Typography>
       <Typography sx={{ color: 'text.secondary', fontSize: '0.95rem', mb: 3 }}>
         A progressive web app built for deep focus and structured training.
