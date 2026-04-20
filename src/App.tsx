@@ -256,11 +256,49 @@ function AppShell() {
       display: 'flex', flexDirection: 'column', minHeight: '100vh',
       background: 'radial-gradient(ellipse at top, #12141a 0%, #0d0d0f 60%)',
     }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@700;800;900&display=swap');`}</style>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800;900&family=Barlow+Condensed:wght@700;800;900&display=swap');
+        @keyframes pulse-dot {
+          0% { box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.7); }
+          70% { box-shadow: 0 0 0 6px rgba(0, 212, 255, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(0, 212, 255, 0); }
+        }
+      `}</style>
 
       <DemoModal />
 
-      {/* Global Settings Button */}
+      {/* Floating Demo Pill (Top Left) */}
+      {import.meta.env.VITE_IS_DEMO === 'true' && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 16,
+            left: 16,
+            zIndex: 100,
+            bgcolor: 'rgba(0, 212, 255, 0.08)',
+            color: '#00d4ff',
+            border: '1px solid rgba(0, 212, 255, 0.2)',
+            borderRadius: '20px',
+            px: 1.5,
+            py: 0.5,
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1,
+            fontWeight: 800,
+            fontSize: '0.65rem',
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            pointerEvents: 'none', // Prevents it from blocking clicks to underlying UI
+            boxShadow: '0 4px 12px rgba(0, 212, 255, 0.1)',
+          }}
+        >
+          <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: '#00d4ff', animation: 'pulse-dot 2s infinite' }} />
+          Demo Mode
+        </Box>
+      )}
+
+      {/* Global Settings Button (Top Right) */}
       <IconButton 
         onClick={() => setSettingsOpen(true)}
         sx={{ position: 'fixed', top: 16, right: 16, zIndex: 100, bgcolor: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(10px)' }}
