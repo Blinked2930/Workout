@@ -218,7 +218,8 @@ export default function Cardio() {
   const deleteCardio = useMutation(api.cardio.deleteCardio);
 
   const zone2Minutes = thisWeek?.filter(s => s.zone === 'Zone 2').reduce((a, s) => a + s.duration, 0) ?? 0;
-  const anaerobicMinutes = thisWeek?.filter(s => s.zone === 'Anaerobic').reduce((a, s) => a + s.duration, 0) ?? 0;
+  // FIX: Normalize database Zone 5 to Anaerobic for the goal tracker
+  const anaerobicMinutes = thisWeek?.filter(s => s.zone === 'Anaerobic' || s.zone === 'Zone 5').reduce((a, s) => a + s.duration, 0) ?? 0;
 
   const handleOpen = () => { setForm(emptyForm()); setOpen(true); };
 
@@ -229,7 +230,8 @@ export default function Cardio() {
       duration: session.duration.toString(),
       distance: session.distance?.toString() ?? '',
       rpe: session.rpe?.toString() ?? '',
-      zone: session.zone,
+      // FIX: Normalize database Zone 5 to Anaerobic so the form buttons highlight properly
+      zone: session.zone === 'Zone 5' ? 'Anaerobic' : session.zone,
       notes: session.notes ?? '',
       timestamp: session.timestamp,
     });
@@ -375,6 +377,10 @@ export default function Cardio() {
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' }, gap: 1.5 }}>
           {sessions?.slice(0, 20).map(session => {
             const mt = MOVEMENT_TYPES.find(m => m.value === session.movementType);
+            // FIX: Normalize display and colors for legacy Zone 5 entries
+            const displayZone = session.zone === 'Zone 5' ? 'Anaerobic' : session.zone;
+            const isZone2 = displayZone === 'Zone 2';
+
             return (
               <Paper 
                 key={session._id} 
@@ -405,16 +411,16 @@ export default function Cardio() {
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Box sx={{ textAlign: 'right', mr: 0.5 }}>
-                    <Typography sx={{ fontWeight: 800, fontSize: '1rem', color: session.zone === 'Zone 2' ? '#00e096' : '#ff4d6d' }}>
+                    <Typography sx={{ fontWeight: 800, fontSize: '1rem', color: isZone2 ? '#00e096' : '#ff4d6d' }}>
                       {session.duration}m
                     </Typography>
                     <Chip
-                      label={session.zone}
+                      label={displayZone}
                       size="small"
                       sx={{
                         fontSize: '0.6rem', height: 18, fontWeight: 700,
-                        bgcolor: session.zone === 'Zone 2' ? 'rgba(0,224,150,0.1)' : 'rgba(255,77,109,0.1)',
-                        color: session.zone === 'Zone 2' ? '#00e096' : '#ff4d6d',
+                        bgcolor: isZone2 ? 'rgba(0,224,150,0.1)' : 'rgba(255,77,109,0.1)',
+                        color: isZone2 ? '#00e096' : '#ff4d6d',
                       }}
                     />
                   </Box>
