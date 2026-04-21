@@ -358,6 +358,8 @@ export default function Manual() {
     const navToProgress = (e: React.MouseEvent) => {
       e.stopPropagation();
       localStorage.setItem('progress_exercise', exerciseName);
+      // BUGFIX: Save equipment state so the Progress page lands exactly on this variant
+      localStorage.setItem('progress_equipment', equipment);
       navigate('/progress');
     };
 
@@ -530,7 +532,10 @@ export default function Manual() {
                 
                 const eqLifts = allLiftsDB.filter(l => l.exerciseName === ex.name && (l.equipmentType || 'Barbell') === eq);
                 const recentEqLift = eqLifts.sort((a,b)=>b.timestamp-a.timestamp)[0];
-                const recentE1RM_Display = recentEqLift?.e1rm ? Number(toDisplay(recentEqLift.e1rm)) : 0;
+                
+                // BUGFIX: Frontend calculation fallback for DB missing e1RM due to bypassed logic in import
+                const computedE1RM = recentEqLift ? (recentEqLift.e1rm ? recentEqLift.e1rm : (recentEqLift.reps <= 1 ? recentEqLift.weight : recentEqLift.weight * (1 + recentEqLift.reps / 30))) : 0;
+                const recentE1RM_Display = computedE1RM > 0 ? Number(toDisplay(computedE1RM)) : 0;
 
                 const hist = eqLifts.filter(l => l.reps >= (ex.repsMin || 0) && l.reps <= repsMax).sort((a,b)=>b.timestamp-a.timestamp)[0];
                 const overloaded = hist?.weight ? Math.round((hist.weight * 1.05)/5)*5 : null;

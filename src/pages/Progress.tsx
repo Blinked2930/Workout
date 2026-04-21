@@ -74,7 +74,16 @@ export default function Progress() {
   );
   const [showList, setShowList] = useState(false);
   const [metric, setMetric] = useState(() => localStorage.getItem('progress_metric') || 'e1rm');
-  const [equipmentOverride, setEquipmentOverride] = useState<string | null>(null);
+  
+  // Consume the equipment override from Builder and clear it immediately
+  const [equipmentOverride, setEquipmentOverride] = useState<string | null>(() => {
+    const savedEq = localStorage.getItem('progress_equipment');
+    if (savedEq) {
+      localStorage.removeItem('progress_equipment');
+      return savedEq;
+    }
+    return null;
+  });
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -144,8 +153,6 @@ export default function Progress() {
 
   const isBW = activeEquipment === 'Bodyweight';
 
-  useEffect(() => { setEquipmentOverride(null); }, [selectedExercise]);
-
   useEffect(() => {
     if (isBW && !BODYWEIGHT_METRICS.find(m => m.value === metric)) setMetric('reps');
     if (!isBW && !WEIGHTED_METRICS.find(m => m.value === metric)) setMetric('e1rm');
@@ -157,16 +164,22 @@ export default function Progress() {
       return eq === activeEquipment;
     });
 
-    return sessions.map(l => ({
-      date: format(new Date(l.timestamp), 'MMM d'),
-      e1rm: isBW ? 0 : Number(toDisplay(l.e1rm ?? 0)),
-      volume: isBW ? 0 : Number(toDisplay(l.volume)),
-      weight: isBW ? 0 : Number(toDisplay(l.weight)),
-      reps: l.reps,
-      sets: l.sets,
-      totalReps: l.reps * l.sets,
-      rawSet: l, 
-    }));
+    return sessions.map(l => {
+      // Fallback calculations for imported data missing convex logic hooks
+      const computedE1rm = l.e1rm ? l.e1rm : (l.reps <= 1 ? l.weight : l.weight * (1 + l.reps / 30));
+      const computedVolume = l.volume ? l.volume : (l.weight * l.reps * l.sets);
+
+      return {
+        date: format(new Date(l.timestamp), 'MMM d'),
+        e1rm: isBW ? 0 : Number(toDisplay(computedE1rm)),
+        volume: isBW ? 0 : Number(toDisplay(computedVolume)),
+        weight: isBW ? 0 : Number(toDisplay(l.weight)),
+        reps: l.reps,
+        sets: l.sets,
+        totalReps: l.reps * l.sets,
+        rawSet: l, 
+      };
+    });
   }, [historyForSelected, activeEquipment, isBW, toDisplay]);
 
   const currentE1RM = chartData.length ? chartData[chartData.length - 1].e1rm : 0;
@@ -189,6 +202,7 @@ export default function Progress() {
 
   const handleSelectExercise = (name: string) => {
     setSelectedExercise(name);
+    setEquipmentOverride(null); // Clear override if user explicitly searches a new one
     setSearch(name);
     setShowList(false);
   };
@@ -196,6 +210,7 @@ export default function Progress() {
   const handleClearSearch = () => {
     setSearch('');
     setSelectedExercise(null);
+    setEquipmentOverride(null);
     setShowList(true);
     setTimeout(() => { searchInputRef.current?.focus(); }, 10);
   };
@@ -460,7 +475,7 @@ export default function Progress() {
                       <Paper key={i} onClick={() => handleEditOpen(entry.rawSet)} sx={{ px: 2, py: 1.5, borderRadius: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', '&:hover': { bgcolor: 'rgba(255,255,255,0.03)' } }}>
                         <Box sx={{ flex: 1, pr: 2 }}>
                           <Typography sx={{ fontWeight: 700, fontSize: '0.9rem' }}>
-                            {entry.rawSet.weight > 0 ? `${displayWeight(entry.rawSet.weight)} ${unit}` : (entry.rawSet.equipmentType === 'Bodyweight' ? 'Bodyweight' : 'Unlabeled')}
+                            {entry.rawSet.weight > 0 ? displayWeight(entry.rawSet.weight) : (entry.rawSet.equipmentType === 'Bodyweight' ? 'Bodyweight' : 'Unlabeled')}
                             <Box component="span" sx={{ color: 'text.secondary', fontWeight: 400 }}>{' '}× {entry.reps} reps × {entry.sets} sets</Box>
                           </Typography>
                           <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary' }}>{entry.date}</Typography>
