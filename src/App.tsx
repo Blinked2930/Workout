@@ -12,6 +12,7 @@ import Manual from './pages/Manual';
 import ExerciseManager from './pages/ExerciseManager';
 import { ConvexProvider, ConvexReactClient } from 'convex/react';
 import { UnitProvider, useUnit } from './context/UnitContext'; 
+import { InstallScreen } from './components/InstallScreen'; // <-- Added import
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
 
@@ -395,6 +396,47 @@ function AppShell() {
   );
 }
 
+// NEW INSTALL GATE: Intercepts users who are not running the app in standalone PWA mode
+function InstallGate({ children }: { children: React.ReactNode }) {
+  const [isStandalone, setIsStandalone] = useState(true); // Default true to prevent hydration flash
+  const [bypassInstall, setBypassInstall] = useState(false);
+
+  useEffect(() => {
+    // Check if the app is currently running in "standalone" mode (installed to home screen)
+    const checkStandalone = () => {
+      const matchMedia = window.matchMedia('(display-mode: standalone)').matches;
+      const navigatorStandalone = (window.navigator as any).standalone === true;
+      return matchMedia || navigatorStandalone;
+    };
+
+    setIsStandalone(checkStandalone());
+
+    // Listen for changes (e.g. if they install it while the page is open)
+    const mediaQuery = window.matchMedia('(display-mode: standalone)');
+    const handleChange = (e: MediaQueryListEvent) => setIsStandalone(e.matches);
+    mediaQuery.addEventListener('change', handleChange);
+    
+    // Check if they previously hit "Continue in browser"
+    if (sessionStorage.getItem('liftlog_bypass_install') === 'true') {
+      setBypassInstall(true);
+    }
+
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+
+  const handleBypass = () => {
+    sessionStorage.setItem('liftlog_bypass_install', 'true');
+    setBypassInstall(true);
+  };
+
+  if (isStandalone || bypassInstall) {
+    return <>{children}</>;
+  }
+
+  // If not installed and not bypassed, trap them on the install screen
+  return <InstallScreen onBypass={handleBypass} />;
+}
+
 function AuthGate({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [username, setUsername] = useState('');
@@ -447,11 +489,13 @@ function App() {
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <UnitProvider> 
-          <AuthGate>
-            <Router>
-              <AppShell />
-            </Router>
-          </AuthGate>
+          <InstallGate> {/* <-- Added the InstallGate wrapper here */}
+            <AuthGate>
+              <Router>
+                <AppShell />
+              </Router>
+            </AuthGate>
+          </InstallGate>
         </UnitProvider>
       </ThemeProvider>
     </ConvexProvider>
