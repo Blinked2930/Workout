@@ -101,21 +101,22 @@ function MuscleTile({ muscle, sets, low, high, onEdit }: {
   const isOptimal = sets >= low && sets <= high;
   const isOver = sets > high;
 
-  let color = '#2a2a3a'; // Base empty
+  let color = '#2a2a3a'; 
   let textColor = '#555566'; 
-  let borderColor = 'rgba(255,255,255,0.06)';
+  let borderColor = 'rgba(255,255,255,0.05)';
   let bgColor = 'rgba(255,255,255,0.02)';
 
   if (isUnder) {
-    color = '#8a8a9a'; 
+    color = '#00d4ff'; // Use theme cyan for the liquid fill to show progress
     textColor = '#8a8a9a';
-    borderColor = 'rgba(138, 138, 154, 0.2)';
+    borderColor = 'rgba(255,255,255,0.1)';
   } else if (isOptimal) {
     color = '#00d4ff';
     textColor = '#00d4ff';
-    borderColor = 'rgba(0, 212, 255, 0.4)';
+    borderColor = 'rgba(0, 212, 255, 0.5)';
+    bgColor = 'rgba(0, 212, 255, 0.03)';
   } else if (isOver) {
-    color = '#b06aff'; // Achievement purple
+    color = '#b06aff'; 
     textColor = '#b06aff';
     borderColor = 'rgba(176, 106, 255, 0.6)';
     bgColor = 'rgba(176, 106, 255, 0.05)';
@@ -127,63 +128,74 @@ function MuscleTile({ muscle, sets, low, high, onEdit }: {
     <Paper 
       onClick={onEdit}
       sx={{
-        borderRadius: 3, position: 'relative', overflow: 'hidden',
-        minHeight: 110, p: 1.5,
+        borderRadius: '28px', // Smoother, rounder aesthetic
+        position: 'relative', 
+        minHeight: 125, p: 1.5,
         border: `1px solid ${borderColor}`,
         bgcolor: bgColor,
         cursor: 'pointer',
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        alignItems: 'center',
-        textAlign: 'center',
-        transition: 'transform 0.1s ease, border-color 0.3s ease',
-        '&:hover': { bgcolor: 'rgba(255,255,255,0.04)' },
-        '&:active': { transform: 'scale(0.96)' }
+        display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        boxShadow: isOptimal || isOver ? `0 8px 32px ${color}15` : 'none',
+        '&:hover': { 
+          bgcolor: 'rgba(255,255,255,0.04)',
+          transform: 'translateY(-3px)',
+          boxShadow: `0 12px 40px ${color}25`
+        },
+        '&:active': { transform: 'scale(0.95)' }
       }}
     >
+      {/* LIQUID FILL CONTAINER 
+        This is absolutely positioned and has overflow:hidden. 
+        It safely clips the background gradient without clipping the MAX badge!
+      */}
       <Box sx={{
-        position: 'absolute', bottom: 0, left: 0, right: 0,
-        height: `${fillPct}%`,
-        background: isZero ? 'transparent' : `linear-gradient(to top, ${color}35 0%, ${color}05 100%)`,
-        transition: 'height 0.6s ease, background 0.4s ease',
-        pointerEvents: 'none',
-      }} />
+        position: 'absolute', inset: 0, borderRadius: 'inherit',
+        overflow: 'hidden', pointerEvents: 'none', zIndex: 0
+      }}>
+        <Box sx={{
+          position: 'absolute', bottom: 0, left: 0, right: 0,
+          height: `${fillPct}%`,
+          background: isZero ? 'transparent' : `linear-gradient(to top, ${color}35 0%, ${color}05 100%)`,
+          transition: 'height 0.8s cubic-bezier(0.4, 0, 0.2, 1), background 0.4s ease',
+        }} />
+      </Box>
 
-      {/* OVER GOAL BADGE */}
+      {/* OVER GOAL BADGE - Floats dead center top, overlapping the border */}
       {isOver && (
-        <Box sx={{ position: 'absolute', top: 6, right: 6 }}>
-          <Typography sx={{ 
-            fontSize: '0.5rem', fontWeight: 800, color: '#b06aff', 
-            bgcolor: 'rgba(176, 106, 255, 0.15)', px: 0.6, py: 0.2, 
-            borderRadius: 1, letterSpacing: '0.05em' 
-          }}>
-            MAX
-          </Typography>
+        <Box sx={{ 
+          position: 'absolute', top: -10, left: '50%', transform: 'translateX(-50%)',
+          bgcolor: color, color: '#0d0d0f', px: 1.5, py: 0.25, borderRadius: 4, 
+          fontSize: '0.6rem', fontWeight: 900, letterSpacing: '0.1em', zIndex: 2,
+          boxShadow: `0 4px 12px ${color}50`
+        }}>
+          MAX
         </Box>
       )}
 
+      {/* FOREGROUND CONTENT */}
       <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
-        <Typography sx={{ fontSize: '1.2rem', mb: 0.5, lineHeight: 1 }}>
+        <Typography sx={{ fontSize: '1.4rem', mb: 0.5, lineHeight: 1 }}>
           {MUSCLE_EMOJI[muscle] ?? '💪'}
         </Typography>
 
         <Typography sx={{
-          fontSize: sets >= 10 ? '1.5rem' : '1.8rem',
-          fontWeight: 800, color: textColor, lineHeight: 1, mb: 0.25,
+          fontSize: sets >= 10 ? '1.6rem' : '1.9rem',
+          fontWeight: 900, color: textColor, lineHeight: 1, mb: 0.25,
+          textShadow: isOptimal || isOver ? `0 0 20px ${color}40` : 'none',
           transition: 'color 0.3s ease'
         }}>
           {sets % 1 === 0 ? sets : sets.toFixed(1)}
         </Typography>
 
         <Typography sx={{ 
-          fontSize: '0.65rem', fontWeight: 700, color: 'text.secondary', 
-          lineHeight: 1.2, mb: 0.5, textTransform: 'uppercase', letterSpacing: '0.05em' 
+          fontSize: '0.65rem', fontWeight: 800, color: isOptimal || isOver ? '#fff' : 'text.secondary', 
+          lineHeight: 1.2, mb: 0.5, mt: 0.5, textTransform: 'uppercase', letterSpacing: '0.05em' 
         }}>
           {MUSCLE_SHORT[muscle] ?? muscle}
         </Typography>
 
-        <Typography sx={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.3)', fontWeight: 600, letterSpacing: '0.05em' }}>
+        <Typography sx={{ fontSize: '0.55rem', color: 'rgba(255,255,255,0.3)', fontWeight: 700, letterSpacing: '0.05em' }}>
           GOAL: {low}–{high}
         </Typography>
       </Box>
@@ -247,27 +259,28 @@ export default function Volume() {
   };
 
   return (
-    <Box sx={{ px: { xs: 2, md: 4 }, pt: { xs: 3, md: 5 }, pb: 2, maxWidth: { xs: 480, md: 900 }, mx: 'auto' }}>
+    // Increased top padding drastically to clear iOS status bars / dynamic islands safely
+    <Box sx={{ px: { xs: 2, md: 4 }, pt: { xs: 8, md: 6 }, pb: 2, maxWidth: { xs: 480, md: 900 }, mx: 'auto' }}>
       <Box sx={{ mb: 3 }}>
-        <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#00d4ff', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 0.5 }}>
+        <Typography sx={{ fontSize: '0.75rem', fontWeight: 800, color: '#00d4ff', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 0.5 }}>
           This Week
         </Typography>
-        <Typography variant="h4" sx={{ fontWeight: 800, lineHeight: 1.1 }}>
+        <Typography variant="h4" sx={{ fontWeight: 900, lineHeight: 1.1 }}>
           Volume<br />
           <Box component="span" sx={{ color: '#00d4ff' }}>Tracker 📊</Box>
         </Typography>
       </Box>
 
-      {/* Top Stats - Responsive sizing */}
+      {/* Top Stats - Glossier aesthetic */}
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: { xs: 1.5, md: 3 }, mb: { xs: 4, md: 5 } }}>
         {[
           { label: 'Total Sets', value: totalSets, color: '#00d4ff' },
           { label: 'Muscles Hit', value: musclesHit, color: '#00e096' },
           { label: 'At Goal', value: atGoal, color: '#ffb800' },
         ].map(s => (
-          <Paper key={s.label} sx={{ px: 1.5, py: { xs: 1.5, md: 2.5 }, borderRadius: 3, textAlign: 'center', minWidth: 0 }}>
-            <Typography sx={{ fontSize: { xs: '1.5rem', md: '2rem' }, fontWeight: 800, color: s.color, lineHeight: 1 }}>{s.value}</Typography>
-            <Typography sx={{ fontSize: { xs: '0.6rem', md: '0.75rem' }, color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', mt: { xs: 0.25, md: 0.5 }, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <Paper key={s.label} sx={{ px: 1.5, py: { xs: 2, md: 2.5 }, borderRadius: 4, textAlign: 'center', minWidth: 0, bgcolor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <Typography sx={{ fontSize: { xs: '1.6rem', md: '2rem' }, fontWeight: 900, color: s.color, lineHeight: 1 }}>{s.value}</Typography>
+            <Typography sx={{ fontSize: { xs: '0.65rem', md: '0.75rem' }, color: 'text.secondary', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', mt: 0.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
               {s.label}
             </Typography>
           </Paper>
@@ -280,15 +293,16 @@ export default function Volume() {
         if (!goals || goals.length === 0) return null;
 
         return (
-          <Box key={category} sx={{ mb: 4 }}>
+          <Box key={category} sx={{ mb: 4.5 }}>
             <Typography sx={{ 
-              fontSize: '0.75rem', fontWeight: 800, color: 'text.secondary', 
-              textTransform: 'uppercase', letterSpacing: '0.1em', mb: 1.5, 
-              borderBottom: '1px solid rgba(255,255,255,0.05)', pb: 0.5 
+              fontSize: '0.8rem', fontWeight: 900, color: '#fff', 
+              textTransform: 'uppercase', letterSpacing: '0.15em', mb: 2, 
+              borderBottom: '1px solid rgba(255,255,255,0.08)', pb: 1 
             }}>
               {category}
             </Typography>
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(3,1fr)', sm: 'repeat(4,1fr)', md: 'repeat(5,1fr)' }, gap: { xs: 1.5, md: 2 } }}>
+            {/* Added larger row gap to prevent max badges from colliding */}
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(3,1fr)', sm: 'repeat(4,1fr)', md: 'repeat(5,1fr)' }, columnGap: { xs: 1.5, md: 2 }, rowGap: 2.5 }}>
               {goals.map(goal => (
                 <MuscleTile
                   key={goal.muscleGroup}
