@@ -40,15 +40,24 @@ const MUSCLE_SHORT: Record<string, string> = {
   forearms: 'Forearms', neck: 'Neck', core: 'Core',
 };
 
-// Color thresholds for progress
-function tileColor(sets: number, low: number, high: number): string {
-  if (sets === 0)         return '#2a2a3a';
-  if (sets < low * 0.5)   return '#ff4d6d'; // very low — red
-  if (sets < low)         return '#ffb800'; // approaching min — amber
-  if (sets <= high * 0.6) return '#00e096'; // lower half of range — green
-  if (sets <= high)       return '#00d4ff'; // upper half of range — cyan
-  return '#b06aff';                         // over max — achievement purple
-}
+// Groups muscles into broader categories for cleaner layout
+const MUSCLE_CATEGORY: Record<string, 'Push' | 'Pull' | 'Legs' | 'Extra'> = {
+  chest: 'Push',
+  shoulders: 'Push',
+  triceps: 'Push',
+  back: 'Pull',
+  upperTraps: 'Pull',
+  biceps: 'Pull',
+  quads: 'Legs',
+  hamstrings: 'Legs',
+  glutes: 'Legs',
+  calves: 'Legs',
+  core: 'Extra',
+  forearms: 'Extra',
+  neck: 'Extra',
+};
+
+const CATEGORY_ORDER = ['Push', 'Pull', 'Legs', 'Extra'];
 
 function GoalEditDialog({ goal, open, onClose, onSave }: {
   goal: { muscleGroup: string; lowGoal: number; highGoal: number } | null;
@@ -87,7 +96,31 @@ function GoalEditDialog({ goal, open, onClose, onSave }: {
 function MuscleTile({ muscle, sets, low, high, onEdit }: {
   muscle: string; sets: number; low: number; high: number; onEdit: () => void;
 }) {
-  const color = tileColor(sets, low, high);
+  const isZero = sets === 0;
+  const isUnder = sets > 0 && sets < low;
+  const isOptimal = sets >= low && sets <= high;
+  const isOver = sets > high;
+
+  let color = '#2a2a3a'; // Base empty
+  let textColor = '#555566'; 
+  let borderColor = 'rgba(255,255,255,0.06)';
+  let bgColor = 'rgba(255,255,255,0.02)';
+
+  if (isUnder) {
+    color = '#8a8a9a'; 
+    textColor = '#8a8a9a';
+    borderColor = 'rgba(138, 138, 154, 0.2)';
+  } else if (isOptimal) {
+    color = '#00d4ff';
+    textColor = '#00d4ff';
+    borderColor = 'rgba(0, 212, 255, 0.4)';
+  } else if (isOver) {
+    color = '#b06aff'; // Achievement purple
+    textColor = '#b06aff';
+    borderColor = 'rgba(176, 106, 255, 0.6)';
+    bgColor = 'rgba(176, 106, 255, 0.05)';
+  }
+
   const fillPct = Math.min((sets / Math.max(high, 1)) * 100, 100);
 
   return (
@@ -96,8 +129,8 @@ function MuscleTile({ muscle, sets, low, high, onEdit }: {
       sx={{
         borderRadius: 3, position: 'relative', overflow: 'hidden',
         minHeight: 110, p: 1.5,
-        border: `1px solid ${sets > 0 ? color + '55' : 'rgba(255,255,255,0.06)'}`,
-        bgcolor: 'rgba(255,255,255,0.02)',
+        border: `1px solid ${borderColor}`,
+        bgcolor: bgColor,
         cursor: 'pointer',
         display: 'flex',
         flexDirection: 'column',
@@ -112,10 +145,23 @@ function MuscleTile({ muscle, sets, low, high, onEdit }: {
       <Box sx={{
         position: 'absolute', bottom: 0, left: 0, right: 0,
         height: `${fillPct}%`,
-        background: `linear-gradient(to top, ${color}35 0%, ${color}05 100%)`,
+        background: isZero ? 'transparent' : `linear-gradient(to top, ${color}35 0%, ${color}05 100%)`,
         transition: 'height 0.6s ease, background 0.4s ease',
         pointerEvents: 'none',
       }} />
+
+      {/* OVER GOAL BADGE */}
+      {isOver && (
+        <Box sx={{ position: 'absolute', top: 6, right: 6 }}>
+          <Typography sx={{ 
+            fontSize: '0.5rem', fontWeight: 800, color: '#b06aff', 
+            bgcolor: 'rgba(176, 106, 255, 0.15)', px: 0.6, py: 0.2, 
+            borderRadius: 1, letterSpacing: '0.05em' 
+          }}>
+            MAX
+          </Typography>
+        </Box>
+      )}
 
       <Box sx={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', width: '100%' }}>
         <Typography sx={{ fontSize: '1.2rem', mb: 0.5, lineHeight: 1 }}>
@@ -124,7 +170,8 @@ function MuscleTile({ muscle, sets, low, high, onEdit }: {
 
         <Typography sx={{
           fontSize: sets >= 10 ? '1.5rem' : '1.8rem',
-          fontWeight: 800, color, lineHeight: 1, mb: 0.25,
+          fontWeight: 800, color: textColor, lineHeight: 1, mb: 0.25,
+          transition: 'color 0.3s ease'
         }}>
           {sets % 1 === 0 ? sets : sets.toFixed(1)}
         </Typography>
@@ -172,10 +219,22 @@ export default function Volume() {
     return map;
   }, [thisWeeksLifts, exerciseMuscleMap]);
 
+  // Group goals by category (Push, Pull, Legs, Extra)
+  const groupedGoals = useMemo(() => {
+    if (!weeklyGoals) return {};
+    const groups: Record<string, typeof weeklyGoals> = {
+      Push: [], Pull: [], Legs: [], Extra: []
+    };
+    weeklyGoals.forEach(g => {
+      const cat = MUSCLE_CATEGORY[g.muscleGroup] || 'Extra';
+      if (groups[cat]) groups[cat].push(g);
+    });
+    return groups;
+  }, [weeklyGoals]);
+
   const totalSets = thisWeeksLifts?.reduce((a, l) => a + l.sets, 0) ?? 0;
   const musclesHit = Object.values(muscleSetMap).filter(v => v > 0).length;
   
-  // FIX: Only counts as "At Goal" if you actually did > 0 sets. (Prevents Neck 0/0 counting as a win)
   const atGoal = weeklyGoals?.filter(g => {
     const setsDone = muscleSetMap[g.muscleGroup] ?? 0;
     return setsDone > 0 && setsDone >= g.lowGoal;
@@ -188,7 +247,6 @@ export default function Volume() {
   };
 
   return (
-    // DESKTOP LAYOUT WIDENED TO 900
     <Box sx={{ px: { xs: 2, md: 4 }, pt: { xs: 3, md: 5 }, pb: 2, maxWidth: { xs: 480, md: 900 }, mx: 'auto' }}>
       <Box sx={{ mb: 3 }}>
         <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#00d4ff', textTransform: 'uppercase', letterSpacing: '0.12em', mb: 0.5 }}>
@@ -201,7 +259,7 @@ export default function Volume() {
       </Box>
 
       {/* Top Stats - Responsive sizing */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: { xs: 1.5, md: 3 }, mb: { xs: 3, md: 4 } }}>
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: { xs: 1.5, md: 3 }, mb: { xs: 4, md: 5 } }}>
         {[
           { label: 'Total Sets', value: totalSets, color: '#00d4ff' },
           { label: 'Muscles Hit', value: musclesHit, color: '#00e096' },
@@ -216,19 +274,35 @@ export default function Volume() {
         ))}
       </Box>
 
-      {/* Tiles - Expands to 5 columns on desktop */}
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(3,1fr)', sm: 'repeat(4,1fr)', md: 'repeat(5,1fr)' }, gap: { xs: 1.5, md: 2 } }}>
-        {weeklyGoals?.map(goal => (
-          <MuscleTile
-            key={goal.muscleGroup}
-            muscle={goal.muscleGroup}
-            sets={muscleSetMap[goal.muscleGroup] ?? 0}
-            low={goal.lowGoal}
-            high={goal.highGoal}
-            onEdit={() => setEditGoal(goal)}
-          />
-        ))}
-      </Box>
+      {/* Categorized Tiles */}
+      {CATEGORY_ORDER.map(category => {
+        const goals = groupedGoals[category];
+        if (!goals || goals.length === 0) return null;
+
+        return (
+          <Box key={category} sx={{ mb: 4 }}>
+            <Typography sx={{ 
+              fontSize: '0.75rem', fontWeight: 800, color: 'text.secondary', 
+              textTransform: 'uppercase', letterSpacing: '0.1em', mb: 1.5, 
+              borderBottom: '1px solid rgba(255,255,255,0.05)', pb: 0.5 
+            }}>
+              {category}
+            </Typography>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(3,1fr)', sm: 'repeat(4,1fr)', md: 'repeat(5,1fr)' }, gap: { xs: 1.5, md: 2 } }}>
+              {goals.map(goal => (
+                <MuscleTile
+                  key={goal.muscleGroup}
+                  muscle={goal.muscleGroup}
+                  sets={muscleSetMap[goal.muscleGroup] ?? 0}
+                  low={goal.lowGoal}
+                  high={goal.highGoal}
+                  onEdit={() => setEditGoal(goal)}
+                />
+              ))}
+            </Box>
+          </Box>
+        );
+      })}
 
       <GoalEditDialog
         goal={editGoal} open={!!editGoal}
