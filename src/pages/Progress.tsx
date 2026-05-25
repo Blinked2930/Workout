@@ -16,20 +16,20 @@ import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
 import AddTaskIcon from '@mui/icons-material/AddTask';
-import { useUnit } from '../context/UnitContext'; 
+import { useUnit } from '../context/UnitContext';
 
 // ── Metric definitions ─────────────────────────────────────────────────────
 const WEIGHTED_METRICS = [
-  { value: 'e1rm',   label: 'Est. 1RM',  color: '#00d4ff' },
-  { value: 'volume', label: 'Volume',    color: '#00e096' },
-  { value: 'weight', label: 'Weight',    color: '#ffb800' },
-  { value: 'reps',   label: 'Reps',      color: '#ff6b35' },
+  { value: 'e1rm', label: 'Est. 1RM', color: '#00d4ff' },
+  { value: 'volume', label: 'Volume', color: '#00e096' },
+  { value: 'weight', label: 'Weight', color: '#ffb800' },
+  { value: 'reps', label: 'Reps', color: '#ff6b35' },
 ];
 
 const BODYWEIGHT_METRICS = [
-  { value: 'reps',      label: 'Max Reps/Set', color: '#00d4ff' },
-  { value: 'totalReps', label: 'Total Reps',   color: '#00e096' },
-  { value: 'sets',      label: 'Sets',         color: '#ffb800' },
+  { value: 'reps', label: 'Max Reps/Set', color: '#00d4ff' },
+  { value: 'totalReps', label: 'Total Reps', color: '#00e096' },
+  { value: 'sets', label: 'Sets', color: '#ffb800' },
 ];
 
 const EQUIPMENT_TYPES = [
@@ -63,7 +63,7 @@ function CustomTooltip({ active, payload, label, isBW, unit }: any) {
 }
 
 export default function Progress() {
-  const { unit, toDisplay, toDB, displayWeight } = useUnit(); 
+  const { unit, toDisplay, toDB, displayWeight } = useUnit();
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const [selectedExercise, setSelectedExercise] = useState<string | null>(
@@ -74,7 +74,7 @@ export default function Progress() {
   );
   const [showList, setShowList] = useState(false);
   const [metric, setMetric] = useState(() => localStorage.getItem('progress_metric') || 'e1rm');
-  
+
   // Consume the equipment override from Builder and clear it immediately
   const [equipmentOverride, setEquipmentOverride] = useState<string | null>(() => {
     const savedEq = localStorage.getItem('progress_equipment');
@@ -88,7 +88,7 @@ export default function Progress() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [logModalOpen, setLogModalOpen] = useState(false);
-  
+
   const [ghostWeight, setGhostWeight] = useState<string | number>('');
   const [ghostReps, setGhostReps] = useState<string | number>('');
   const [ghostSets, setGhostSets] = useState<string | number>('');
@@ -162,7 +162,7 @@ export default function Progress() {
     const sessions = historyForSelected.filter(l => {
       const eq = l.equipmentType || (l.weight > 0 ? 'Barbell' : 'Bodyweight');
       return eq === activeEquipment;
-    });
+    }).slice(-30);
 
     return sessions.map(l => {
       // Fallback calculations for imported data missing convex logic hooks
@@ -171,13 +171,14 @@ export default function Progress() {
 
       return {
         date: format(new Date(l.timestamp), 'MMM d'),
+        timestamp: l.timestamp,
         e1rm: isBW ? 0 : Number(toDisplay(computedE1rm)),
         volume: isBW ? 0 : Number(toDisplay(computedVolume)),
         weight: isBW ? 0 : Number(toDisplay(l.weight)),
         reps: l.reps,
         sets: l.sets,
         totalReps: l.reps * l.sets,
-        rawSet: l, 
+        rawSet: l,
       };
     });
   }, [historyForSelected, activeEquipment, isBW, toDisplay]);
@@ -219,11 +220,11 @@ export default function Progress() {
     const lastLift = historyForSelected.length > 0 ? historyForSelected[historyForSelected.length - 1] : null;
     setEditingId(null);
     setLogEquipment(activeEquipment || 'Barbell');
-    
+
     setGhostWeight(lastLift?.weight ? toDisplay(lastLift.weight) : '');
     setGhostReps(lastLift?.reps || '');
     setGhostSets(1);
-    
+
     setLogWeight('');
     setLogReps('');
     setLogSets('');
@@ -241,11 +242,11 @@ export default function Progress() {
     setLogSets(entry.sets.toString());
     setLogNotes(entry.notes || '');
     setLogTimestamp(entry.timestamp);
-    
+
     setGhostWeight('');
     setGhostReps('');
     setGhostSets('');
-    
+
     setLogModalOpen(true);
   };
 
@@ -254,7 +255,7 @@ export default function Progress() {
     setIsSavingLog(true);
     try {
       const dbMatch = exercises?.find(ex => ex.name.toLowerCase() === selectedExercise.toLowerCase());
-      
+
       const finalWeight = logWeight !== '' ? parseFloat(String(logWeight)) : parseFloat(String(ghostWeight).replace(/[^\d.-]/g, ''));
       const finalReps = logReps !== '' ? parseInt(String(logReps)) : parseInt(String(ghostReps).replace(/[^\d.-]/g, ''));
       const finalSets = logSets !== '' ? parseInt(String(logSets)) : parseInt(String(ghostSets).replace(/[^\d.-]/g, ''));
@@ -375,9 +376,9 @@ export default function Progress() {
                 </>
               )}
             </Box>
-            <Button 
-              variant="contained" 
-              size="small" 
+            <Button
+              variant="contained"
+              size="small"
               onClick={handleOpenNewLog}
               sx={{ fontWeight: 800, bgcolor: '#00d4ff', color: '#000', '&:hover': { bgcolor: '#00b8e6' }, borderRadius: 2, height: 36, whiteSpace: 'nowrap', flexShrink: 0 }}
               startIcon={<AddTaskIcon />}
@@ -392,7 +393,7 @@ export default function Progress() {
             {!isBW ? (
               <>
                 <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(3,1fr)', md: 'repeat(3,1fr)' }, gap: 1.5, mb: 1.5 }}>
-                  {[ { label: 'Current e1RM', value: currentE1RM.toFixed(0), color: '#00d4ff', hi: true }, { label: 'e4RM', value: e4RM.toFixed(0), color: '#f0f0f0' }, { label: 'e8RM', value: e8RM.toFixed(0), color: '#f0f0f0' } ].map(s => (
+                  {[{ label: 'Current e1RM', value: currentE1RM.toFixed(0), color: '#00d4ff', hi: true }, { label: 'e4RM', value: e4RM.toFixed(0), color: '#f0f0f0' }, { label: 'e8RM', value: e8RM.toFixed(0), color: '#f0f0f0' }].map(s => (
                     <Paper key={s.label} sx={{ p: 1.5, borderRadius: 3, textAlign: 'center', bgcolor: s.hi ? 'rgba(0,212,255,0.05)' : undefined, border: s.hi ? '1px solid rgba(0,212,255,0.1)' : undefined }}>
                       <Typography sx={{ fontSize: '1.3rem', fontWeight: 800, color: s.color }}>{s.value}</Typography>
                       <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase' }}>{s.label}</Typography>
@@ -422,7 +423,7 @@ export default function Progress() {
               </>
             ) : (
               <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 1.5 }}>
-                {[ { label: 'Best Set', value: bestMaxReps, color: '#00d4ff', hi: true }, { label: 'Total Reps', value: bestTotalReps, color: '#00e096', hi: true }, { label: 'Most Sets', value: mostSets, color: '#ffb800' } ].map(s => (
+                {[{ label: 'Best Set', value: bestMaxReps, color: '#00d4ff', hi: true }, { label: 'Total Reps', value: bestTotalReps, color: '#00e096', hi: true }, { label: 'Most Sets', value: mostSets, color: '#ffb800' }].map(s => (
                   <Paper key={s.label} sx={{ p: 1.5, borderRadius: 3, textAlign: 'center', bgcolor: s.hi ? `${s.color}08` : undefined, border: s.hi ? `1px solid ${s.color}22` : undefined }}>
                     <Typography sx={{ fontSize: '1.3rem', fontWeight: 800, color: s.color }}>{s.value}</Typography>
                     <Typography sx={{ fontSize: '0.65rem', color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase' }}>{s.label}</Typography>
@@ -453,7 +454,7 @@ export default function Progress() {
                         <linearGradient id="metricGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor={selectedMetric.color} stopOpacity={0.35} /><stop offset="95%" stopColor={selectedMetric.color} stopOpacity={0} /></linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                      <XAxis dataKey="date" tick={{ fill: '#555566', fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <XAxis dataKey="timestamp" type="number" scale="time" domain={['dataMin', 'dataMax']} tickFormatter={(tick) => format(new Date(tick), 'MMM d')} tick={{ fill: '#555566', fontSize: 10 }} axisLine={false} tickLine={false} minTickGap={30} />
                       <YAxis tick={{ fill: '#555566', fontSize: 10 }} axisLine={false} tickLine={false} />
                       <Tooltip content={<CustomTooltip isBW={isBW} unit={unit} />} />
                       <Area type="monotone" dataKey={metric} name={metric} stroke={selectedMetric.color} strokeWidth={2.5} fill="url(#metricGrad)" dot={{ fill: selectedMetric.color, r: 3, strokeWidth: 0 }} activeDot={{ r: 5, strokeWidth: 0 }} />

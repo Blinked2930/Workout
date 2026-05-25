@@ -16,21 +16,23 @@ import { enGB } from 'date-fns/locale';
 import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { useUnit } from '../context/UnitContext'; 
+import { useUnit } from '../context/UnitContext';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import { useNavigate } from 'react-router-dom';
 
 const CATEGORIES = ['Push', 'Pull', 'Legs', 'Extra'];
 const CATEGORY_EMOJI: Record<string, string> = { Push: '🫸', Pull: '🫷', Legs: '🦵', Extra: '⚡' };
 const EQUIPMENT_TYPES = [
   { value: 'Barbell', emoji: '🏋️' },
   { value: 'Dumbbell', emoji: '🫳' },
-  { value: 'Smith', emoji: '🦾' }, 
+  { value: 'Smith', emoji: '🦾' },
   { value: 'Machine/Cable', emoji: '⚙️' },
   { value: 'Bodyweight', emoji: '🤸' },
   { value: 'Other', emoji: '⚡' },
 ];
 
 function matchesSearch(ex: any, query: string): boolean {
-  if (ex?.isArchived) return false; 
+  if (ex?.isArchived) return false;
   if (!query) return true;
   const q = query.toLowerCase();
   if (ex?.name?.toLowerCase().includes(q)) return true;
@@ -51,10 +53,13 @@ function StatCard({ label, value, sub, color = '#00d4ff' }: { label: string; val
 
 export default function Home() {
   const { unit, toDisplay, toDB, displayWeight } = useUnit();
+  const navigate = useNavigate();
 
   const [open, setOpen] = useState(false);
   const [filterCat, setFilterCat] = useState('');
-  
+
+  const [duplicateDayLifts, setDuplicateDayLifts] = useState<any[] | null>(null);
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [exerciseName, setExerciseName] = useState('');
@@ -62,7 +67,7 @@ export default function Home() {
   const [exerciseSubcat, setExerciseSubcat] = useState('');
   const [exerciseSearch, setExerciseSearch] = useState('');
   const [showList, setShowList] = useState(false);
-  
+
   const [ghostWeight, setGhostWeight] = useState<string | number>('');
   const [ghostReps, setGhostReps] = useState<string | number>('');
   const [ghostSets, setGhostSets] = useState<string | number>('');
@@ -103,7 +108,7 @@ export default function Home() {
 
     allLifts.forEach(lift => {
       const date = new Date(lift.timestamp);
-      if (!isValid(date)) return; 
+      if (!isValid(date)) return;
 
       let dayLabel = '';
       if (isToday(date)) dayLabel = 'Today';
@@ -113,7 +118,7 @@ export default function Home() {
       if (!days[dayLabel]) {
         days[dayLabel] = { firstTimestamp: lift.timestamp, lifts: [] };
       }
-      
+
       if (lift.timestamp > days[dayLabel].firstTimestamp) {
         days[dayLabel].firstTimestamp = lift.timestamp;
       }
@@ -137,6 +142,28 @@ export default function Home() {
 
   const handleOpenNew = () => { resetForm(); setOpen(true); };
 
+  const handleDuplicateClick = (lifts: any[]) => {
+    try {
+      const saved = localStorage.getItem('manual_selected');
+      const parsed = saved ? JSON.parse(saved) : [];
+      if (parsed.length > 0) {
+        setDuplicateDayLifts(lifts);
+      } else {
+        executeDuplicate(lifts);
+      }
+    } catch (e) {
+      executeDuplicate(lifts);
+    }
+  };
+
+  const executeDuplicate = (lifts: any[]) => {
+    const uniqueExercises = Array.from(new Set(lifts.map(l => l.exerciseName)));
+    localStorage.setItem('manual_selected', JSON.stringify(uniqueExercises));
+    localStorage.setItem('manual_phase', 'SETUP');
+    setDuplicateDayLifts(null);
+    navigate('/manual');
+  };
+
   const handleEdit = (lift: any) => {
     setEditingId(lift._id);
     setExerciseName(lift.exerciseName);
@@ -144,7 +171,7 @@ export default function Home() {
     setExerciseSubcat(lift.subcategory ?? '');
     setExerciseSearch(lift.exerciseName);
     setEquipment(lift.equipmentType || 'Barbell');
-    setWeight(lift.weight > 0 ? toDisplay(lift.weight).toString() : ''); 
+    setWeight(lift.weight > 0 ? toDisplay(lift.weight).toString() : '');
     setReps(lift.reps.toString());
     setSets(lift.sets.toString());
     setRir(lift.rir?.toString() ?? '');
@@ -158,16 +185,16 @@ export default function Home() {
     try {
       await deleteSetMutation({ id: deleteConfirmId as any });
       setSuccessMsg('Set deleted! 🗑️');
-    } catch (err) { setErrorMsg('Failed to delete set.'); } 
+    } catch (err) { setErrorMsg('Failed to delete set.'); }
     finally { setDeleteConfirmId(null); setOpen(false); }
   };
 
   const handleSelectExercise = (ex: any) => {
     setExerciseName(ex.name); setExerciseCategory(ex.category);
     setExerciseSubcat(ex.subcategory ?? ''); setExerciseSearch(ex.name);
-    
+
     if (!editingId && allLifts) {
-      const lastLift = allLifts.filter(l => l.exerciseName === ex.name).sort((a,b) => b.timestamp - a.timestamp)[0];
+      const lastLift = allLifts.filter(l => l.exerciseName === ex.name).sort((a, b) => b.timestamp - a.timestamp)[0];
       if (lastLift) {
         setEquipment(lastLift.equipmentType || 'Barbell');
         setGhostWeight(lastLift.weight > 0 ? toDisplay(lastLift.weight).toString() : '');
@@ -189,9 +216,9 @@ export default function Home() {
       setErrorMsg('Exercise and Reps are required.');
       return;
     }
-    
+
     try {
-      const dbWeight = toDB(finalWeight || 0); 
+      const dbWeight = toDB(finalWeight || 0);
       const targetTimestamp = isNaN(new Date(timestamp).getTime()) ? Date.now() : new Date(timestamp).getTime();
 
       if (editingId) {
@@ -235,25 +262,30 @@ export default function Home() {
             <Paper key={day.label} sx={{ borderRadius: 3, overflow: 'hidden', bgcolor: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', alignSelf: 'start' }}>
               <Box sx={{ p: 2, bgcolor: 'rgba(0,0,0,0.2)', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Typography sx={{ fontWeight: 800, fontSize: '1rem' }}>{day.label}</Typography>
-                <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontWeight: 600 }}>
-                  {day.lifts.length} {day.lifts.length === 1 ? 'entry' : 'entries'}
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', fontWeight: 600 }}>
+                    {day.lifts.length} {day.lifts.length === 1 ? 'entry' : 'entries'}
+                  </Typography>
+                  <IconButton size="small" onClick={() => handleDuplicateClick(day.lifts)} sx={{ color: '#00d4ff', bgcolor: 'rgba(0, 212, 255, 0.1)', '&:hover': { bgcolor: 'rgba(0, 212, 255, 0.2)' } }}>
+                    <ContentCopyIcon fontSize="small" />
+                  </IconButton>
+                </Box>
               </Box>
-              
+
               <List disablePadding>
                 {day.lifts.map((lift, i) => {
                   const eqEmoji = EQUIPMENT_TYPES.find(e => e.value === lift.equipmentType)?.emoji || '⚡';
                   return (
                     <React.Fragment key={lift._id}>
                       {i > 0 && <Divider sx={{ borderColor: 'rgba(255,255,255,0.05)' }} />}
-                      <ListItemButton 
-                        onClick={() => handleEdit(lift)} 
+                      <ListItemButton
+                        onClick={() => handleEdit(lift)}
                         sx={{ px: 2, py: 1.5, display: 'flex', alignItems: 'flex-start', gap: 1.5, '&:hover': { bgcolor: 'rgba(255,255,255,0.03)' } }}
                       >
                         <Typography sx={{ fontSize: '1.2rem', mt: -0.2 }}>{CATEGORY_EMOJI[lift.category] ?? '💪'}</Typography>
                         <Box sx={{ flex: 1, minWidth: 0 }}>
                           <Typography sx={{ fontWeight: 800, fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: 0.75, mb: 0.25 }}>
-                            {lift.exerciseName} 
+                            {lift.exerciseName}
                             <Box component="span" sx={{ opacity: 0.6, fontSize: '0.85rem', fontWeight: 400 }}>{eqEmoji}</Box>
                           </Typography>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
@@ -295,7 +327,7 @@ export default function Home() {
           </DialogTitle>
           <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2.5, pt: 1 }}>
             <DateTimePicker label="Date & Time" value={new Date(timestamp)} onChange={(v) => v && setTimestamp(v.getTime())} format="MMM d, yyyy '·' h:mm a" slotProps={{ textField: { size: 'small', fullWidth: true, sx: { mt: 1 } } }} />
-            
+
             {!editingId && (
               <Box>
                 <Typography sx={{ fontSize: '0.72rem', fontWeight: 700, color: 'text.secondary', mb: 1, textTransform: 'uppercase' }}>Filter by category (optional)</Typography>
@@ -363,13 +395,25 @@ export default function Home() {
           </DialogActions>
         </LocalizationProvider>
       </Dialog>
-      
+
       {/* Delete Confirmation */}
       <Dialog open={!!deleteConfirmId} onClose={() => setDeleteConfirmId(null)}>
         <DialogTitle sx={{ fontWeight: 800 }}>Delete Set?</DialogTitle>
         <DialogActions sx={{ p: 2 }}>
           <Button onClick={() => setDeleteConfirmId(null)}>Cancel</Button>
           <Button color="error" variant="contained" onClick={confirmDelete}>Delete</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Duplicate Confirmation */}
+      <Dialog open={!!duplicateDayLifts} onClose={() => setDuplicateDayLifts(null)}>
+        <DialogTitle sx={{ fontWeight: 800 }}>Overwrite Builder?</DialogTitle>
+        <DialogContent>
+          <Typography>You already have exercises in your Manual Builder session. Do you want to overwrite them with this workout?</Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setDuplicateDayLifts(null)}>Cancel</Button>
+          <Button color="error" variant="contained" onClick={() => duplicateDayLifts && executeDuplicate(duplicateDayLifts)}>Overwrite</Button>
         </DialogActions>
       </Dialog>
 
