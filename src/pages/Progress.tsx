@@ -52,9 +52,12 @@ function CustomTooltip({ active, payload, label, isBW, unit }: any) {
   const metricList = isBW ? BODYWEIGHT_METRICS : WEIGHTED_METRICS;
   const m = metricList.find(m => m.value === name);
   const isWeightBased = !isBW && (name === 'e1rm' || name === 'weight' || name === 'volume');
+  
+  const displayLabel = typeof label === 'number' ? format(new Date(label), 'MMM d, yyyy') : label;
+
   return (
     <Paper sx={{ px: 2, py: 1.5, borderRadius: 2 }}>
-      <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', mb: 0.25 }}>{label}</Typography>
+      <Typography sx={{ fontSize: '0.75rem', color: 'text.secondary', mb: 0.25 }}>{displayLabel}</Typography>
       <Typography sx={{ fontWeight: 800, color: m?.color ?? '#00d4ff', fontSize: '1rem' }}>
         {payload[0]?.value?.toFixed(isWeightBased ? 1 : 0)}{isWeightBased ? ` ${unit}` : ''}
       </Typography>
