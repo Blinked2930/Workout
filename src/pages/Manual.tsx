@@ -6,7 +6,7 @@ import { api } from '../../convex/_generated/api';
 import ConstructionIcon from '@mui/icons-material/Construction';
 import AddTaskIcon from '@mui/icons-material/AddTask';
 import CloseIcon from '@mui/icons-material/Close';
-import SwapHorizIcon from '@mui/icons-material/SwapHoriz'; 
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
@@ -14,15 +14,15 @@ import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { enGB } from 'date-fns/locale';
-import { useUnit } from '../context/UnitContext'; 
+import { useUnit } from '../context/UnitContext';
 import { useNavigate } from 'react-router-dom';
 
-interface WorkoutJSON { 
-  title: string; 
-  focus: string; 
-  warmup?: { name: string; reps: string; equipment?: string }[]; 
-  mainBlock: { name: string; sets: number; repsMin: number; repsMax: number; rest: string; notes: string; setsReps?: string; equipment?: string }[]; 
-  cooldown?: { name: string; reps: string; equipment?: string }[]; 
+interface WorkoutJSON {
+  title: string;
+  focus: string;
+  warmup?: { name: string; reps: string; equipment?: string }[];
+  mainBlock: { name: string; sets: number; repsMin: number; repsMax: number; rest: string; notes: string; setsReps?: string; equipment?: string }[];
+  cooldown?: { name: string; reps: string; equipment?: string }[];
 }
 
 const EQUIPMENT_TYPES = [
@@ -51,14 +51,14 @@ const parseAIJSON = (rawStr: string) => {
 };
 
 export default function Manual() {
-  const { unit, displayWeight, toDisplay, toDB } = useUnit(); 
+  const { unit, displayWeight, toDisplay, toDB } = useUnit();
   const navigate = useNavigate();
-  
+
   const [phase, setPhase] = useState<'SETUP' | 'WORKOUT'>(() => {
-    try { return (localStorage.getItem('manual_phase') as any) || 'SETUP'; } 
+    try { return (localStorage.getItem('manual_phase') as any) || 'SETUP'; }
     catch (e) { return 'SETUP'; }
   });
-  
+
   const [selectedExercisesList, setSelectedExercisesList] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('manual_selected');
@@ -67,7 +67,7 @@ export default function Manual() {
   });
 
   const [setupEquipment, setSetupEquipment] = useState<Record<string, string>>({});
-  
+
   const [workoutData, setWorkoutData] = useState<WorkoutJSON | null>(() => {
     try {
       const saved = localStorage.getItem('manual_workout');
@@ -85,9 +85,9 @@ export default function Manual() {
     } catch (e) { return null; }
   });
 
-  const equipment = 'Full Gym Access'; 
-  const [style, setStyle] = useState<string>('Hypertrophy (9+ reps)'); 
-  
+  const equipment = 'Full Gym Access';
+  const [style, setStyle] = useState<string>('Hypertrophy (9+ reps)');
+
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [activeSubcategory, setActiveSubcategory] = useState<string>('All');
   const [isGenerating, setIsGenerating] = useState(false);
@@ -105,7 +105,7 @@ export default function Manual() {
       return saved ? JSON.parse(saved) || {} : {};
     } catch (e) { return {}; }
   });
-  
+
   const [loggedExercises, setLoggedExercises] = useState<Record<string, boolean>>(() => {
     try {
       const saved = localStorage.getItem('manual_logged');
@@ -116,12 +116,12 @@ export default function Manual() {
   const [expandedCells, setExpandedCells] = useState<Record<string, boolean>>({});
   const [logModalOpen, setLogModalOpen] = useState(false);
   const [activeLoggingExercise, setActiveLoggingExercise] = useState<string>('');
-  
+
   const [ghostWeight, setGhostWeight] = useState<string | number>('');
   const [ghostReps, setGhostReps] = useState<string | number>('');
   const [ghostSets, setGhostSets] = useState<string | number>('');
 
-  const [logCategory, setLogCategory] = useState('Custom'); 
+  const [logCategory, setLogCategory] = useState('Custom');
   const [logEquipment, setLogEquipment] = useState('Barbell');
   const [logWeight, setLogWeight] = useState<string | number>('');
   const [logReps, setLogReps] = useState<string | number>('');
@@ -190,11 +190,11 @@ export default function Manual() {
       setSelectedExercisesList(prev => prev.filter(e => e !== name));
     } else {
       setSelectedExercisesList(prev => [...prev, name]);
-      const lastLift = allLiftsDB.filter(l => l.exerciseName === name).sort((a,b)=>b.timestamp-a.timestamp)[0];
+      const lastLift = allLiftsDB.filter(l => l.exerciseName === name).sort((a, b) => b.timestamp - a.timestamp)[0];
       let eq = lastLift?.equipmentType;
       if (eq === 'Machine' || eq === 'Cable') eq = 'Machine/Cable';
       if (!eq) eq = inferEquipmentFromName(name);
-      setSetupEquipment(prev => ({...prev, [name]: eq}));
+      setSetupEquipment(prev => ({ ...prev, [name]: eq }));
     }
   };
 
@@ -204,8 +204,8 @@ export default function Manual() {
     const repsMax = 15;
     const rest = '90s - 120s';
 
-    const mainBlock = selectedExercisesList.map(name => ({ 
-      name, equipment: setupEquipment[name] || inferEquipmentFromName(name), sets: 3, repsMin, repsMax, rest, notes: "Manual selection" 
+    const mainBlock = selectedExercisesList.map(name => ({
+      name, equipment: setupEquipment[name] || inferEquipmentFromName(name), sets: 3, repsMin, repsMax, rest, notes: "Manual selection"
     }));
 
     if (!useAI) {
@@ -218,19 +218,19 @@ export default function Manual() {
     try {
       const aiResponse = await generateWarmupCooldown({ equipment, style: "General Training", mainBlock: selectedExercisesList });
       const parsed = parseAIJSON(aiResponse);
-      
+
       const applyEq = (list: any[]) => list?.map(ex => {
-         const lastLift = allLiftsDB.filter(l => l.exerciseName === ex.name).sort((a,b)=>b.timestamp-a.timestamp)[0];
-         let eq = lastLift?.equipmentType || 'Bodyweight';
-         if (eq === 'Machine' || eq === 'Cable') eq = 'Machine/Cable';
-         return { ...ex, equipment: eq };
+        const lastLift = allLiftsDB.filter(l => l.exerciseName === ex.name).sort((a, b) => b.timestamp - a.timestamp)[0];
+        let eq = lastLift?.equipmentType || 'Bodyweight';
+        if (eq === 'Machine' || eq === 'Cable') eq = 'Machine/Cable';
+        return { ...ex, equipment: eq };
       });
 
-      setWorkoutData({ 
-        title: "Custom Built Protocol", focus: "General Training", 
-        warmup: applyEq(parsed.warmup) || [], 
-        mainBlock, 
-        cooldown: applyEq(parsed.cooldown) || [] 
+      setWorkoutData({
+        title: "Custom Built Protocol", focus: "General Training",
+        warmup: applyEq(parsed.warmup) || [],
+        mainBlock,
+        cooldown: applyEq(parsed.cooldown) || []
       });
       setPhase('WORKOUT');
     } finally { setIsGenerating(false); }
@@ -239,7 +239,7 @@ export default function Manual() {
   const handleSwapExercise = (newName: string) => {
     if (!workoutData || !swapTarget) return;
     const newWorkout = { ...workoutData };
-    const lastLift = allLiftsDB.filter(l => l.exerciseName === newName).sort((a,b)=>b.timestamp-a.timestamp)[0];
+    const lastLift = allLiftsDB.filter(l => l.exerciseName === newName).sort((a, b) => b.timestamp - a.timestamp)[0];
     let eq = lastLift?.equipmentType;
     if (eq === 'Machine' || eq === 'Cable') eq = 'Machine/Cable';
     if (!eq) eq = inferEquipmentFromName(newName);
@@ -262,7 +262,7 @@ export default function Manual() {
   const handleAddExercise = (newName: string) => {
     if (!workoutData || !addTarget) return;
     const newWorkout = { ...workoutData };
-    const lastLift = allLiftsDB.filter(l => l.exerciseName === newName).sort((a,b)=>b.timestamp-a.timestamp)[0];
+    const lastLift = allLiftsDB.filter(l => l.exerciseName === newName).sort((a, b) => b.timestamp - a.timestamp)[0];
     let eq = lastLift?.equipmentType;
     if (eq === 'Machine' || eq === 'Cable') eq = 'Machine/Cable';
     if (!eq) eq = inferEquipmentFromName(newName);
@@ -283,7 +283,7 @@ export default function Manual() {
     setAddSearch('');
   };
 
-  const updateEquipment = (section: 'warmup'|'main'|'cooldown', index: number, eq: string) => {
+  const updateEquipment = (section: 'warmup' | 'main' | 'cooldown', index: number, eq: string) => {
     if (!workoutData) return;
     const newWorkout = { ...workoutData };
     if (section === 'main' && newWorkout.mainBlock) newWorkout.mainBlock[index].equipment = eq;
@@ -292,7 +292,7 @@ export default function Manual() {
     setWorkoutData(newWorkout);
   };
 
-  const moveExercise = (section: 'warmup'|'main'|'cooldown', index: number, direction: 'up'|'down') => {
+  const moveExercise = (section: 'warmup' | 'main' | 'cooldown', index: number, direction: 'up' | 'down') => {
     if (!workoutData) return;
     const newWorkout = { ...workoutData };
     let list: any;
@@ -351,27 +351,27 @@ export default function Manual() {
     setActiveLoggingExercise(exerciseName);
     setLogTimestamp(Date.now());
     const dbMatch = exercisesDB?.find(ex => String(ex?.name || '').toLowerCase() === exerciseName.toLowerCase());
-    const lastLift = allLiftsDB.filter(l => String(l?.exerciseName || '').toLowerCase() === exerciseName.toLowerCase() && (l.equipmentType || 'Barbell') === equipment).sort((a,b) => b.timestamp - a.timestamp)[0];
+    const lastLift = allLiftsDB.filter(l => String(l?.exerciseName || '').toLowerCase() === exerciseName.toLowerCase() && (l.equipmentType || 'Barbell') === equipment).sort((a, b) => b.timestamp - a.timestamp)[0];
 
     setLogCategory(dbMatch?.category || 'Custom');
     setLogEquipment(equipment);
-    
+
     setGhostWeight(suggestedWeight !== undefined && suggestedWeight !== '' ? suggestedWeight : (lastLift?.weight > 0 ? toDisplay(lastLift.weight) : ''));
     setGhostReps(suggestedReps !== undefined && suggestedReps !== '' ? suggestedReps : (lastLift?.reps || ''));
     setGhostSets(suggestedSets !== undefined ? suggestedSets : 3);
-    
+
     setLogWeight('');
     setLogReps('');
     setLogSets('');
     setLogNotes('');
-    
+
     setLogModalOpen(true);
   };
 
   const handleCloseModal = () => setLogModalOpen(false);
 
   const handleCheckboxClick = (e: React.MouseEvent, exerciseName: string, equipment: string, isCurrentlyDone: boolean, targetWeight?: number | string, targetReps?: number | string, targetSets?: number | string) => {
-    e.stopPropagation(); 
+    e.stopPropagation();
     if (isCurrentlyDone) setCompletedExercises(prev => ({ ...prev, [exerciseName]: false }));
     else {
       setCompletedExercises(prev => ({ ...prev, [exerciseName]: true }));
@@ -391,14 +391,14 @@ export default function Manual() {
         weight: toDB(finalWeight || 0), reps: finalReps || 0, sets: finalSets || 1, notes: logNotes || undefined, timestamp: logTimestamp,
       });
       setLoggedExercises(prev => ({ ...prev, [activeLoggingExercise]: true }));
-      setCompletedExercises(prev => ({ ...prev, [activeLoggingExercise]: true })); 
+      setCompletedExercises(prev => ({ ...prev, [activeLoggingExercise]: true }));
       setLogModalOpen(false);
     } finally { setIsSavingLog(false); }
   };
 
   const renderLiftHistory = (exerciseName: string, equipment: string, recentE1RM_Display?: number) => {
-    const history = allLiftsDB.filter(l => String(l?.exerciseName || '').toLowerCase() === exerciseName.toLowerCase() && (l.equipmentType || 'Barbell') === equipment).sort((a,b) => b.timestamp - a.timestamp).slice(0, 3);
-    
+    const history = allLiftsDB.filter(l => String(l?.exerciseName || '').toLowerCase() === exerciseName.toLowerCase() && (l.equipmentType || 'Barbell') === equipment).sort((a, b) => b.timestamp - a.timestamp).slice(0, 3);
+
     const navToProgress = (e: React.MouseEvent) => {
       e.stopPropagation();
       localStorage.setItem('progress_exercise', exerciseName);
@@ -412,7 +412,7 @@ export default function Manual() {
 
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-        
+
         {/* CALCULATED LOADING TARGETS PANEL */}
         {recentE1RM_Display && recentE1RM_Display > 0 ? (
           <Paper sx={{ p: 2, mt: 1, bgcolor: 'rgba(0,0,0,0.3)', borderRadius: 2, display: 'flex', justifyContent: 'center', gap: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
@@ -446,7 +446,7 @@ export default function Manual() {
               </Box>
             ))
           ) : (
-             <Typography variant="body2" sx={{ color: '#8a8a9a', fontStyle: 'italic', textAlign: 'center', py: 1 }}>No history found for {equipment}.</Typography>
+            <Typography variant="body2" sx={{ color: '#8a8a9a', fontStyle: 'italic', textAlign: 'center', py: 1 }}>No history found for {equipment}.</Typography>
           )}
           <Button fullWidth size="small" onClick={navToProgress} sx={{ mt: 1.5, color: '#00e096', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', borderTop: '1px solid rgba(255,255,255,0.05)', pt: 1 }}>
             Full Progress Chart 📈
@@ -459,7 +459,7 @@ export default function Manual() {
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={enGB}>
       <Box sx={{ px: { xs: 2, md: 4 }, pt: { xs: 3, md: 5 }, pb: 10, maxWidth: { xs: 480, md: 900 }, mx: 'auto', display: 'flex', flexDirection: 'column', gap: 3 }}>
-        
+
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
           <Box>
             <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#00e096', textTransform: 'uppercase', mb: 0.5 }}>Self Select</Typography>
@@ -499,7 +499,7 @@ export default function Manual() {
                         <Select
                           size="small"
                           value={setupEquipment[safeName] || 'Barbell'}
-                          onChange={(e) => setSetupEquipment(prev => ({...prev, [safeName]: e.target.value}))}
+                          onChange={(e) => setSetupEquipment(prev => ({ ...prev, [safeName]: e.target.value }))}
                           sx={{ height: 28, fontSize: '0.75rem', borderRadius: 2, minWidth: 110, bgcolor: 'rgba(255,255,255,0.05)', '& fieldset': { border: 'none' } }}
                         >
                           {EQUIPMENT_TYPES.map(eq => <MenuItem key={eq.value} value={eq.value} sx={{ fontSize: '0.8rem' }}>{eq.emoji} {eq.value}</MenuItem>)}
@@ -519,17 +519,17 @@ export default function Manual() {
 
         {phase === 'WORKOUT' && workoutData && (
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            
+
             {workoutData.warmup && workoutData.warmup.length > 0 && (
               <Box>
                 <Typography variant="h6" sx={{ fontWeight: 800, color: '#00e096', mb: 1 }}>1. Warm-up (AI)</Typography>
                 {workoutData.warmup.map((ex, idx) => {
                   const eq = ex.equipment || 'Bodyweight';
                   return (
-                    <Paper 
-                      key={ex.name} 
+                    <Paper
+                      key={ex.name}
                       draggable onDragStart={(e) => handleDragStart(e, 'warmup', idx)} onDragEnter={(e) => handleDragEnter(e, 'warmup', idx)} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
-                      onClick={() => toggleCellExpand(ex.name)} 
+                      onClick={() => toggleCellExpand(ex.name)}
                       sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(0, 224, 150, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'warmup' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
                     >
                       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -574,22 +574,22 @@ export default function Manual() {
                 const repsLabel = repsMax >= 99 ? `${ex.repsMin}+` : `${ex.repsMin}-${repsMax}`;
                 const targetRepsGhost = repsMax >= 99 ? `${ex.repsMin}+` : repsMax;
                 const sets = ex.sets || 3;
-                
+
                 const eqLifts = allLiftsDB.filter(l => l.exerciseName === ex.name && (l.equipmentType || 'Barbell') === eq);
-                const recentEqLift = eqLifts.sort((a,b)=>b.timestamp-a.timestamp)[0];
-                
+                const recentEqLift = eqLifts.sort((a, b) => b.timestamp - a.timestamp)[0];
+
                 // BUGFIX: Frontend calculation fallback for DB missing e1RM due to bypassed logic in import
                 const computedE1RM = recentEqLift ? (recentEqLift.e1rm ? recentEqLift.e1rm : (recentEqLift.reps <= 1 ? recentEqLift.weight : recentEqLift.weight * (1 + recentEqLift.reps / 30))) : 0;
                 const recentE1RM_Display = computedE1RM > 0 ? Number(toDisplay(computedE1RM)) : 0;
 
-                const hist = eqLifts.filter(l => l.reps >= (ex.repsMin || 0) && l.reps <= repsMax).sort((a,b)=>b.timestamp-a.timestamp)[0];
+                const hist = eqLifts.filter(l => l.reps >= (ex.repsMin || 0) && l.reps <= repsMax).sort((a, b) => b.timestamp - a.timestamp)[0];
                 const targetWeight = hist?.weight ? hist.weight : null;
 
                 return (
-                  <Paper 
-                    key={ex.name + idx} 
+                  <Paper
+                    key={ex.name + idx}
                     draggable onDragStart={(e) => handleDragStart(e, 'main', idx)} onDragEnter={(e) => handleDragEnter(e, 'main', idx)} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
-                    onClick={() => toggleCellExpand(ex.name)} 
+                    onClick={() => toggleCellExpand(ex.name)}
                     sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(0, 224, 150, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'main' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
                   >
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -631,10 +631,10 @@ export default function Manual() {
                 {workoutData.cooldown.map((ex, idx) => {
                   const eq = ex.equipment || 'Bodyweight';
                   return (
-                    <Paper 
-                      key={ex.name} 
+                    <Paper
+                      key={ex.name}
                       draggable onDragStart={(e) => handleDragStart(e, 'cooldown', idx)} onDragEnter={(e) => handleDragEnter(e, 'cooldown', idx)} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
-                      onClick={() => toggleCellExpand(ex.name)} 
+                      onClick={() => toggleCellExpand(ex.name)}
                       sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(176, 106, 255, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'cooldown' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
                     >
                       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -680,7 +680,7 @@ export default function Manual() {
             <Box sx={{ maxHeight: 300, overflowY: 'auto' }}>
               {filteredAddExercises.map(ex => (
                 <MenuItem key={ex.name} onClick={() => handleAddExercise(String(ex.name))}>
-                   <Box>
+                  <Box>
                     <Typography sx={{ fontWeight: 600 }}>{ex.name}</Typography>
                     <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>{ex.category}</Typography>
                   </Box>
@@ -698,7 +698,7 @@ export default function Manual() {
             <Box sx={{ maxHeight: 300, overflowY: 'auto' }}>
               {filteredSwapExercises.map(ex => (
                 <MenuItem key={ex.name} onClick={() => handleSwapExercise(String(ex.name))}>
-                   <Box>
+                  <Box>
                     <Typography sx={{ fontWeight: 600 }}>{ex.name}</Typography>
                     <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>{ex.category}</Typography>
                   </Box>
@@ -712,23 +712,23 @@ export default function Manual() {
         <Dialog open={logModalOpen} onClose={() => setLogModalOpen(false)}>
           <DialogTitle sx={{ fontWeight: 800, color: '#00d4ff' }}>Log Set</DialogTitle>
           <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-             <Typography variant="h5" sx={{ fontWeight: 900 }}>{activeLoggingExercise}</Typography>
-             <DateTimePicker label="Time" value={new Date(logTimestamp)} onChange={(v) => v && setLogTimestamp(v.getTime())} slotProps={{ textField: { size: 'small', fullWidth: true } }} />
-             <FormControl fullWidth size="small">
-                <InputLabel>Equipment</InputLabel>
-                <Select value={logEquipment} onChange={(e) => setLogEquipment(e.target.value)} label="Equipment">
-                  <MenuItem value="Bodyweight">Bodyweight</MenuItem><MenuItem value="Barbell">Barbell</MenuItem><MenuItem value="Dumbbell">Dumbbell</MenuItem><MenuItem value="Smith">Smith</MenuItem><MenuItem value="Machine/Cable">Machine/Cable</MenuItem><MenuItem value="Other">Other</MenuItem>
-                </Select>
-             </FormControl>
-             <Box sx={{ display: 'flex', gap: 1 }}>
-                <TextField fullWidth type="text" inputMode="decimal" label={`Weight (${unit})`} placeholder={ghostWeight ? `Target: ${ghostWeight}` : ''} value={logWeight} onChange={e => setLogWeight(e.target.value)} />
-                <TextField fullWidth type="text" inputMode="numeric" label="Reps" placeholder={ghostReps ? `Target: ${ghostReps}` : ''} value={logReps} onChange={e => setLogReps(e.target.value)} />
-                <TextField fullWidth type="text" inputMode="numeric" label="Sets" placeholder={ghostSets ? `Target: ${ghostSets}` : ''} value={logSets} onChange={e => setLogSets(e.target.value)} />
-             </Box>
-             <TextField fullWidth label="Notes (optional)" size="small" multiline rows={2} value={logNotes} onChange={e => setLogNotes(e.target.value)} sx={{ mt: 2 }} />
+            <Typography variant="h5" sx={{ fontWeight: 900 }}>{activeLoggingExercise}</Typography>
+            <DateTimePicker label="Time" value={new Date(logTimestamp)} onChange={(v) => v && setLogTimestamp(v.getTime())} slotProps={{ textField: { size: 'small', fullWidth: true } }} />
+            <FormControl fullWidth size="small">
+              <InputLabel>Equipment</InputLabel>
+              <Select value={logEquipment} onChange={(e) => setLogEquipment(e.target.value)} label="Equipment">
+                <MenuItem value="Bodyweight">Bodyweight</MenuItem><MenuItem value="Barbell">Barbell</MenuItem><MenuItem value="Dumbbell">Dumbbell</MenuItem><MenuItem value="Smith">Smith</MenuItem><MenuItem value="Machine/Cable">Machine/Cable</MenuItem><MenuItem value="Other">Other</MenuItem>
+              </Select>
+            </FormControl>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <TextField fullWidth type="text" inputMode="decimal" label={`Weight (${unit})`} placeholder={ghostWeight ? `Target: ${ghostWeight}` : ''} value={logWeight} onChange={e => setLogWeight(e.target.value)} />
+              <TextField fullWidth type="text" inputMode="numeric" label="Reps" placeholder={ghostReps ? `Target: ${ghostReps}` : ''} value={logReps} onChange={e => setLogReps(e.target.value)} />
+              <TextField fullWidth type="text" inputMode="numeric" label="Sets" placeholder={ghostSets ? `Target: ${ghostSets}` : ''} value={logSets} onChange={e => setLogSets(e.target.value)} />
+            </Box>
+            <TextField fullWidth label="Notes (optional)" size="small" multiline rows={2} value={logNotes} onChange={e => setLogNotes(e.target.value)} sx={{ mt: 2 }} />
           </DialogContent>
           <DialogActions sx={{ p: 2 }}>
-             <Button fullWidth variant="contained" onClick={handleSaveLogToDB} disabled={isSavingLog} sx={{ bgcolor: '#00e096', color: '#000' }}>Save Log</Button>
+            <Button fullWidth variant="contained" onClick={handleSaveLogToDB} disabled={isSavingLog} sx={{ bgcolor: '#00e096', color: '#000' }}>Save Log</Button>
           </DialogActions>
         </Dialog>
       </Box>

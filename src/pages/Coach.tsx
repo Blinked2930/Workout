@@ -5,7 +5,7 @@ import { useAction, useMutation, useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import SearchIcon from '@mui/icons-material/Search';
-import SwapHorizIcon from '@mui/icons-material/SwapHoriz'; 
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
@@ -19,12 +19,12 @@ import { useUnit } from '../context/UnitContext';
 import { useNavigate } from 'react-router-dom';
 
 interface SuggestionJSON { focusTitle: string; reasoning: string; }
-interface WorkoutJSON { 
-  title: string; 
-  focus: string; 
-  warmup: { name: string; reps: string; equipment?: string }[]; 
-  mainBlock: { name: string; sets?: number; repsMin?: number; repsMax?: number; setsReps?: string; rest: string; notes: string; equipment?: string }[]; 
-  cooldown: { name: string; reps: string; equipment?: string }[]; 
+interface WorkoutJSON {
+  title: string;
+  focus: string;
+  warmup: { name: string; reps: string; equipment?: string }[];
+  mainBlock: { name: string; sets?: number; repsMin?: number; repsMax?: number; setsReps?: string; rest: string; notes: string; equipment?: string }[];
+  cooldown: { name: string; reps: string; equipment?: string }[];
 }
 interface DebugData { yesterdayBanned: string; weeklyMuscle: string; dateMath: string; aiPrompt: string; }
 
@@ -62,12 +62,12 @@ export default function Coach() {
   const [phase, setPhase] = useState<'SETUP' | 'REVIEW' | 'WORKOUT'>('SETUP');
   const [time, setTime] = useState<number>(45);
   const [equipment, setEquipment] = useState<string>('Floor Mode (Bodyweight Only)');
-  const [style, setStyle] = useState<string>('Hypertrophy (9+ reps)'); 
+  const [style, setStyle] = useState<string>('Hypertrophy (9+ reps)');
   const [customInput, setCustomInput] = useState<string>('');
-  
+
   const [suggestion, setSuggestion] = useState<SuggestionJSON | null>(null);
-  const [debugData, setDebugData] = useState<DebugData | null>(null); 
-  const [showDebug, setShowDebug] = useState(false); 
+  const [debugData, setDebugData] = useState<DebugData | null>(null);
+  const [showDebug, setShowDebug] = useState(false);
   const [tweaks, setTweaks] = useState<string>('');
 
   const [workoutData, setWorkoutData] = useState<WorkoutJSON | null>(() => {
@@ -78,25 +78,25 @@ export default function Coach() {
   const [swapTarget, setSwapTarget] = useState<{ section: 'warmup' | 'main' | 'cooldown', index: number } | null>(null);
   const [swapSearch, setSwapSearch] = useState('');
   const [draggedItem, setDraggedItem] = useState<{ section: string, index: number } | null>(null);
-  
+
   const [addTarget, setAddTarget] = useState<'warmup' | 'main' | 'cooldown' | null>(null);
   const [addSearch, setAddSearch] = useState('');
-  
+
   const [completedExercises, setCompletedExercises] = useState<Record<string, boolean>>({});
   const [loggedExercises, setLoggedExercises] = useState<Record<string, boolean>>({});
   const [expandedCells, setExpandedCells] = useState<Record<string, boolean>>({});
-  
+
   const [logModalOpen, setLogModalOpen] = useState(false);
   const [activeLoggingExercise, setActiveLoggingExercise] = useState<string>('');
-  const [logCategory, setLogCategory] = useState('Custom'); 
+  const [logCategory, setLogCategory] = useState('Custom');
   const [logEquipment, setLogEquipment] = useState('Bodyweight');
   const [logTimestamp, setLogTimestamp] = useState<number>(Date.now());
   const [isProcessing, setIsProcessing] = useState(false);
-  
+
   const [logWeight, setLogWeight] = useState<string | number>('');
   const [logReps, setLogReps] = useState<string | number>('');
   const [logSets, setLogSets] = useState<string | number>('');
-  const [logNotes, setLogNotes] = useState<string>(''); 
+  const [logNotes, setLogNotes] = useState<string>('');
 
   const [ghostWeight, setGhostWeight] = useState('');
   const [ghostReps, setGhostReps] = useState('');
@@ -143,13 +143,13 @@ export default function Coach() {
     try {
       const result = await generateWorkout({ timeAvailable: time, equipment, style, localTime: new Date().toISOString(), approvedFocus: suggestion?.focusTitle || "", userTweaks: tweaks });
       const parsed = parseAIJSON(result as string);
-      
+
       const applyEq = (list: any[]) => list?.map(ex => {
-         const lastLift = allLiftsDB.filter(l => l.exerciseName === ex.name).sort((a,b)=>b.timestamp-a.timestamp)[0];
-         let eq = lastLift?.equipmentType;
-         if (eq === 'Machine' || eq === 'Cable') eq = 'Machine/Cable';
-         if (!eq) eq = inferEquipmentFromName(ex.name);
-         return { ...ex, equipment: eq };
+        const lastLift = allLiftsDB.filter(l => l.exerciseName === ex.name).sort((a, b) => b.timestamp - a.timestamp)[0];
+        let eq = lastLift?.equipmentType;
+        if (eq === 'Machine' || eq === 'Cable') eq = 'Machine/Cable';
+        if (!eq) eq = inferEquipmentFromName(ex.name);
+        return { ...ex, equipment: eq };
       });
 
       if (parsed) {
@@ -165,7 +165,7 @@ export default function Coach() {
   const handleSwapExercise = (newName: string) => {
     if (!workoutData || !swapTarget) return;
     const newWorkout = { ...workoutData };
-    const lastLift = allLiftsDB.filter(l => l.exerciseName === newName).sort((a,b)=>b.timestamp-a.timestamp)[0];
+    const lastLift = allLiftsDB.filter(l => l.exerciseName === newName).sort((a, b) => b.timestamp - a.timestamp)[0];
     let eq = lastLift?.equipmentType;
     if (eq === 'Machine' || eq === 'Cable') eq = 'Machine/Cable';
     if (!eq) eq = inferEquipmentFromName(newName);
@@ -188,7 +188,7 @@ export default function Coach() {
   const handleAddExercise = (newName: string) => {
     if (!workoutData || !addTarget) return;
     const newWorkout = { ...workoutData };
-    const lastLift = allLiftsDB.filter(l => l.exerciseName === newName).sort((a,b)=>b.timestamp-a.timestamp)[0];
+    const lastLift = allLiftsDB.filter(l => l.exerciseName === newName).sort((a, b) => b.timestamp - a.timestamp)[0];
     let eq = lastLift?.equipmentType;
     if (eq === 'Machine' || eq === 'Cable') eq = 'Machine/Cable';
     if (!eq) eq = inferEquipmentFromName(newName);
@@ -209,7 +209,7 @@ export default function Coach() {
     setAddSearch('');
   };
 
-  const updateEquipment = (section: 'warmup'|'main'|'cooldown', index: number, eq: string) => {
+  const updateEquipment = (section: 'warmup' | 'main' | 'cooldown', index: number, eq: string) => {
     if (!workoutData) return;
     const newWorkout = { ...workoutData };
     if (section === 'main' && newWorkout.mainBlock) newWorkout.mainBlock[index].equipment = eq;
@@ -218,7 +218,7 @@ export default function Coach() {
     setWorkoutData(newWorkout);
   };
 
-  const moveExercise = (section: 'warmup'|'main'|'cooldown', index: number, direction: 'up'|'down') => {
+  const moveExercise = (section: 'warmup' | 'main' | 'cooldown', index: number, direction: 'up' | 'down') => {
     if (!workoutData) return;
     const newWorkout = { ...workoutData };
     let list: any;
@@ -274,11 +274,11 @@ export default function Coach() {
     setActiveLoggingExercise(exerciseName);
     setLogTimestamp(Date.now());
     const dbMatch = exercisesDB?.find(ex => String(ex?.name || '').toLowerCase() === exerciseName.toLowerCase());
-    const lastLift = allLiftsDB.filter(l => String(l?.exerciseName || '').toLowerCase() === exerciseName.toLowerCase() && (l.equipmentType || 'Bodyweight') === equipment).sort((a,b) => b.timestamp - a.timestamp)[0];
-    
+    const lastLift = allLiftsDB.filter(l => String(l?.exerciseName || '').toLowerCase() === exerciseName.toLowerCase() && (l.equipmentType || 'Bodyweight') === equipment).sort((a, b) => b.timestamp - a.timestamp)[0];
+
     setLogCategory(dbMatch?.category || 'Custom');
     setLogEquipment(equipment);
-    
+
     setLogWeight('');
     setLogReps('');
     setLogSets('');
@@ -287,12 +287,12 @@ export default function Coach() {
     setGhostWeight(suggestedWeight ? `Target: ${suggestedWeight}` : (lastLift?.weight > 0 ? `Last: ${toDisplay(lastLift.weight)}` : 'Last: BW'));
     setGhostReps(suggestedReps ? `Target: ${suggestedReps}` : (lastLift?.reps ? `Last: ${lastLift.reps}` : ''));
     setGhostSets(suggestedSets ? `Target: ${suggestedSets}` : (lastLift?.sets ? `Last: ${lastLift.sets}` : ''));
-    
+
     setLogModalOpen(true);
   };
 
   const handleCheckboxClick = (e: React.MouseEvent, exerciseName: string, equipment: string, isCurrentlyDone: boolean, targetWeight?: number | string, targetReps?: number | string, targetSets?: number | string) => {
-    e.stopPropagation(); 
+    e.stopPropagation();
     if (isCurrentlyDone) setCompletedExercises(prev => ({ ...prev, [exerciseName]: false }));
     else {
       setCompletedExercises(prev => ({ ...prev, [exerciseName]: true }));
@@ -309,17 +309,17 @@ export default function Coach() {
 
       await logSet({
         exerciseName: activeLoggingExercise, category: logCategory, equipmentType: logEquipment,
-        weight: toDB(finalWeight || 0), reps: finalReps || 0, sets: finalSets || 1, 
+        weight: toDB(finalWeight || 0), reps: finalReps || 0, sets: finalSets || 1,
         notes: logNotes || undefined, timestamp: logTimestamp,
       });
       setLoggedExercises(prev => ({ ...prev, [activeLoggingExercise]: true }));
-      setCompletedExercises(prev => ({ ...prev, [activeLoggingExercise]: true })); 
+      setCompletedExercises(prev => ({ ...prev, [activeLoggingExercise]: true }));
       setLogModalOpen(false);
     } finally { setIsProcessing(false); }
   };
 
   const renderLiftHistory = (exerciseName: string, equipment: string, recentE1RM_Display?: number) => {
-    const history = allLiftsDB.filter(l => String(l?.exerciseName || '').toLowerCase() === exerciseName.toLowerCase() && (l.equipmentType || 'Bodyweight') === equipment).sort((a,b) => b.timestamp - a.timestamp).slice(0, 3);
+    const history = allLiftsDB.filter(l => String(l?.exerciseName || '').toLowerCase() === exerciseName.toLowerCase() && (l.equipmentType || 'Bodyweight') === equipment).sort((a, b) => b.timestamp - a.timestamp).slice(0, 3);
 
     const navToProgress = (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -332,7 +332,7 @@ export default function Coach() {
 
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-        
+
         {/* CALCULATED LOADING TARGETS PANEL */}
         {recentE1RM_Display && recentE1RM_Display > 0 ? (
           <Paper sx={{ p: 2, mt: 1, bgcolor: 'rgba(0,0,0,0.3)', borderRadius: 2, display: 'flex', justifyContent: 'center', gap: 2, border: '1px solid rgba(255,255,255,0.05)' }}>
@@ -366,7 +366,7 @@ export default function Coach() {
               </Box>
             ))
           ) : (
-             <Typography variant="body2" sx={{ color: '#8a8a9a', fontStyle: 'italic', textAlign: 'center', py: 1 }}>No history found for {equipment}.</Typography>
+            <Typography variant="body2" sx={{ color: '#8a8a9a', fontStyle: 'italic', textAlign: 'center', py: 1 }}>No history found for {equipment}.</Typography>
           )}
           <Button fullWidth size="small" onClick={navToProgress} sx={{ mt: 1.5, color: '#b06aff', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', borderTop: '1px solid rgba(255,255,255,0.05)', pt: 1 }}>
             Full Progress Chart 📈
@@ -379,7 +379,7 @@ export default function Coach() {
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={enGB}>
       <Box sx={{ px: { xs: 2, md: 4 }, pt: { xs: 3, md: 5 }, pb: 10, maxWidth: { xs: 480, md: 900 }, mx: 'auto', display: 'flex', flexDirection: 'column', gap: 3 }}>
-        
+
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
           <Box>
             <Typography sx={{ fontSize: '0.75rem', fontWeight: 700, color: '#b06aff', textTransform: 'uppercase', mb: 0.5 }}>AI Integration</Typography>
@@ -459,10 +459,10 @@ export default function Coach() {
             {workoutData.warmup.map((ex, idx) => {
               const eq = ex.equipment || 'Bodyweight';
               return (
-                <Paper 
-                  key={ex.name} 
+                <Paper
+                  key={ex.name}
                   draggable onDragStart={(e) => handleDragStart(e, 'warmup', idx)} onDragEnter={(e) => handleDragEnter(e, 'warmup', idx)} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
-                  onClick={() => toggleCellExpand(ex.name)} 
+                  onClick={() => toggleCellExpand(ex.name)}
                   sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(176, 106, 255, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'warmup' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -499,21 +499,21 @@ export default function Coach() {
             <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.1)' }} />
 
             {workoutData.mainBlock.map((ex, idx) => {
-               const eq = ex.equipment || 'Barbell';
-               const repsMax = ex.repsMax || (ex.setsReps ? parseInt((ex as any).setsReps.split('x')[1]) : 999);
-               const repsLabel = repsMax >= 99 ? `${ex.repsMin}+` : `${ex.repsMin}-${repsMax}`;
-               const targetRepsGhost = repsMax >= 99 ? `${ex.repsMin}+` : repsMax;
-               const sets = ex.sets || 3;
-               
-               const eqLifts = allLiftsDB.filter(l => l.exerciseName === ex.name && (l.equipmentType || 'Bodyweight') === eq);
-               const recentEqLift = eqLifts.sort((a,b)=>b.timestamp-a.timestamp)[0];
-               const recentE1RM_Display = recentEqLift?.e1rm ? Number(toDisplay(recentEqLift.e1rm)) : 0;
+              const eq = ex.equipment || 'Barbell';
+              const repsMax = ex.repsMax || (ex.setsReps ? parseInt((ex as any).setsReps.split('x')[1]) : 999);
+              const repsLabel = repsMax >= 99 ? `${ex.repsMin}+` : `${ex.repsMin}-${repsMax}`;
+              const targetRepsGhost = repsMax >= 99 ? `${ex.repsMin}+` : repsMax;
+              const sets = ex.sets || 3;
 
-               return (
-                <Paper 
-                  key={ex.name + idx} 
+              const eqLifts = allLiftsDB.filter(l => l.exerciseName === ex.name && (l.equipmentType || 'Bodyweight') === eq);
+              const recentEqLift = eqLifts.sort((a, b) => b.timestamp - a.timestamp)[0];
+              const recentE1RM_Display = recentEqLift?.e1rm ? Number(toDisplay(recentEqLift.e1rm)) : 0;
+
+              return (
+                <Paper
+                  key={ex.name + idx}
                   draggable onDragStart={(e) => handleDragStart(e, 'main', idx)} onDragEnter={(e) => handleDragEnter(e, 'main', idx)} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
-                  onClick={() => toggleCellExpand(ex.name)} 
+                  onClick={() => toggleCellExpand(ex.name)}
                   sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(176, 106, 255, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'main' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -543,7 +543,7 @@ export default function Coach() {
                     </Box>
                   </Collapse>
                 </Paper>
-               )
+              )
             })}
             <Button size="small" variant="outlined" onClick={() => setAddTarget('main')} sx={{ mt: 1, color: '#b06aff', borderColor: 'rgba(176, 106, 255, 0.5)' }}>+ Add Exercise</Button>
 
@@ -552,10 +552,10 @@ export default function Coach() {
             {workoutData.cooldown.map((ex, idx) => {
               const eq = ex.equipment || 'Bodyweight';
               return (
-                <Paper 
-                  key={ex.name} 
+                <Paper
+                  key={ex.name}
                   draggable onDragStart={(e) => handleDragStart(e, 'cooldown', idx)} onDragEnter={(e) => handleDragEnter(e, 'cooldown', idx)} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
-                  onClick={() => toggleCellExpand(ex.name)} 
+                  onClick={() => toggleCellExpand(ex.name)}
                   sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(176, 106, 255, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'cooldown' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -599,7 +599,7 @@ export default function Coach() {
             <Box sx={{ maxHeight: 300, overflowY: 'auto' }}>
               {filteredAddExercises.map(ex => (
                 <MenuItem key={ex.name} onClick={() => handleAddExercise(String(ex.name))}>
-                   <Box>
+                  <Box>
                     <Typography sx={{ fontWeight: 600 }}>{ex.name}</Typography>
                     <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>{ex.category}</Typography>
                   </Box>
@@ -617,7 +617,7 @@ export default function Coach() {
             <Box sx={{ maxHeight: 300, overflowY: 'auto' }}>
               {filteredSwapExercises.map(ex => (
                 <MenuItem key={ex.name} onClick={() => handleSwapExercise(String(ex.name))}>
-                   <Box>
+                  <Box>
                     <Typography sx={{ fontWeight: 600 }}>{ex.name}</Typography>
                     <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>{ex.category}</Typography>
                   </Box>
@@ -631,23 +631,23 @@ export default function Coach() {
         <Dialog open={logModalOpen} onClose={() => setLogModalOpen(false)}>
           <DialogTitle sx={{ fontWeight: 800, color: '#00d4ff' }}>Log Set</DialogTitle>
           <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-             <Typography variant="h5" sx={{ fontWeight: 900 }}>{activeLoggingExercise}</Typography>
-             <DateTimePicker label="Time" value={new Date(logTimestamp)} onChange={(v) => v && setLogTimestamp(v.getTime())} slotProps={{ textField: { size: 'small', fullWidth: true } }} />
-             <FormControl fullWidth size="small">
-                <InputLabel>Equipment</InputLabel>
-                <Select value={logEquipment} onChange={(e) => setLogEquipment(e.target.value)} label="Equipment">
-                  <MenuItem value="Bodyweight">Bodyweight</MenuItem><MenuItem value="Barbell">Barbell</MenuItem><MenuItem value="Dumbbell">Dumbbell</MenuItem><MenuItem value="Smith">Smith</MenuItem><MenuItem value="Machine/Cable">Machine/Cable</MenuItem><MenuItem value="Other">Other</MenuItem>
-                </Select>
-             </FormControl>
-             <Box sx={{ display: 'flex', gap: 1 }}>
-                <TextField fullWidth type="text" inputMode="decimal" label={`Weight (${unit})`} placeholder={ghostWeight ? `Target: ${ghostWeight}` : ''} value={logWeight} onChange={e => setLogWeight(e.target.value)} />
-                <TextField fullWidth type="text" inputMode="numeric" label="Reps" placeholder={ghostReps ? `Target: ${ghostReps}` : ''} value={logReps} onChange={e => setLogReps(e.target.value)} />
-                <TextField fullWidth type="text" inputMode="numeric" label="Sets" placeholder={ghostSets ? `Target: ${ghostSets}` : ''} value={logSets} onChange={e => setLogSets(e.target.value)} />
-             </Box>
-             <TextField fullWidth label="Notes (optional)" size="small" multiline rows={2} value={logNotes} onChange={e => setLogNotes(e.target.value)} sx={{ mt: 2 }} />
+            <Typography variant="h5" sx={{ fontWeight: 900 }}>{activeLoggingExercise}</Typography>
+            <DateTimePicker label="Time" value={new Date(logTimestamp)} onChange={(v) => v && setLogTimestamp(v.getTime())} slotProps={{ textField: { size: 'small', fullWidth: true } }} />
+            <FormControl fullWidth size="small">
+              <InputLabel>Equipment</InputLabel>
+              <Select value={logEquipment} onChange={(e) => setLogEquipment(e.target.value)} label="Equipment">
+                <MenuItem value="Bodyweight">Bodyweight</MenuItem><MenuItem value="Barbell">Barbell</MenuItem><MenuItem value="Dumbbell">Dumbbell</MenuItem><MenuItem value="Smith">Smith</MenuItem><MenuItem value="Machine/Cable">Machine/Cable</MenuItem><MenuItem value="Other">Other</MenuItem>
+              </Select>
+            </FormControl>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <TextField fullWidth type="text" inputMode="decimal" label={`Weight (${unit})`} placeholder={ghostWeight ? `Target: ${ghostWeight}` : ''} value={logWeight} onChange={e => setLogWeight(e.target.value)} />
+              <TextField fullWidth type="text" inputMode="numeric" label="Reps" placeholder={ghostReps ? `Target: ${ghostReps}` : ''} value={logReps} onChange={e => setLogReps(e.target.value)} />
+              <TextField fullWidth type="text" inputMode="numeric" label="Sets" placeholder={ghostSets ? `Target: ${ghostSets}` : ''} value={logSets} onChange={e => setLogSets(e.target.value)} />
+            </Box>
+            <TextField fullWidth label="Notes (optional)" size="small" multiline rows={2} value={logNotes} onChange={e => setLogNotes(e.target.value)} sx={{ mt: 2 }} />
           </DialogContent>
           <DialogActions sx={{ p: 2 }}>
-             <Button fullWidth variant="contained" onClick={handleSaveLogToDB} disabled={isProcessing} sx={{ bgcolor: '#b06aff', color: '#fff' }}>Save Log</Button>
+            <Button fullWidth variant="contained" onClick={handleSaveLogToDB} disabled={isProcessing} sx={{ bgcolor: '#b06aff', color: '#fff' }}>Save Log</Button>
           </DialogActions>
         </Dialog>
       </Box>
