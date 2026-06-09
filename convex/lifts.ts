@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalQuery } from "./_generated/server";
 
 export const logSet = mutation({
   args: {
@@ -124,5 +124,24 @@ export const deleteSet = mutation({
   args: { id: v.id("liftSets") },
   handler: async (ctx, args) => {
     await ctx.db.delete(args.id);
+  },
+});
+
+export const getThisWeeksLiftsInternal = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    // Monday-Start Logic
+    const day = new Date().getDay();
+    const diff = day === 0 ? 6 : day - 1; 
+    const startOfWeek = now - (diff * 86400000);
+    const monday = new Date(startOfWeek);
+    monday.setHours(0, 0, 0, 0);
+
+    return await ctx.db
+      .query("liftSets")
+      .withIndex("by_timestamp")
+      .filter(q => q.gte(q.field("timestamp"), monday.getTime()))
+      .collect();
   },
 });

@@ -8,10 +8,10 @@ import Volume from './pages/Volume';
 import Progress from './pages/Progress';
 import Cardio from './pages/Cardio';
 import Coach from './pages/Coach';
-import Manual from './pages/Manual'; 
+import Manual from './pages/Manual';
 import ExerciseManager from './pages/ExerciseManager';
 import { ConvexProvider, ConvexReactClient } from 'convex/react';
-import { UnitProvider, useUnit } from './context/UnitContext'; 
+import { UnitProvider, useUnit } from './context/UnitContext';
 import { InstallScreen } from './components/InstallScreen'; // <-- Added import
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
@@ -148,8 +148,8 @@ function DemoModal() {
   if (!isDemo) return null;
 
   return (
-    <Dialog 
-      open={open} 
+    <Dialog
+      open={open}
       // Force them to interact with the button to close it
       disableEscapeKeyDown
       PaperProps={{
@@ -173,7 +173,7 @@ function DemoModal() {
       <Typography sx={{ color: 'text.secondary', fontSize: '0.95rem', mb: 3 }}>
         A progressive web app built for deep focus and structured training.
       </Typography>
-      
+
       <Box sx={{ p: 2, bgcolor: 'rgba(255,255,255,0.03)', borderRadius: 2, mb: 4, border: '1px solid rgba(255,255,255,0.05)' }}>
         <Typography sx={{ fontSize: '0.75rem', color: '#ffb800', fontWeight: 800, mb: 0.5, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
           Sandbox Environment
@@ -183,13 +183,13 @@ function DemoModal() {
         </Typography>
       </Box>
 
-      <Button 
-        fullWidth 
-        variant="contained" 
-        size="large" 
+      <Button
+        fullWidth
+        variant="contained"
+        size="large"
         onClick={handleClose}
-        sx={{ 
-          py: 1.5, 
+        sx={{
+          py: 1.5,
           fontSize: '1.05rem',
           background: 'linear-gradient(135deg, #00d4ff 0%, #0099cc 100%)',
           color: '#0d0d0f',
@@ -198,8 +198,8 @@ function DemoModal() {
       >
         Try the Live Demo ➔
       </Button>
-      
-      <Button 
+
+      <Button
         onClick={() => window.location.href = 'https://workout.emmettfrett.com'}
         sx={{ color: 'text.secondary', fontSize: '0.8rem', fontWeight: 600, '&:hover': { color: '#00d4ff', background: 'transparent' } }}
       >
@@ -212,7 +212,7 @@ function DemoModal() {
 function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
-  
+
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [activeMenu, setActiveMenu] = useState<'log_menu' | 'train_menu' | 'stats_menu' | null>(null);
   const { unit, toggleUnit } = useUnit();
@@ -243,9 +243,9 @@ function AppShell() {
 
   // Uniform style for drawer items to prevent touch-ripple flickering
   const drawerItemStyle = {
-    borderRadius: 3, 
-    mb: 1, 
-    bgcolor: 'rgba(255,255,255,0.03)', 
+    borderRadius: 3,
+    mb: 1,
+    bgcolor: 'rgba(255,255,255,0.03)',
     border: '1px solid rgba(255,255,255,0.05)',
     transition: 'background-color 0.2s ease',
     '&:hover': { bgcolor: 'rgba(255,255,255,0.05)' },
@@ -300,7 +300,7 @@ function AppShell() {
       )}
 
       {/* Global Settings Button (Top Right) */}
-      <IconButton 
+      <IconButton
         onClick={() => setSettingsOpen(true)}
         sx={{ position: 'fixed', top: 16, right: 16, zIndex: 100, bgcolor: 'rgba(255,255,255,0.05)', backdropFilter: 'blur(10px)' }}
       >
@@ -315,6 +315,21 @@ function AppShell() {
             <Typography sx={{ fontWeight: 600 }}>Weight Unit</Typography>
             <Button variant="contained" onClick={toggleUnit} sx={{ bgcolor: '#00d4ff', color: '#000', minWidth: 80 }}>
               {unit.toUpperCase()}
+            </Button>
+          </Box>
+          <Box sx={{ mt: 3 }}>
+            <Button
+              fullWidth
+              variant="outlined"
+              color="error"
+              onClick={() => {
+                localStorage.removeItem('liftlog_auth');
+                document.cookie = "liftlog_auth=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+                window.location.reload();
+              }}
+              sx={{ py: 1.5, fontWeight: 700, borderRadius: 2 }}
+            >
+              Sign Out
             </Button>
           </Box>
         </DialogContent>
@@ -415,7 +430,7 @@ function InstallGate({ children }: { children: React.ReactNode }) {
     const mediaQuery = window.matchMedia('(display-mode: standalone)');
     const handleChange = (e: MediaQueryListEvent) => setIsStandalone(e.matches);
     mediaQuery.addEventListener('change', handleChange);
-    
+
     // Check if they previously hit "Continue in browser"
     if (sessionStorage.getItem('liftlog_bypass_install') === 'true') {
       setBypassInstall(true);
@@ -450,18 +465,26 @@ function AuthGate({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    if (localStorage.getItem('liftlog_auth') === 'true') setIsAuthenticated(true);
+    const hasLocalStorage = localStorage.getItem('liftlog_auth') === 'true';
+    const hasCookie = document.cookie.includes('liftlog_auth=true');
+
+    if (hasLocalStorage || hasCookie) {
+      if (!hasLocalStorage) localStorage.setItem('liftlog_auth', 'true');
+      if (!hasCookie) document.cookie = "liftlog_auth=true; max-age=315360000; path=/";
+      setIsAuthenticated(true);
+    }
   }, []);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (username === import.meta.env.VITE_APP_USERNAME && password === import.meta.env.VITE_APP_PASSWORD) {
       localStorage.setItem('liftlog_auth', 'true');
+      document.cookie = "liftlog_auth=true; max-age=315360000; path=/";
       setIsAuthenticated(true);
       setError(false);
     } else {
       setError(true);
-      setPassword(''); 
+      setPassword('');
     }
   };
 
@@ -488,7 +511,7 @@ function App() {
     <ConvexProvider client={convex}>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        <UnitProvider> 
+        <UnitProvider>
           <InstallGate> {/* <-- Added the InstallGate wrapper here */}
             <AuthGate>
               <Router>

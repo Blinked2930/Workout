@@ -522,7 +522,7 @@ export default function Progress() {
             <FormControl fullWidth size="small">
               <InputLabel>Equipment</InputLabel>
               <Select value={logEquipment} onChange={(e) => setLogEquipment(e.target.value)} label="Equipment">
-                <MenuItem value="Bodyweight">Bodyweight</MenuItem><MenuItem value="Barbell">Barbell</MenuItem><MenuItem value="Dumbbell">Dumbbell</MenuItem><MenuItem value="Smith">Smith</MenuItem><MenuItem value="Machine/Cable">Machine/Cable</MenuItem>
+                <MenuItem value="Bodyweight">Bodyweight</MenuItem><MenuItem value="Barbell">Barbell</MenuItem><MenuItem value="Dumbbell">Dumbbell</MenuItem><MenuItem value="Smith">Smith</MenuItem><MenuItem value="Machine/Cable">Machine/Cable</MenuItem><MenuItem value="Other">Other</MenuItem>
               </Select>
             </FormControl>
             <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>

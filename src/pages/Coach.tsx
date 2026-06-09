@@ -37,6 +37,15 @@ const EQUIPMENT_TYPES = [
   { value: 'Other', emoji: '⚡' },
 ];
 
+const inferEquipmentFromName = (name: string): string => {
+  const lower = name.toLowerCase();
+  if (lower.includes('dumbbell') || lower.includes('db')) return 'Dumbbell';
+  if (lower.includes('machine') || lower.includes('cable') || lower.includes('pulldown') || lower.includes('pushdown')) return 'Machine/Cable';
+  if (lower.includes('smith')) return 'Smith';
+  if (lower.includes('bodyweight') || lower.includes('pull-up') || lower.includes('pull up') || lower.includes('chin-up') || lower.includes('chin up') || lower.includes('dip') || lower.includes('push-up') || lower.includes('push up')) return 'Bodyweight';
+  return 'Barbell';
+};
+
 const parseAIJSON = (rawStr: string) => {
   try {
     const cleaned = rawStr.replace(/```json\n?/gi, '').replace(/```\n?/g, '').trim();
@@ -69,6 +78,9 @@ export default function Coach() {
   const [swapTarget, setSwapTarget] = useState<{ section: 'warmup' | 'main' | 'cooldown', index: number } | null>(null);
   const [swapSearch, setSwapSearch] = useState('');
   const [draggedItem, setDraggedItem] = useState<{ section: string, index: number } | null>(null);
+  
+  const [addTarget, setAddTarget] = useState<'warmup' | 'main' | 'cooldown' | null>(null);
+  const [addSearch, setAddSearch] = useState('');
   
   const [completedExercises, setCompletedExercises] = useState<Record<string, boolean>>({});
   const [loggedExercises, setLoggedExercises] = useState<Record<string, boolean>>({});
@@ -109,6 +121,12 @@ export default function Coach() {
     return exercisesDB.filter(ex => String(ex?.name || '').toLowerCase().includes(swapSearch.toLowerCase())).slice(0, 15);
   }, [exercisesDB, swapSearch]);
 
+  const filteredAddExercises = useMemo(() => {
+    if (!Array.isArray(exercisesDB)) return [];
+    if (!addSearch) return exercisesDB.slice(0, 15);
+    return exercisesDB.filter(ex => String(ex?.name || '').toLowerCase().includes(addSearch.toLowerCase())).slice(0, 15);
+  }, [exercisesDB, addSearch]);
+
   const handleGetSuggestion = async () => {
     setIsProcessing(true);
     setShowDebug(false);
@@ -128,8 +146,9 @@ export default function Coach() {
       
       const applyEq = (list: any[]) => list?.map(ex => {
          const lastLift = allLiftsDB.filter(l => l.exerciseName === ex.name).sort((a,b)=>b.timestamp-a.timestamp)[0];
-         let eq = lastLift?.equipmentType || 'Bodyweight';
+         let eq = lastLift?.equipmentType;
          if (eq === 'Machine' || eq === 'Cable') eq = 'Machine/Cable';
+         if (!eq) eq = inferEquipmentFromName(ex.name);
          return { ...ex, equipment: eq };
       });
 
@@ -147,8 +166,9 @@ export default function Coach() {
     if (!workoutData || !swapTarget) return;
     const newWorkout = { ...workoutData };
     const lastLift = allLiftsDB.filter(l => l.exerciseName === newName).sort((a,b)=>b.timestamp-a.timestamp)[0];
-    let eq = lastLift?.equipmentType || 'Bodyweight';
+    let eq = lastLift?.equipmentType;
     if (eq === 'Machine' || eq === 'Cable') eq = 'Machine/Cable';
+    if (!eq) eq = inferEquipmentFromName(newName);
 
     if (swapTarget.section === 'main' && newWorkout.mainBlock) {
       newWorkout.mainBlock[swapTarget.index].name = newName;
@@ -163,6 +183,30 @@ export default function Coach() {
     setWorkoutData(newWorkout);
     setSwapTarget(null);
     setSwapSearch('');
+  };
+
+  const handleAddExercise = (newName: string) => {
+    if (!workoutData || !addTarget) return;
+    const newWorkout = { ...workoutData };
+    const lastLift = allLiftsDB.filter(l => l.exerciseName === newName).sort((a,b)=>b.timestamp-a.timestamp)[0];
+    let eq = lastLift?.equipmentType;
+    if (eq === 'Machine' || eq === 'Cable') eq = 'Machine/Cable';
+    if (!eq) eq = inferEquipmentFromName(newName);
+
+    const newEx = { name: newName, equipment: eq, repsMin: 4, repsMax: 15, sets: 3, rest: '90s - 120s', notes: "Added mid-workout", reps: "8-12" };
+
+    if (addTarget === 'main' && newWorkout.mainBlock) {
+      newWorkout.mainBlock.push(newEx);
+    } else if (addTarget === 'warmup') {
+      if (!newWorkout.warmup) newWorkout.warmup = [];
+      newWorkout.warmup.push({ name: newName, reps: "8-12", equipment: eq });
+    } else if (addTarget === 'cooldown') {
+      if (!newWorkout.cooldown) newWorkout.cooldown = [];
+      newWorkout.cooldown.push({ name: newName, reps: "8-12", equipment: eq });
+    }
+    setWorkoutData(newWorkout);
+    setAddTarget(null);
+    setAddSearch('');
   };
 
   const updateEquipment = (section: 'warmup'|'main'|'cooldown', index: number, eq: string) => {
@@ -450,6 +494,7 @@ export default function Coach() {
                 </Paper>
               )
             })}
+            <Button size="small" variant="outlined" onClick={() => setAddTarget('warmup')} sx={{ mt: 1, color: '#b06aff', borderColor: 'rgba(176, 106, 255, 0.5)' }}>+ Add Warm-up</Button>
 
             <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.1)' }} />
 
@@ -466,7 +511,7 @@ export default function Coach() {
 
                return (
                 <Paper 
-                  key={ex.name} 
+                  key={ex.name + idx} 
                   draggable onDragStart={(e) => handleDragStart(e, 'main', idx)} onDragEnter={(e) => handleDragEnter(e, 'main', idx)} onDragOver={handleDragOver} onDragEnd={handleDragEnd}
                   onClick={() => toggleCellExpand(ex.name)} 
                   sx={{ p: 2, mb: 2, borderRadius: 3, cursor: 'pointer', bgcolor: completedExercises[ex.name] ? 'rgba(176, 106, 255, 0.05)' : 'rgba(255,255,255,0.03)', opacity: draggedItem?.section === 'main' && draggedItem?.index === idx ? 0.3 : (completedExercises[ex.name] ? 0.6 : 1), transition: 'all 0.2s ease' }}
@@ -500,6 +545,7 @@ export default function Coach() {
                 </Paper>
                )
             })}
+            <Button size="small" variant="outlined" onClick={() => setAddTarget('main')} sx={{ mt: 1, color: '#b06aff', borderColor: 'rgba(176, 106, 255, 0.5)' }}>+ Add Exercise</Button>
 
             <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.1)' }} />
 
@@ -541,8 +587,27 @@ export default function Coach() {
                 </Paper>
               )
             })}
+            <Button size="small" variant="outlined" onClick={() => setAddTarget('cooldown')} sx={{ mt: 1, color: '#b06aff', borderColor: 'rgba(176, 106, 255, 0.5)' }}>+ Add Cooldown</Button>
           </Box>
         )}
+
+        {/* ADD DIALOG */}
+        <Dialog open={!!addTarget} onClose={() => setAddTarget(null)} fullWidth maxWidth="xs">
+          <DialogTitle>Add Exercise</DialogTitle>
+          <DialogContent>
+            <TextField fullWidth placeholder="Search..." value={addSearch} onChange={e => setAddSearch(e.target.value)} sx={{ my: 2 }} />
+            <Box sx={{ maxHeight: 300, overflowY: 'auto' }}>
+              {filteredAddExercises.map(ex => (
+                <MenuItem key={ex.name} onClick={() => handleAddExercise(String(ex.name))}>
+                   <Box>
+                    <Typography sx={{ fontWeight: 600 }}>{ex.name}</Typography>
+                    <Typography sx={{ fontSize: '0.7rem', color: 'text.secondary' }}>{ex.category}</Typography>
+                  </Box>
+                </MenuItem>
+              ))}
+            </Box>
+          </DialogContent>
+        </Dialog>
 
         {/* SWAP DIALOG */}
         <Dialog open={!!swapTarget} onClose={() => setSwapTarget(null)} fullWidth maxWidth="xs">
@@ -571,7 +636,7 @@ export default function Coach() {
              <FormControl fullWidth size="small">
                 <InputLabel>Equipment</InputLabel>
                 <Select value={logEquipment} onChange={(e) => setLogEquipment(e.target.value)} label="Equipment">
-                  <MenuItem value="Bodyweight">Bodyweight</MenuItem><MenuItem value="Barbell">Barbell</MenuItem><MenuItem value="Dumbbell">Dumbbell</MenuItem><MenuItem value="Smith">Smith</MenuItem><MenuItem value="Machine/Cable">Machine/Cable</MenuItem>
+                  <MenuItem value="Bodyweight">Bodyweight</MenuItem><MenuItem value="Barbell">Barbell</MenuItem><MenuItem value="Dumbbell">Dumbbell</MenuItem><MenuItem value="Smith">Smith</MenuItem><MenuItem value="Machine/Cable">Machine/Cable</MenuItem><MenuItem value="Other">Other</MenuItem>
                 </Select>
              </FormControl>
              <Box sx={{ display: 'flex', gap: 1 }}>
