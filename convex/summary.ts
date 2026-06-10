@@ -117,15 +117,21 @@ export const sendWeeklySummary = action({
       totalExercises: stats.totalExercises,
       emailFormattedBreakdown: emailText,
 
-      // Flat data points for your Google Sheets columns
+      // Flat data points for your Google Sheets columns (ALL 13 MUSCLES)
       chestSets: bd['Chest']?.sets || 0,
+      shouldersSets: bd['Shoulders']?.sets || 0,
+      tricepsSets: bd['Triceps']?.sets || 0,
       backSets: bd['Back']?.sets || 0,
+      upperTrapsSets: bd['Upper Traps']?.sets || 0,
+      bicepsSets: bd['Biceps']?.sets || 0,
       quadsSets: bd['Quads']?.sets || 0,
       hamstringsSets: bd['Hamstrings']?.sets || 0,
       glutesSets: bd['Glutes']?.sets || 0,
-      shouldersSets: bd['Shoulders']?.sets || 0,
-      tricepsSets: bd['Triceps']?.sets || 0,
-      bicepsSets: bd['Biceps']?.sets || 0,
+      calvesSets: bd['Calves']?.sets || 0,
+      coreSets: bd['Core']?.sets || 0,
+      forearmsSets: bd['Forearms']?.sets || 0,
+      neckSets: bd['Neck']?.sets || 0,
+
       timestamp: new Date().toISOString().split('T')[0] // Gives YYYY-MM-DD
     };
 
