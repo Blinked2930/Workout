@@ -8,17 +8,20 @@ const SCHEMA_TO_GOAL: Record<string, string> = {
   forearms: 'Forearms', neck: 'Neck', core: 'Core',
 };
 
-// 1. The Engine: Calculates volume and cross-references with your Weekly Goals
+// 1. The Engine: Calculates volume from Monday and cross-references with Goals
 export const getWeeklyBreakdown = internalQuery({
   args: {},
   handler: async (ctx) => {
-    const now = Date.now();
-    const sevenDaysAgo = now - 7 * 24 * 60 * 60 * 1000;
+    // Dynamically find the start of the current week (Monday at 00:00:00)
+    const now = new Date();
+    const dayOfWeek = now.getDay() === 0 ? 7 : now.getDay(); // Convert Sunday (0) to 7
+    now.setHours(0, 0, 0, 0);
+    const startOfWeekTimestamp = now.getTime() - (dayOfWeek - 1) * 24 * 60 * 60 * 1000;
 
-    // Fetch lifts, exercises, and goals
+    // Fetch lifts, exercises, and goals starting from MONDAY
     const lifts = await ctx.db
       .query("liftSets")
-      .filter((q) => q.gte(q.field("timestamp"), sevenDaysAgo))
+      .filter((q) => q.gte(q.field("timestamp"), startOfWeekTimestamp))
       .collect();
 
     const exercises = await ctx.db.query("exercises").collect();
@@ -77,7 +80,7 @@ export const getWeeklyBreakdown = internalQuery({
 
     return {
       totalSets,
-      totalVolume,
+      totalVolume: Math.round(totalVolume), // Fixed the massive decimal!
       totalExercises: new Set(lifts.map(l => l.exerciseName)).size,
       muscleBreakdown: detailedBreakdown
     };
@@ -98,26 +101,22 @@ export const sendWeeklySummary = action({
     const stats = await ctx.runQuery(internal.summary.getWeeklyBreakdown, {});
     const bd = stats.muscleBreakdown;
 
-    // Create a beautiful pre-formatted text list for your email
+    // Create a guaranteed HTML-formatted text list for your email
     const emailText = Object.entries(bd)
-      // Filter out muscles with 0 sets AND no goals to keep the email clean
       .filter(([_, data]) => data.sets > 0 || data.target !== "No target")
-      .sort((a, b) => b[1].sets - a[1].sets) // Sorts highest volume to lowest
+      .sort((a, b) => b[1].sets - a[1].sets)
       .map(([muscle, data]) => {
-        const paddedMuscle = (muscle + ":").padEnd(12, " ");
-        const setsText = `${data.sets.toFixed(1)} sets`.padEnd(10, " ");
-        const goalText = `[Goal: ${data.target}]`.padEnd(15, " ");
-        return `• ${paddedMuscle} ${setsText} ${goalText} -> ${data.status}`;
+        return `<li><b>${muscle}:</b> ${data.sets.toFixed(1)} sets <i>[Goal: ${data.target}]</i> &rarr; ${data.status}</li>`;
       })
-      .join("\n");
+      .join("");
 
     const summaryPayload = {
       totalSets: stats.totalSets,
       totalVolume: stats.totalVolume,
       totalExercises: stats.totalExercises,
-      emailFormattedBreakdown: emailText,
+      emailFormattedBreakdown: `<ul>${emailText}</ul>`, // Wrapped in a clean HTML list
 
-      // Flat data points for your Google Sheets columns (ALL 13 MUSCLES)
+      // Flat data points for your Google Sheets columns
       chestSets: bd['Chest']?.sets || 0,
       shouldersSets: bd['Shoulders']?.sets || 0,
       tricepsSets: bd['Triceps']?.sets || 0,
@@ -132,7 +131,7 @@ export const sendWeeklySummary = action({
       forearmsSets: bd['Forearms']?.sets || 0,
       neckSets: bd['Neck']?.sets || 0,
 
-      timestamp: new Date().toISOString().split('T')[0] // Gives YYYY-MM-DD
+      timestamp: new Date().toISOString().split('T')[0]
     };
 
     const webhookUrl = process.env.WEBHOOK_URL;
