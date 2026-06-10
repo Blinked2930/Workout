@@ -10,10 +10,10 @@ crons.daily(
   api.demo.resetAndSeedDemo
 );
 
-// Send the weekly summary webhook every Sunday at 11:55 PM UTC
+// Send the weekly summary webhook every Sunday at 11:55 PM local time (21:55 UTC)
 crons.weekly(
   "send-weekly-summary",
-  { dayOfWeek: "sunday", hourUTC: 23, minuteUTC: 55 },
+  { dayOfWeek: "sunday", hourUTC: 21, minuteUTC: 55 },
   api.summary.sendWeeklySummary
 );
 
