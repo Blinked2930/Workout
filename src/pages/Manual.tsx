@@ -583,7 +583,7 @@ export default function Manual() {
                 const recentE1RM_Display = computedE1RM > 0 ? Number(toDisplay(computedE1RM)) : 0;
 
                 const hist = eqLifts.filter(l => l.reps >= (ex.repsMin || 0) && l.reps <= repsMax).sort((a, b) => b.timestamp - a.timestamp)[0];
-                const targetWeight = hist?.weight ? hist.weight : null;
+                const targetWeight = hist?.weight ? toDisplay(hist.weight) : null;
 
                 return (
                   <Paper
